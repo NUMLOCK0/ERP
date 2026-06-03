@@ -1,0 +1,188 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^u-(.*)": "uview-plus/components/u-$1/u-$1.vue",
+      "^uni-(.*)": "@dcloudio/uni-ui/lib/uni-$1/uni-$1.vue"
+    }
+  },
+  "pages": [
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "进销存管理"
+      }
+    },
+    {
+      "path": "pages/product/list",
+      "style": {
+        "navigationBarTitleText": "产品管理"
+      }
+    },
+    {
+      "path": "pages/product/detail",
+      "style": {
+        "navigationBarTitleText": "产品详情"
+      }
+    },
+    {
+      "path": "pages/purchase/order-list",
+      "style": {
+        "navigationBarTitleText": "采购订单"
+      }
+    },
+    {
+      "path": "pages/purchase/order-detail",
+      "style": {
+        "navigationBarTitleText": "采购订单详情"
+      }
+    },
+    {
+      "path": "pages/purchase/inbound-list",
+      "style": {
+        "navigationBarTitleText": "采购入库单"
+      }
+    },
+    {
+      "path": "pages/purchase/return-list",
+      "style": {
+        "navigationBarTitleText": "采购退货单"
+      }
+    },
+    {
+      "path": "pages/sale/order-list",
+      "style": {
+        "navigationBarTitleText": "销售订单"
+      }
+    },
+    {
+      "path": "pages/sale/order-detail",
+      "style": {
+        "navigationBarTitleText": "销售订单详情"
+      }
+    },
+    {
+      "path": "pages/sale/delivery-list",
+      "style": {
+        "navigationBarTitleText": "销售发货单"
+      }
+    },
+    {
+      "path": "pages/sale/return-list",
+      "style": {
+        "navigationBarTitleText": "销售退货单"
+      }
+    },
+    {
+      "path": "pages/inventory/stock",
+      "style": {
+        "navigationBarTitleText": "库存查询"
+      }
+    },
+    {
+      "path": "pages/inventory/check-list",
+      "style": {
+        "navigationBarTitleText": "盘点单"
+      }
+    },
+    {
+      "path": "pages/inventory/transfer-list",
+      "style": {
+        "navigationBarTitleText": "调拨单"
+      }
+    },
+    {
+      "path": "pages/inventory/log",
+      "style": {
+        "navigationBarTitleText": "库存日志"
+      }
+    },
+    {
+      "path": "pages/finance/payment-list",
+      "style": {
+        "navigationBarTitleText": "采购付款单"
+      }
+    },
+    {
+      "path": "pages/finance/receipt-list",
+      "style": {
+        "navigationBarTitleText": "销售收款单"
+      }
+    },
+    {
+      "path": "pages/report/product-stock",
+      "style": {
+        "navigationBarTitleText": "产品库存报表"
+      }
+    },
+    {
+      "path": "pages/report/sale-delivery",
+      "style": {
+        "navigationBarTitleText": "销售发货报表"
+      }
+    },
+    {
+      "path": "pages/report/purchase-inbound",
+      "style": {
+        "navigationBarTitleText": "采购入库报表"
+      }
+    },
+    {
+      "path": "pages/report/sale-order",
+      "style": {
+        "navigationBarTitleText": "销售订单报表"
+      }
+    },
+    {
+      "path": "pages/report/purchase-order",
+      "style": {
+        "navigationBarTitleText": "采购订单报表"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "进销存管理",
+    "navigationBarBackgroundColor": "#409EFF",
+    "backgroundColor": "#F5F7FA"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#409EFF",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "static/tabbar/home.png",
+        "selectedIconPath": "static/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/inventory/stock",
+        "text": "库存",
+        "iconPath": "static/tabbar/inventory.png",
+        "selectedIconPath": "static/tabbar/inventory-active.png"
+      },
+      {
+        "pagePath": "pages/report/product-stock",
+        "text": "报表",
+        "iconPath": "static/tabbar/report.png",
+        "selectedIconPath": "static/tabbar/report-active.png"
+      },
+      {
+        "pagePath": "pages/index/index",
+        "text": "我的",
+        "iconPath": "static/tabbar/mine.png",
+        "selectedIconPath": "static/tabbar/mine-active.png"
+      }
+    ]
+  }
+}

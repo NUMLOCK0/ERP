@@ -6,9 +6,6 @@ const config = require('./config');
 const { initDatabase } = require('./database');
 const authMiddleware = require('./middleware/auth');
 
-// 初始化数据库
-initDatabase();
-
 const app = express();
 
 // 中间件
@@ -46,7 +43,16 @@ app.use((err, req, res, next) => {
   res.status(500).json({ code: -1, message: '服务器内部错误' });
 });
 
-app.listen(config.port, () => {
-  console.log(`进销存系统后端服务已启动，端口：${config.port}`);
-  console.log(`数据库路径：${path.resolve(__dirname, '..', config.dbPath)}`);
-});
+// 异步启动
+(async () => {
+  try {
+    await initDatabase();
+    app.listen(config.port, () => {
+      console.log(`进销存系统后端服务已启动，端口：${config.port}`);
+      console.log(`数据库：${config.db.host}:${config.db.port}/${config.db.database}`);
+    });
+  } catch (err) {
+    console.error('启动失败:', err.message);
+    process.exit(1);
+  }
+})();

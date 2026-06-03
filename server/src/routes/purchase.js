@@ -1,317 +1,412 @@
 const express = require('express');
 const router = express.Router();
-const { getDatabase } = require('../database');
+const { getPool } = require('../database');
 const Response = require('../utils/response');
 
 // ==================== 采购订单 ====================
 
-// 订单列表
-router.get('/order', (req, res) => {
+router.get('/order', async (req, res) => {
   try {
-    const db = getDatabase();
-    const { page = 1, pageSize = 20, keyword = '', status, start_date = '', end_date = '' } = req.query;
+    const pool = getPool();
+    const { page = 1, pageSize = 20, keyword = '', status = '', start_date = '', end_date = '' } = req.query;
     let where = '1=1';
     const params = [];
     if (keyword) { where += ' AND (po.order_no LIKE ? OR sc.name LIKE ?)'; params.push(`%${keyword}%`, `%${keyword}%`); }
-    if (status !== undefined && status !== '') { where += ' AND po.status = ?'; params.push(Number(status)); }
+    if (status !== '') { where += ' AND po.status = ?'; params.push(Number(status)); }
     if (start_date) { where += ' AND po.created_at >= ?'; params.push(start_date); }
     if (end_date) { where += ' AND po.created_at <= ?'; params.push(end_date + ' 23:59:59'); }
-    const total = db.prepare(`SELECT COUNT(*) AS cnt FROM purchase_order po LEFT JOIN supplier_customer sc ON po.supplier_id = sc.id WHERE ${where}`).get(...params).cnt;
-    const list = db.prepare(`SELECT po.*, sc.name AS supplier_name, w.name AS warehouse_name, u.real_name AS creator_name FROM purchase_order po LEFT JOIN supplier_customer sc ON po.supplier_id = sc.id LEFT JOIN warehouse w ON po.warehouse_id = w.id LEFT JOIN sys_user u ON po.creator_id = u.id WHERE ${where} ORDER BY po.id DESC LIMIT ? OFFSET ?`).all(...params, Number(pageSize), (page - 1) * pageSize);
-    res.json(Response.paginate(list, total, page, pageSize));
+    const offset = (Number(page) - 1) * Number(pageSize);
+    const [totalRows] = await pool.execute(
+      `SELECT COUNT(*) AS cnt FROM purchase_order po LEFT JOIN supplier_customer sc ON po.supplier_id = sc.id WHERE ${where}`, params
+    );
+    const total = Number(totalRows[0].cnt);
+    const [list] = await pool.execute(
+      `SELECT po.*, sc.name AS supplier_name, w.name AS warehouse_name, u.real_name AS creator_name
+       FROM purchase_order po
+       LEFT JOIN supplier_customer sc ON po.supplier_id = sc.id
+       LEFT JOIN warehouse w ON po.warehouse_id = w.id
+       LEFT JOIN sys_user u ON po.creator_id = u.id
+       WHERE ${where} ORDER BY po.id DESC LIMIT ?, ?`,
+      [...params, offset, Number(pageSize)]
+    );
+    res.json(Response.paginate(list, total, Number(page), Number(pageSize)));
   } catch (err) {
     res.json(Response.error(err.message));
   }
 });
 
-// 订单详情（含明细）
-router.get('/order/:id', (req, res) => {
+router.get('/order/:id', async (req, res) => {
   try {
-    const db = getDatabase();
-    const order = db.prepare(`SELECT po.*, sc.name AS supplier_name, w.name AS warehouse_name FROM purchase_order po LEFT JOIN supplier_customer sc ON po.supplier_id = sc.id LEFT JOIN warehouse w ON po.warehouse_id = w.id WHERE po.id = ?`).get(req.params.id);
-    if (!order) return res.json(Response.error('订单不存在'));
-    const items = db.prepare(`SELECT poi.*, p.name AS product_name, p.code AS product_code, p.spec AS product_spec FROM purchase_order_item poi LEFT JOIN product p ON poi.product_id = p.id WHERE poi.order_id = ?`).all(req.params.id);
-    res.json(Response.success({ order, items }));
+    const pool = getPool();
+    const [rows] = await pool.execute('SELECT * FROM purchase_order WHERE id = ?', [req.params.id]);
+    if (!rows.length) return res.json(Response.error('订单不存在'));
+    const order = rows[0];
+    const [items] = await pool.execute(
+      `SELECT poi.*, p.name AS product_name, p.code, p.spec
+       FROM purchase_order_item poi
+       LEFT JOIN product p ON poi.product_id = p.id
+       WHERE poi.order_id = ?`, [order.id]
+    );
+    order.items = items;
+    res.json(Response.success(order));
   } catch (err) {
     res.json(Response.error(err.message));
   }
 });
 
-// 新增订单
-router.post('/order', (req, res) => {
+router.post('/order', async (req, res) => {
   try {
-    const db = getDatabase();
-    const { supplier_id, warehouse_id, items } = req.body;
+    const pool = getPool();
+    const { supplier_id, warehouse_id, items, auditor_id = 0 } = req.body;
     if (!supplier_id) return res.json(Response.error('供应商不能为空'));
     if (!warehouse_id) return res.json(Response.error('仓库不能为空'));
     if (!items || !items.length) return res.json(Response.error('明细不能为空'));
 
-    const orderNo = generateNo(db, 'CG');
+    const orderNo = await generateNo(pool, 'CG');
+    let totalAmount = 0;
+    for (const item of items) {
+      totalAmount += (item.quantity || 0) * (item.price || 0);
+    }
 
-    const createOrder = db.transaction(() => {
-      let totalAmount = 0;
-      items.forEach(item => {
-        const price = item.price || 0;
-        const qty = item.quantity || 0;
-        totalAmount += price * qty;
-      });
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
 
-      const result = db.prepare(`INSERT INTO purchase_order (order_no, supplier_id, warehouse_id, total_amount, status, creator_id) VALUES (?,?,?,?,0,?)`).run(orderNo, supplier_id, warehouse_id, totalAmount, req.user.id);
-      const orderId = result.lastInsertRowid;
+      const [result] = await conn.execute(
+        `INSERT INTO purchase_order (order_no, supplier_id, warehouse_id, total_amount, status, auditor_id, creator_id)
+         VALUES (?,?,?,?,?,?,?)`,
+        [orderNo, supplier_id, warehouse_id, totalAmount, auditor_id ? 1 : 0, auditor_id, req.user.id]
+      );
+      const orderId = result.insertId;
 
-      const insertItem = db.prepare('INSERT INTO purchase_order_item (order_id, product_id, quantity, price, amount) VALUES (?,?,?,?,?)');
-      items.forEach(item => {
-        const qty = item.quantity || 0;
-        const price = item.price || 0;
-        insertItem.run(orderId, item.product_id, qty, price, price * qty);
-      });
+      for (const item of items) {
+        await conn.execute(
+          'INSERT INTO purchase_order_item (order_id, product_id, quantity, price, amount) VALUES (?,?,?,?,?)',
+          [orderId, item.product_id, item.quantity, item.price, (item.quantity || 0) * (item.price || 0)]
+        );
+      }
 
-      return orderId;
-    });
-
-    const orderId = createOrder();
-    writeSystemLog(db, req.user.id, '采购管理', '新增采购订单', orderNo);
-    res.json(Response.success({ id: orderId, order_no: orderNo }));
+      await conn.commit();
+      await writeSystemLog(pool, req.user.id, '采购管理', '新增采购订单', orderNo);
+      res.json(Response.success({ id: orderId, order_no: orderNo }));
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
   } catch (err) {
     res.json(Response.error(err.message));
   }
 });
 
-// 编辑订单（仅草稿状态可编辑）
-router.put('/order/:id', (req, res) => {
+router.put('/order/:id', async (req, res) => {
   try {
-    const db = getDatabase();
-    const order = db.prepare('SELECT * FROM purchase_order WHERE id = ?').get(req.params.id);
-    if (!order) return res.json(Response.error('订单不存在'));
-    if (order.status !== 0) return res.json(Response.error('仅草稿状态可编辑'));
-
+    const pool = getPool();
     const { supplier_id, warehouse_id, items } = req.body;
-    if (!supplier_id) return res.json(Response.error('供应商不能为空'));
-    if (!items || !items.length) return res.json(Response.error('明细不能为空'));
 
-    const updateOrder = db.transaction(() => {
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
       let totalAmount = 0;
-      items.forEach(item => { totalAmount += (item.price || 0) * (item.quantity || 0); });
-      db.prepare(`UPDATE purchase_order SET supplier_id=?, warehouse_id=?, total_amount=?, updated_at=datetime('now','localtime') WHERE id=?`).run(supplier_id, warehouse_id, totalAmount, req.params.id);
-      db.prepare('DELETE FROM purchase_order_item WHERE order_id = ?').run(req.params.id);
-      const insertItem = db.prepare('INSERT INTO purchase_order_item (order_id, product_id, quantity, price, amount) VALUES (?,?,?,?,?)');
-      items.forEach(item => {
-        const qty = item.quantity || 0;
-        const price = item.price || 0;
-        insertItem.run(req.params.id, item.product_id, qty, price, price * qty);
-      });
-    });
+      await conn.execute('DELETE FROM purchase_order_item WHERE order_id = ?', [req.params.id]);
+      for (const item of (items || [])) {
+        const amount = (item.quantity || 0) * (item.price || 0);
+        totalAmount += amount;
+        await conn.execute(
+          'INSERT INTO purchase_order_item (order_id, product_id, quantity, price, amount) VALUES (?,?,?,?,?)',
+          [req.params.id, item.product_id, item.quantity, item.price, amount]
+        );
+      }
 
-    updateOrder();
-    writeSystemLog(db, req.user.id, '采购管理', '编辑采购订单', order.order_no);
-    res.json(Response.success());
+      await conn.execute(
+        'UPDATE purchase_order SET supplier_id=?, warehouse_id=?, total_amount=? WHERE id=?',
+        [supplier_id, warehouse_id, totalAmount, req.params.id]
+      );
+
+      await conn.commit();
+      await writeSystemLog(pool, req.user.id, '采购管理', '编辑采购订单', String(req.params.id));
+      res.json(Response.success());
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
   } catch (err) {
     res.json(Response.error(err.message));
   }
 });
 
-// 审核订单
-router.put('/order/:id/audit', (req, res) => {
+router.delete('/order/:id', async (req, res) => {
   try {
-    const db = getDatabase();
-    const order = db.prepare('SELECT * FROM purchase_order WHERE id = ?').get(req.params.id);
-    if (!order) return res.json(Response.error('订单不存在'));
-    if (order.status !== 0) return res.json(Response.error('订单状态不允许审核'));
-
-    db.prepare(`UPDATE purchase_order SET status=1, auditor_id=?, audit_time=datetime('now','localtime'), updated_at=datetime('now','localtime') WHERE id=?`).run(req.user.id, req.params.id);
-    writeSystemLog(db, req.user.id, '采购管理', '审核采购订单', order.order_no);
-    res.json(Response.success());
+    const pool = getPool();
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      await conn.execute('DELETE FROM purchase_order_item WHERE order_id = ?', [req.params.id]);
+      await conn.execute('DELETE FROM purchase_order WHERE id = ?', [req.params.id]);
+      await conn.commit();
+      await writeSystemLog(pool, req.user.id, '采购管理', '删除采购订单', String(req.params.id));
+      res.json(Response.success());
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
   } catch (err) {
     res.json(Response.error(err.message));
   }
 });
 
-// 删除订单
-router.delete('/order/:id', (req, res) => {
+// ==================== 审核采购订单（生成入库单 + 更新库存） ====================
+
+router.post('/order/:id/audit', async (req, res) => {
+  const conn = await getPool().getConnection();
   try {
-    const db = getDatabase();
-    const order = db.prepare('SELECT * FROM purchase_order WHERE id = ?').get(req.params.id);
-    if (!order) return res.json(Response.error('订单不存在'));
-    if (order.status !== 0) return res.json(Response.error('仅草稿状态可删除'));
-    db.prepare('DELETE FROM purchase_order_item WHERE order_id = ?').run(req.params.id);
-    db.prepare('DELETE FROM purchase_order WHERE id = ?').run(req.params.id);
-    writeSystemLog(db, req.user.id, '采购管理', '删除采购订单', order.order_no);
-    res.json(Response.success());
+    await conn.beginTransaction();
+
+    const [orderRows] = await conn.execute('SELECT * FROM purchase_order WHERE id = ?', [req.params.id]);
+    const order = orderRows[0];
+    if (!order) { await conn.rollback(); conn.release(); return res.json(Response.error('订单不存在')); }
+    if (order.status !== 0) { await conn.rollback(); conn.release(); return res.json(Response.error('订单状态不允许审核')); }
+
+    const [itemRows] = await conn.execute('SELECT * FROM purchase_order_item WHERE order_id = ?', [order.id]);
+
+    // 生成入库单
+    const inboundNo = await generateNo(conn, 'RK');
+    const [result] = await conn.execute(
+      `INSERT INTO purchase_inbound (inbound_no, order_id, warehouse_id, supplier_id, total_amount, status, creator_id)
+       VALUES (?,?,?,?,?,1,?)`,
+      [inboundNo, order.id, order.warehouse_id, order.supplier_id, order.total_amount, req.user.id]
+    );
+    const inboundId = result.insertId;
+
+    for (const item of itemRows) {
+      await conn.execute(
+        'INSERT INTO purchase_inbound_item (inbound_id, product_id, quantity, price, amount) VALUES (?,?,?,?,?)',
+        [inboundId, item.product_id, item.quantity, item.price, item.amount]
+      );
+      // 更新库存
+      await updateStock(conn, item.product_id, order.warehouse_id, item.quantity, 'purchase_inbound', inboundNo);
+    }
+
+    // 更新订单状态
+    await conn.execute(
+      'UPDATE purchase_order SET status = 1, auditor_id = ?, audit_time = NOW() WHERE id = ?',
+      [req.user.id, order.id]
+    );
+
+    await conn.commit();
+    await writeSystemLog(getPool(), req.user.id, '采购管理', '审核采购订单', order.order_no);
+    res.json(Response.success({ inbound_id: inboundId, inbound_no: inboundNo }));
   } catch (err) {
+    await conn.rollback();
     res.json(Response.error(err.message));
+  } finally {
+    conn.release();
   }
 });
 
-// ==================== 采购入库单 ====================
+// ==================== 采购入库单列表 ====================
 
-// 入库单列表
-router.get('/inbound', (req, res) => {
+router.get('/inbound', async (req, res) => {
   try {
-    const db = getDatabase();
+    const pool = getPool();
     const { page = 1, pageSize = 20, keyword = '', start_date = '', end_date = '' } = req.query;
     let where = '1=1';
     const params = [];
     if (keyword) { where += ' AND (pi.inbound_no LIKE ? OR sc.name LIKE ?)'; params.push(`%${keyword}%`, `%${keyword}%`); }
     if (start_date) { where += ' AND pi.created_at >= ?'; params.push(start_date); }
     if (end_date) { where += ' AND pi.created_at <= ?'; params.push(end_date + ' 23:59:59'); }
-    const total = db.prepare(`SELECT COUNT(*) AS cnt FROM purchase_inbound pi LEFT JOIN supplier_customer sc ON pi.supplier_id = sc.id WHERE ${where}`).get(...params).cnt;
-    const list = db.prepare(`SELECT pi.*, sc.name AS supplier_name, w.name AS warehouse_name, po.order_no FROM purchase_inbound pi LEFT JOIN supplier_customer sc ON pi.supplier_id = sc.id LEFT JOIN warehouse w ON pi.warehouse_id = w.id LEFT JOIN purchase_order po ON pi.order_id = po.id WHERE ${where} ORDER BY pi.id DESC LIMIT ? OFFSET ?`).all(...params, Number(pageSize), (page - 1) * pageSize);
-    res.json(Response.paginate(list, total, page, pageSize));
+    const offset = (Number(page) - 1) * Number(pageSize);
+    const [totalRows] = await pool.execute(
+      `SELECT COUNT(*) AS cnt FROM purchase_inbound pi LEFT JOIN supplier_customer sc ON pi.supplier_id = sc.id WHERE ${where}`, params
+    );
+    const total = Number(totalRows[0].cnt);
+    const [list] = await pool.execute(
+      `SELECT pi.*, sc.name AS supplier_name, w.name AS warehouse_name, u.real_name AS creator_name
+       FROM purchase_inbound pi
+       LEFT JOIN supplier_customer sc ON pi.supplier_id = sc.id
+       LEFT JOIN warehouse w ON pi.warehouse_id = w.id
+       LEFT JOIN sys_user u ON pi.creator_id = u.id
+       WHERE ${where} ORDER BY pi.id DESC LIMIT ?, ?`,
+      [...params, offset, Number(pageSize)]
+    );
+    res.json(Response.paginate(list, total, Number(page), Number(pageSize)));
   } catch (err) {
     res.json(Response.error(err.message));
   }
 });
 
-// 入库单详情
-router.get('/inbound/:id', (req, res) => {
+router.get('/inbound/:id', async (req, res) => {
   try {
-    const db = getDatabase();
-    const inbound = db.prepare(`SELECT pi.*, sc.name AS supplier_name, w.name AS warehouse_name, po.order_no FROM purchase_inbound pi LEFT JOIN supplier_customer sc ON pi.supplier_id = sc.id LEFT JOIN warehouse w ON pi.warehouse_id = w.id LEFT JOIN purchase_order po ON pi.order_id = po.id WHERE pi.id = ?`).get(req.params.id);
-    if (!inbound) return res.json(Response.error('入库单不存在'));
-    const items = db.prepare(`SELECT pii.*, p.name AS product_name, p.code AS product_code FROM purchase_inbound_item pii LEFT JOIN product p ON pii.product_id = p.id WHERE pii.inbound_id = ?`).all(req.params.id);
-    res.json(Response.success({ inbound, items }));
+    const pool = getPool();
+    const [rows] = await pool.execute('SELECT * FROM purchase_inbound WHERE id = ?', [req.params.id]);
+    if (!rows.length) return res.json(Response.error('入库单不存在'));
+    const inbound = rows[0];
+    const [items] = await pool.execute(
+      `SELECT pii.*, p.name AS product_name, p.code, p.spec
+       FROM purchase_inbound_item pii
+       LEFT JOIN product p ON pii.product_id = p.id
+       WHERE pii.inbound_id = ?`, [inbound.id]
+    );
+    inbound.items = items;
+    res.json(Response.success(inbound));
   } catch (err) {
     res.json(Response.error(err.message));
   }
 });
 
-// 新增入库单（基于采购订单）
-router.post('/inbound', (req, res) => {
+// ==================== 采购退货 ====================
+
+router.get('/return', async (req, res) => {
   try {
-    const db = getDatabase();
-    const { order_id, warehouse_id, items } = req.body;
-    if (!order_id) return res.json(Response.error('采购订单不能为空'));
-    if (!items || !items.length) return res.json(Response.error('明细不能为空'));
-
-    const order = db.prepare('SELECT * FROM purchase_order WHERE id = ?').get(order_id);
-    if (!order) return res.json(Response.error('采购订单不存在'));
-    if (order.status !== 1) return res.json(Response.error('订单未审核，无法入库'));
-
-    const inboundNo = generateNo(db, 'RK');
-
-    const createInbound = db.transaction(() => {
-      let totalAmount = 0;
-      items.forEach(item => { totalAmount += (item.price || 0) * (item.quantity || 0); });
-
-      const whId = warehouse_id || order.warehouse_id;
-      const result = db.prepare(`INSERT INTO purchase_inbound (inbound_no, order_id, warehouse_id, supplier_id, total_amount, status, creator_id) VALUES (?,?,?,?,?,1,?)`).run(inboundNo, order_id, whId, order.supplier_id, totalAmount, req.user.id);
-      const inboundId = result.lastInsertRowid;
-
-      const insertItem = db.prepare('INSERT INTO purchase_inbound_item (inbound_id, product_id, quantity, price, amount) VALUES (?,?,?,?,?)');
-      items.forEach(item => {
-        const qty = item.quantity || 0;
-        const price = item.price || 0;
-        insertItem.run(inboundId, item.product_id, qty, price, price * qty);
-        // 更新库存
-        updateStock(db, item.product_id, whId, qty, 'purchase_inbound', inboundNo);
-      });
-
-      // 更新订单状态为已入库
-      db.prepare(`UPDATE purchase_order SET status=2, updated_at=datetime('now','localtime') WHERE id=?`).run(order_id);
-      return inboundId;
-    });
-
-    const inboundId = createInbound();
-    writeSystemLog(db, req.user.id, '采购管理', '采购入库', inboundNo);
-    res.json(Response.success({ id: inboundId, inbound_no: inboundNo }));
-  } catch (err) {
-    res.json(Response.error(err.message));
-  }
-});
-
-// ==================== 采购退货单 ====================
-
-// 退货单列表
-router.get('/return', (req, res) => {
-  try {
-    const db = getDatabase();
-    const { page = 1, pageSize = 20, keyword = '' } = req.query;
+    const pool = getPool();
+    const { page = 1, pageSize = 20, keyword = '', start_date = '', end_date = '' } = req.query;
     let where = '1=1';
     const params = [];
     if (keyword) { where += ' AND (pr.return_no LIKE ? OR sc.name LIKE ?)'; params.push(`%${keyword}%`, `%${keyword}%`); }
-    const total = db.prepare(`SELECT COUNT(*) AS cnt FROM purchase_return pr LEFT JOIN supplier_customer sc ON pr.supplier_id = sc.id WHERE ${where}`).get(...params).cnt;
-    const list = db.prepare(`SELECT pr.*, sc.name AS supplier_name FROM purchase_return pr LEFT JOIN supplier_customer sc ON pr.supplier_id = sc.id WHERE ${where} ORDER BY pr.id DESC LIMIT ? OFFSET ?`).all(...params, Number(pageSize), (page - 1) * pageSize);
-    res.json(Response.paginate(list, total, page, pageSize));
+    if (start_date) { where += ' AND pr.created_at >= ?'; params.push(start_date); }
+    if (end_date) { where += ' AND pr.created_at <= ?'; params.push(end_date + ' 23:59:59'); }
+    const offset = (Number(page) - 1) * Number(pageSize);
+    const [totalRows] = await pool.execute(
+      `SELECT COUNT(*) AS cnt FROM purchase_return pr LEFT JOIN supplier_customer sc ON pr.supplier_id = sc.id WHERE ${where}`, params
+    );
+    const total = Number(totalRows[0].cnt);
+    const [list] = await pool.execute(
+      `SELECT pr.*, sc.name AS supplier_name, u.real_name AS creator_name
+       FROM purchase_return pr
+       LEFT JOIN supplier_customer sc ON pr.supplier_id = sc.id
+       LEFT JOIN sys_user u ON pr.creator_id = u.id
+       WHERE ${where} ORDER BY pr.id DESC LIMIT ?, ?`,
+      [...params, offset, Number(pageSize)]
+    );
+    res.json(Response.paginate(list, total, Number(page), Number(pageSize)));
   } catch (err) {
     res.json(Response.error(err.message));
   }
 });
 
-// 退货单详情
-router.get('/return/:id', (req, res) => {
+router.get('/return/:id', async (req, res) => {
   try {
-    const db = getDatabase();
-    const ret = db.prepare(`SELECT pr.*, sc.name AS supplier_name FROM purchase_return pr LEFT JOIN supplier_customer sc ON pr.supplier_id = sc.id WHERE pr.id = ?`).get(req.params.id);
-    if (!ret) return res.json(Response.error('退货单不存在'));
-    const items = db.prepare(`SELECT pri.*, p.name AS product_name FROM purchase_return_item pri LEFT JOIN product p ON pri.product_id = p.id WHERE pri.return_id = ?`).all(req.params.id);
-    res.json(Response.success({ ret, items }));
+    const pool = getPool();
+    const [rows] = await pool.execute('SELECT * FROM purchase_return WHERE id = ?', [req.params.id]);
+    if (!rows.length) return res.json(Response.error('退货单不存在'));
+    const ret = rows[0];
+    const [items] = await pool.execute(
+      `SELECT pri.*, p.name AS product_name, p.code, p.spec
+       FROM purchase_return_item pri
+       LEFT JOIN product p ON pri.product_id = p.id
+       WHERE pri.return_id = ?`, [ret.id]
+    );
+    ret.items = items;
+    res.json(Response.success(ret));
   } catch (err) {
     res.json(Response.error(err.message));
   }
 });
 
-// 新增退货单
-router.post('/return', (req, res) => {
+router.post('/return', async (req, res) => {
   try {
-    const db = getDatabase();
-    const { inbound_id, supplier_id, reason = '', items } = req.body;
+    const pool = getPool();
+    const { inbound_id, supplier_id, items, reason = '' } = req.body;
+    if (!supplier_id) return res.json(Response.error('供应商不能为空'));
     if (!items || !items.length) return res.json(Response.error('明细不能为空'));
 
-    const returnNo = generateNo(db, 'CT');
+    const returnNo = await generateNo(pool, 'CT');
+    let totalAmount = 0;
+    for (const item of items) {
+      totalAmount += (item.quantity || 0) * (item.price || 0);
+    }
 
-    const createReturn = db.transaction(() => {
-      let totalAmount = 0;
-      items.forEach(item => { totalAmount += (item.price || 0) * (item.quantity || 0); });
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
 
-      const result = db.prepare(`INSERT INTO purchase_return (return_no, inbound_id, supplier_id, total_amount, status, reason, creator_id) VALUES (?,?,?,?,1,?,?)`).run(returnNo, inbound_id || 0, supplier_id || 0, totalAmount, reason, req.user.id);
-      const returnId = result.lastInsertRowid;
+      const [result] = await conn.execute(
+        `INSERT INTO purchase_return (return_no, inbound_id, supplier_id, total_amount, status, reason, creator_id)
+         VALUES (?,?,?,?,0,?,?)`,
+        [returnNo, inbound_id || 0, supplier_id, totalAmount, reason, req.user.id]
+      );
+      const returnId = result.insertId;
 
-      const insertItem = db.prepare('INSERT INTO purchase_return_item (return_id, product_id, quantity, price, amount) VALUES (?,?,?,?,?)');
-      items.forEach(item => {
-        const qty = item.quantity || 0;
-        const price = item.price || 0;
-        insertItem.run(returnId, item.product_id, qty, price, price * qty);
+      for (const item of items) {
+        await conn.execute(
+          'INSERT INTO purchase_return_item (return_id, product_id, quantity, price, amount) VALUES (?,?,?,?,?)',
+          [returnId, item.product_id, item.quantity, item.price, (item.quantity || 0) * (item.price || 0)]
+        );
         // 减少库存
-        const whId = db.prepare('SELECT warehouse_id FROM purchase_inbound WHERE id = ?').get(inbound_id || 0);
-        if (whId) updateStock(db, item.product_id, whId.warehouse_id, -qty, 'purchase_return', returnNo);
-      });
+        const [inboundRows] = await conn.execute('SELECT warehouse_id FROM purchase_inbound WHERE id = ?', [inbound_id || 0]);
+        if (inboundRows.length) {
+          await updateStock(conn, item.product_id, inboundRows[0].warehouse_id, -item.quantity, 'purchase_return', returnNo);
+        }
+      }
 
-      return returnId;
-    });
-
-    const returnId = createReturn();
-    writeSystemLog(db, req.user.id, '采购管理', '采购退货', returnNo);
-    res.json(Response.success({ id: returnId, return_no: returnNo }));
+      await conn.commit();
+      await writeSystemLog(pool, req.user.id, '采购管理', '新增采购退货单', returnNo);
+      res.json(Response.success({ id: returnId, return_no: returnNo }));
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
   } catch (err) {
     res.json(Response.error(err.message));
   }
 });
 
-// ==================== 工具函数 ====================
+// ==================== 辅助函数 ====================
 
-function generateNo(db, prefix) {
+async function updateStock(conn, productId, warehouseId, quantity, changeType, refNo) {
+  const [rows] = await conn.execute(
+    'SELECT * FROM inventory_stock WHERE product_id = ? AND warehouse_id = ?',
+    [productId, warehouseId]
+  );
+  const beforeQty = rows.length ? rows[0].quantity : 0;
+  const afterQty = beforeQty + quantity;
+
+  if (rows.length) {
+    await conn.execute(
+      'UPDATE inventory_stock SET quantity = ?, updated_at = NOW() WHERE id = ?',
+      [afterQty, rows[0].id]
+    );
+  } else {
+    await conn.execute(
+      'INSERT INTO inventory_stock (product_id, warehouse_id, quantity) VALUES (?,?,?)',
+      [productId, warehouseId, afterQty]
+    );
+  }
+
+  await conn.execute(
+    `INSERT INTO inventory_log (product_id, warehouse_id, change_type, change_quantity, before_quantity, after_quantity, ref_no)
+     VALUES (?,?,?,?,?,?,?)`,
+    [productId, warehouseId, changeType, quantity, beforeQty, afterQty, refNo]
+  );
+}
+
+async function generateNo(poolOrConn, prefix) {
   const now = new Date();
   const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-  const todayPattern = `${prefix}-${dateStr}-%`;
-  const row = db.prepare("SELECT COUNT(*) AS cnt FROM purchase_order WHERE order_no LIKE ?").get(todayPattern);
-  const seq = (row?.cnt || 0) + 1;
+  const tableMap = {
+    'CG': { table: 'purchase_order', col: 'order_no' },
+    'RK': { table: 'purchase_inbound', col: 'inbound_no' },
+    'CT': { table: 'purchase_return', col: 'return_no' }
+  };
+  const mapping = tableMap[prefix] || { table: 'purchase_order', col: 'order_no' };
+  const [rows] = await poolOrConn.execute(
+    `SELECT COUNT(*) AS cnt FROM ${mapping.table} WHERE ${mapping.col} LIKE ?`,
+    [`${prefix}-${dateStr}-%`]
+  );
+  const seq = (Number(rows[0]?.cnt) || 0) + 1;
   return `${prefix}-${dateStr}-${String(seq).padStart(4, '0')}`;
 }
 
-function updateStock(db, productId, warehouseId, quantity, changeType, refNo) {
-  const existing = db.prepare('SELECT * FROM inventory_stock WHERE product_id = ? AND warehouse_id = ?').get(productId, warehouseId);
-  const beforeQty = existing ? existing.quantity : 0;
-  const afterQty = beforeQty + quantity;
-  if (existing) {
-    db.prepare("UPDATE inventory_stock SET quantity = ?, updated_at = datetime('now','localtime') WHERE id = ?").run(afterQty, existing.id);
-  } else {
-    db.prepare('INSERT INTO inventory_stock (product_id, warehouse_id, quantity) VALUES (?,?,?)').run(productId, warehouseId, afterQty);
-  }
-  db.prepare('INSERT INTO inventory_log (product_id, warehouse_id, change_type, change_quantity, before_quantity, after_quantity, ref_no) VALUES (?,?,?,?,?,?,?)').run(productId, warehouseId, changeType, quantity, beforeQty, afterQty, refNo);
-}
-
-function writeSystemLog(db, userId, module, action, target) {
-  db.prepare('INSERT INTO system_log (user_id, module, action, target) VALUES (?, ?, ?, ?)').run(userId, module, action, target);
+async function writeSystemLog(pool, userId, module, action, target) {
+  await pool.execute('INSERT INTO system_log (user_id, module, action, target) VALUES (?, ?, ?, ?)', [userId, module, action, target]);
 }
 
 module.exports = router;

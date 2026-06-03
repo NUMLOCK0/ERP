@@ -3,36 +3,35 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { getPool } = require('../database');
 const config = require('../config');
-const Response = require('../utils/response');
 
 // 确保上传目录存在
-const uploadPath = path.resolve(__dirname, '..', '..', config.uploadDir);
-if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath, { recursive: true });
+const uploadAbsDir = path.resolve(__dirname, '../../', config.uploadDir);
+if (!fs.existsSync(uploadAbsDir)) {
+  fs.mkdirSync(uploadAbsDir, { recursive: true });
 }
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dateDir = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const dir = path.join(uploadPath, dateDir);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
+    const subDir = file.mimetype.startsWith('image/') ? 'images' : 'files';
+    const dest = path.join(uploadAbsDir, subDir);
+    if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+    cb(null, dest);
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
-    const name = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`;
-    cb(null, name);
+    const basename = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`;
+    cb(null, basename);
   }
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.pdf', '.xls', '.xlsx', '.doc', '.docx', '.csv', '.zip'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.includes(ext)) {
+    const allowed = /\.(jpg|jpeg|png|gif|webp|svg|pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv|zip|rar)$/i;
+    if (allowed.test(path.extname(file.originalname))) {
       cb(null, true);
     } else {
       cb(new Error('不支持的文件类型'));
@@ -41,42 +40,22 @@ const upload = multer({
 });
 
 // 单文件上传
-router.post('/', upload.single('file'), (req, res) => {
-  try {
-    if (!req.file) return res.json(Response.error('请选择文件'));
-    const relativePath = path.relative(path.resolve(__dirname, '..', '..'), req.file.path).replace(/\\/g, '/');
-    res.json(Response.success({
-      filename: req.file.originalname,
-      path: relativePath,
-      url: `/${relativePath}`,
-      size: req.file.size
-    }));
-  } catch (err) {
-    res.json(Response.error(err.message));
-  }
+router.post('/file', upload.single('file'), (req, res) => {
+  if (!req.file) return res.json({ code: -1, message: '上传失败' });
+  const url = `/uploads/${req.file.mimetype.startsWith('image/') ? 'images' : 'files'}/${req.file.filename}`;
+  res.json({ code: 0, data: { url, filename: req.file.filename, originalname: req.file.originalname, size: req.file.size }, message: 'success' });
 });
 
 // 多文件上传
-router.post('/batch', upload.array('files', 10), (req, res) => {
-  try {
-    if (!req.files || !req.files.length) return res.json(Response.error('请选择文件'));
-    const files = req.files.map(f => {
-      const relativePath = path.relative(path.resolve(__dirname, '..', '..'), f.path).replace(/\\/g, '/');
-      return { filename: f.originalname, path: relativePath, url: `/${relativePath}`, size: f.size };
-    });
-    res.json(Response.success(files));
-  } catch (err) {
-    res.json(Response.error(err.message));
-  }
-});
-
-// 错误处理
-router.use((err, req, res, next) => {
-  if (err instanceof multer.MulterError) {
-    if (err.code === 'LIMIT_FILE_SIZE') return res.json(Response.error('文件大小超过限制（10MB）'));
-    return res.json(Response.error(err.message));
-  }
-  res.json(Response.error(err.message));
+router.post('/multiple', upload.array('files', 10), (req, res) => {
+  if (!req.files || !req.files.length) return res.json({ code: -1, message: '上传失败' });
+  const urls = req.files.map(f => ({
+    url: `/uploads/${f.mimetype.startsWith('image/') ? 'images' : 'files'}/${f.filename}`,
+    filename: f.filename,
+    originalname: f.originalname,
+    size: f.size
+  }));
+  res.json({ code: 0, data: urls, message: 'success' });
 });
 
 module.exports = router;

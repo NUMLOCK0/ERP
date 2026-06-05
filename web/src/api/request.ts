@@ -1,4 +1,4 @@
-import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
+import axios, { type AxiosRequestConfig, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
 
 const service = axios.create({
@@ -46,8 +46,8 @@ export function get<T = any>(url: string, params?: any): Promise<T> {
   return service.get(url, { params })
 }
 
-export function post<T = any>(url: string, data?: any): Promise<T> {
-  return service.post(url, data)
+export function post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  return service.post(url, data, config)
 }
 
 export function put<T = any>(url: string, data?: any): Promise<T> {

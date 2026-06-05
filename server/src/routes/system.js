@@ -89,6 +89,22 @@ router.put('/admin/:id', async (req, res) => {
   }
 });
 
+router.put('/admin/:id/password', async (req, res) => {
+  try {
+    const pool = getPool();
+    const { password } = req.body;
+    if (!password) return res.json(Response.error('密码不能为空'));
+    await pool.execute(
+      'UPDATE sys_user SET password_hash=? WHERE id=?',
+      [bcrypt.hashSync(password, 10), req.params.id]
+    );
+    await writeSystemLog(pool, req.user.id, '系统管理', '重置管理员密码', String(req.params.id));
+    res.json(Response.success());
+  } catch (err) {
+    res.json(Response.error(err.message));
+  }
+});
+
 router.delete('/admin/:id', async (req, res) => {
   try {
     const pool = getPool();
@@ -291,6 +307,27 @@ router.put('/print-template/:id', async (req, res) => {
     res.json(Response.success());
   } catch (err) {
     res.json(Response.error(err.message));
+  }
+});
+
+router.post('/print-template/:id/default', async (req, res) => {
+  const pool = getPool();
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute('SELECT id, type FROM print_template WHERE id = ?', [req.params.id]);
+    if (!rows.length) return res.json(Response.error('模板不存在'));
+    const template = rows[0];
+    await conn.beginTransaction();
+    await conn.execute('UPDATE print_template SET is_default = 0 WHERE type = ?', [template.type]);
+    await conn.execute('UPDATE print_template SET is_default = 1 WHERE id = ?', [template.id]);
+    await conn.commit();
+    await writeSystemLog(pool, req.user.id, '系统管理', '设置默认打印模板', String(template.id));
+    res.json(Response.success());
+  } catch (err) {
+    await conn.rollback();
+    res.json(Response.error(err.message));
+  } finally {
+    conn.release();
   }
 });
 

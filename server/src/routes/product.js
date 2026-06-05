@@ -6,24 +6,39 @@ const Response = require('../utils/response');
 router.get('/', async (req, res) => {
   try {
     const pool = getPool();
-    const { page = 1, pageSize = 20, keyword = '', category_id = '', brand_id = '', status = '' } = req.query;
+    const { page = 1, pageSize = 20, keyword = '', code = '', barcode = '', name = '', category_id = '', brand_id = '', status = '' } = req.query;
     let where = '1=1';
     const params = [];
     if (keyword) { where += ' AND (p.name LIKE ? OR p.code LIKE ? OR p.barcode LIKE ?)'; params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`); }
+    if (code) { where += ' AND p.code LIKE ?'; params.push(`%${code}%`); }
+    if (barcode) { where += ' AND p.barcode LIKE ?'; params.push(`%${barcode}%`); }
+    if (name) { where += ' AND p.name LIKE ?'; params.push(`%${name}%`); }
     if (category_id) { where += ' AND p.category_id = ?'; params.push(Number(category_id)); }
     if (brand_id) { where += ' AND p.brand_id = ?'; params.push(Number(brand_id)); }
     if (status !== '') { where += ' AND p.status = ?'; params.push(Number(status)); }
     const offset = (Number(page) - 1) * Number(pageSize);
-    const [totalRows] = await pool.execute(
-      `SELECT COUNT(*) AS cnt FROM product p WHERE ${where}`, params
-    );
+    const [totalRows] = await pool.execute(`SELECT COUNT(*) AS cnt FROM product p WHERE ${where}`, params);
     const total = Number(totalRows[0].cnt);
     const [list] = await pool.execute(
-      `SELECT p.*, pc.name AS category_name, b.name AS brand_name, u.name AS unit_name
+      `SELECT p.*, pc.name AS category_name, b.name AS brand_name, u.name AS unit_name, sc.name AS supplier_name,
+              COALESCE(stock.stock_total, 0) AS stock_total,
+              COALESCE(pu_count.unit_count, 0) AS unit_count,
+              CASE WHEN COALESCE(pu_count.unit_count, 0) > 1 THEN 1 ELSE 0 END AS is_multi_spec
        FROM product p
        LEFT JOIN product_category pc ON p.category_id = pc.id
        LEFT JOIN brand b ON p.brand_id = b.id
        LEFT JOIN unit u ON p.unit_id = u.id
+       LEFT JOIN supplier_customer sc ON p.default_supplier_id = sc.id
+       LEFT JOIN (
+         SELECT product_id, SUM(quantity) AS stock_total
+         FROM inventory_stock
+         GROUP BY product_id
+       ) stock ON p.id = stock.product_id
+       LEFT JOIN (
+         SELECT product_id, COUNT(*) AS unit_count
+         FROM product_unit
+         GROUP BY product_id
+       ) pu_count ON p.id = pu_count.product_id
        WHERE ${where} ORDER BY p.id DESC LIMIT ?, ?`,
       [...params, offset, Number(pageSize)]
     );
@@ -48,7 +63,20 @@ router.get('/:id', async (req, res) => {
     const pool = getPool();
     const [rows] = await pool.execute('SELECT * FROM product WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.json(Response.error('产品不存在'));
-    res.json(Response.success(rows[0]));
+    const product = rows[0];
+    const [units] = await pool.execute(
+      `SELECT pu.*, u.name AS unit_name
+       FROM product_unit pu
+       LEFT JOIN unit u ON pu.unit_id = u.id
+       WHERE pu.product_id = ?
+       ORDER BY pu.sort_order ASC, pu.id ASC`,
+      [product.id]
+    );
+    product.units = units.map(item => ({
+      ...item,
+      member_prices: parseJson(item.member_prices, {})
+    }));
+    res.json(Response.success(product));
   } catch (err) {
     res.json(Response.error(err.message));
   }
@@ -57,15 +85,60 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const pool = getPool();
-    const { name, code = '', barcode = '', spec = '', unit_id = 0, category_id = 0, brand_id = 0, cost_price = 0, sale_price = 0, description = '', image_urls = null } = req.body;
+    const {
+      name,
+      code = '',
+      barcode = '',
+      spec = '',
+      unit_id = 0,
+      category_id = 0,
+      brand_id = 0,
+      default_supplier_id = 0,
+      cost_price = 0,
+      sale_price = 0,
+      description = '',
+      image_urls = null,
+      status = 1,
+      units = []
+    } = req.body;
     if (!name) return res.json(Response.error('产品名称不能为空'));
-    const [result] = await pool.execute(
-      `INSERT INTO product (name, code, barcode, spec, unit_id, category_id, brand_id, cost_price, sale_price, description, image_urls)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-      [name, code, barcode, spec, unit_id, category_id, brand_id, cost_price, sale_price, description, JSON.stringify(image_urls ?? [])]
-    );
-    await writeSystemLog(pool, req.user.id, '产品管理', '新增产品', name);
-    res.json(Response.success({ id: result.insertId }));
+
+    const unitRows = normalizeUnits(units);
+    const firstUnit = unitRows[0] || {};
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      const [result] = await conn.execute(
+        `INSERT INTO product
+         (name, code, barcode, spec, unit_id, category_id, brand_id, default_supplier_id, cost_price, sale_price, description, image_urls, status)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [
+          name,
+          code || firstUnit.code || '',
+          barcode || firstUnit.barcode || '',
+          spec || firstUnit.spec || '',
+          unit_id || firstUnit.unit_id || 0,
+          category_id,
+          brand_id,
+          default_supplier_id,
+          cost_price || firstUnit.cost_price || 0,
+          sale_price || firstUnit.sale_price || 0,
+          description,
+          JSON.stringify(image_urls ?? []),
+          status
+        ]
+      );
+      const productId = result.insertId;
+      await saveProductUnits(conn, productId, unitRows);
+      await conn.commit();
+      await writeSystemLog(pool, req.user.id, '产品管理', '新增产品', name);
+      res.json(Response.success({ id: productId }));
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
   } catch (err) {
     res.json(Response.error(err.message));
   }
@@ -74,8 +147,9 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const pool = getPool();
-    const { name, code, barcode, spec, unit_id, category_id, brand_id, cost_price, sale_price, description, image_urls, status } = req.body;
-    const fields = [], params = [];
+    const { name, code, barcode, spec, unit_id, category_id, brand_id, default_supplier_id, cost_price, sale_price, description, image_urls, status, units } = req.body;
+    const fields = [];
+    const params = [];
     if (name !== undefined) { fields.push('name=?'); params.push(name); }
     if (code !== undefined) { fields.push('code=?'); params.push(code); }
     if (barcode !== undefined) { fields.push('barcode=?'); params.push(barcode); }
@@ -83,16 +157,35 @@ router.put('/:id', async (req, res) => {
     if (unit_id !== undefined) { fields.push('unit_id=?'); params.push(unit_id); }
     if (category_id !== undefined) { fields.push('category_id=?'); params.push(category_id); }
     if (brand_id !== undefined) { fields.push('brand_id=?'); params.push(brand_id); }
+    if (default_supplier_id !== undefined) { fields.push('default_supplier_id=?'); params.push(default_supplier_id); }
     if (cost_price !== undefined) { fields.push('cost_price=?'); params.push(cost_price); }
     if (sale_price !== undefined) { fields.push('sale_price=?'); params.push(sale_price); }
     if (description !== undefined) { fields.push('description=?'); params.push(description); }
     if (image_urls !== undefined) { fields.push('image_urls=?'); params.push(JSON.stringify(image_urls)); }
     if (status !== undefined) { fields.push('status=?'); params.push(status); }
-    if (!fields.length) return res.json(Response.error('无更新数据'));
-    params.push(req.params.id);
-    await pool.execute(`UPDATE product SET ${fields.join(',')} WHERE id=?`, params);
-    await writeSystemLog(pool, req.user.id, '产品管理', '编辑产品', String(req.params.id));
-    res.json(Response.success());
+    if (!fields.length && units === undefined) return res.json(Response.error('无更新数据'));
+
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      if (fields.length) {
+        params.push(req.params.id);
+        await conn.execute(`UPDATE product SET ${fields.join(',')} WHERE id=?`, params);
+      }
+      if (units !== undefined) {
+        const unitRows = normalizeUnits(units);
+        await conn.execute('DELETE FROM product_unit WHERE product_id = ?', [req.params.id]);
+        await saveProductUnits(conn, req.params.id, unitRows);
+      }
+      await conn.commit();
+      await writeSystemLog(pool, req.user.id, '产品管理', '编辑产品', String(req.params.id));
+      res.json(Response.success());
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
   } catch (err) {
     res.json(Response.error(err.message));
   }
@@ -101,6 +194,7 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const pool = getPool();
+    await pool.execute('DELETE FROM product_unit WHERE product_id = ?', [req.params.id]);
     await pool.execute('DELETE FROM product WHERE id = ?', [req.params.id]);
     await writeSystemLog(pool, req.user.id, '产品管理', '删除产品', String(req.params.id));
     res.json(Response.success());
@@ -108,6 +202,67 @@ router.delete('/:id', async (req, res) => {
     res.json(Response.error(err.message));
   }
 });
+
+function normalizeUnits(units) {
+  if (!Array.isArray(units)) return [];
+  return units
+    .filter(item => item && item.unit_id)
+    .map((item, index) => ({
+      unit_id: Number(item.unit_id || 0),
+      warehouse_id: Number(item.warehouse_id || 0),
+      is_base: item.is_base ? 1 : 0,
+      base_quantity: Number(item.base_quantity || 1),
+      code: item.code || '',
+      barcode: item.barcode || '',
+      weight: Number(item.weight || 0),
+      volume: Number(item.volume || 0),
+      sale_price: Number(item.sale_price || 0),
+      cost_price: Number(item.cost_price || 0),
+      member_prices: item.member_prices && typeof item.member_prices === 'object' ? item.member_prices : {},
+      spec: item.spec || '',
+      bm_code: item.bm_code || '',
+      remark: item.remark || '',
+      sort_order: Number(item.sort_order ?? index)
+    }));
+}
+
+async function saveProductUnits(conn, productId, units) {
+  for (const item of units) {
+    await conn.execute(
+      `INSERT INTO product_unit
+       (product_id, unit_id, warehouse_id, is_base, base_quantity, code, barcode, weight, volume, sale_price, cost_price, member_prices, spec, bm_code, remark, sort_order)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [
+        productId,
+        item.unit_id,
+        item.warehouse_id,
+        item.is_base,
+        item.base_quantity,
+        item.code,
+        item.barcode,
+        item.weight,
+        item.volume,
+        item.sale_price,
+        item.cost_price,
+        JSON.stringify(item.member_prices),
+        item.spec,
+        item.bm_code,
+        item.remark,
+        item.sort_order
+      ]
+    );
+  }
+}
+
+function parseJson(value, fallback) {
+  if (!value) return fallback;
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
 
 async function writeSystemLog(pool, userId, module, action, target) {
   await pool.execute('INSERT INTO system_log (user_id, module, action, target) VALUES (?, ?, ?, ?)', [userId, module, action, target]);

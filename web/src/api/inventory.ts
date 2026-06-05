@@ -1,27 +1,27 @@
 import { get, post, put, del } from './request'
 
 // 库存查询
-export function getStocks(params?: any) { return get('/inventory/stocks', params) }
+export function getStocks(params?: any) { return get('/inventory/stock', params) }
 
 // 库存盘点
-export function getChecks(params?: any) { return get('/inventory/checks', params) }
-export function getCheck(id: number) { return get(`/inventory/checks/${id}`) }
-export function createCheck(data: any) { return post('/inventory/checks', data) }
-export function confirmCheck(id: number, data?: any) { return post(`/inventory/checks/${id}/confirm`, data) }
+export function getChecks(params?: any) { return get('/inventory/check', params) }
+export function getCheck(id: number) { return get(`/inventory/check/${id}`) }
+export function createCheck(data: any) { return post('/inventory/check', data) }
+export function confirmCheck(id: number, data?: any) { return post(`/inventory/check/${id}/confirm`, data) }
 
 // 库存调拨
-export function getTransfers(params?: any) { return get('/inventory/transfers', params) }
-export function getTransfer(id: number) { return get(`/inventory/transfers/${id}`) }
-export function createTransfer(data: any) { return post('/inventory/transfers', data) }
-export function confirmTransfer(id: number) { return post(`/inventory/transfers/${id}/confirm`) }
+export function getTransfers(params?: any) { return get('/inventory/transfer', params) }
+export function getTransfer(id: number) { return get(`/inventory/transfer/${id}`) }
+export function createTransfer(data: any) { return post('/inventory/transfer', data) }
+export function confirmTransfer(id: number) { return post(`/inventory/transfer/${id}/confirm`) }
 
 // 其他入库
-export function getOtherInbounds(params?: any) { return get('/inventory/other-inbounds', params) }
-export function createOtherInbound(data: any) { return post('/inventory/other-inbounds', data) }
+export function getOtherInbounds(params?: any) { return get('/inventory/other-inbound', params) }
+export function createOtherInbound(data: any) { return post('/inventory/other-inbound', data) }
 
 // 其他出库
-export function getOtherOutbounds(params?: any) { return get('/inventory/other-outbounds', params) }
-export function createOtherOutbound(data: any) { return post('/inventory/other-outbounds', data) }
+export function getOtherOutbounds(params?: any) { return get('/inventory/other-outbound', params) }
+export function createOtherOutbound(data: any) { return post('/inventory/other-outbound', data) }
 
 // 库存日志
-export function getInventoryLogs(params?: any) { return get('/inventory/logs', params) }
+export function getInventoryLogs(params?: any) { return get('/inventory/log', params) }

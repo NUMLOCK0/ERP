@@ -199,6 +199,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/supplier/Category.vue'),
         meta: { title: '企业分类' }
       },
+      {
+        path: 'supplier/member-level',
+        name: 'MemberLevel',
+        component: () => import('@/views/supplier/MemberLevel.vue'),
+        meta: { title: '会员等级' }
+      },
       // 系统配置
       {
         path: 'system/settings',

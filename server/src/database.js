@@ -72,6 +72,7 @@ async function createTables() {
       unit_id INT DEFAULT 0,
       category_id INT DEFAULT 0,
       brand_id INT DEFAULT 0,
+      default_supplier_id INT DEFAULT 0,
       cost_price DOUBLE DEFAULT 0,
       sale_price DOUBLE DEFAULT 0,
       description TEXT DEFAULT NULL,
@@ -127,6 +128,47 @@ async function createTables() {
       tax_no VARCHAR(100) DEFAULT '',
       status TINYINT(1) DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+    await conn.execute(`CREATE TABLE IF NOT EXISTS supplier_category (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      name VARCHAR(100) NOT NULL,
+      description TEXT DEFAULT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+    await conn.execute(`CREATE TABLE IF NOT EXISTS member_level (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      name VARCHAR(30) NOT NULL,
+      description VARCHAR(230) DEFAULT '',
+      icon_url VARCHAR(255) DEFAULT '',
+      sort_order INT DEFAULT 0,
+      status TINYINT(1) DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+    await conn.execute(`CREATE TABLE IF NOT EXISTS product_unit (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      product_id INT NOT NULL,
+      unit_id INT DEFAULT 0,
+      warehouse_id INT DEFAULT 0,
+      is_base TINYINT(1) DEFAULT 0,
+      base_quantity DOUBLE DEFAULT 1,
+      code VARCHAR(100) DEFAULT '',
+      barcode VARCHAR(100) DEFAULT '',
+      weight DOUBLE DEFAULT 0,
+      volume DOUBLE DEFAULT 0,
+      sale_price DOUBLE DEFAULT 0,
+      cost_price DOUBLE DEFAULT 0,
+      member_prices JSON DEFAULT NULL,
+      spec VARCHAR(100) DEFAULT '',
+      bm_code VARCHAR(100) DEFAULT '',
+      remark TEXT DEFAULT NULL,
+      sort_order INT DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_product_id (product_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS purchase_order (
@@ -417,6 +459,21 @@ async function createTables() {
     console.log('MySQL 数据库表创建/校验完成');
   } finally {
     conn.release();
+  }
+
+  await ensureColumn('product', 'default_supplier_id', 'INT DEFAULT 0');
+  await ensureColumn('product_unit', 'warehouse_id', 'INT DEFAULT 0');
+}
+
+async function ensureColumn(table, column, definition) {
+  const [rows] = await pool.execute(
+    `SELECT COUNT(*) AS cnt
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+    [table, column]
+  );
+  if (Number(rows[0].cnt) === 0) {
+    await pool.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
   }
 }
 

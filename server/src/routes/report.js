@@ -5,6 +5,70 @@ const Response = require('../utils/response');
 
 // ==================== 产品库存报表 ====================
 
+router.get('/dashboard', async (req, res) => {
+  try {
+    const pool = getPool();
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthStartText = monthStart.toISOString().slice(0, 19).replace('T', ' ');
+
+    const [productRows] = await pool.execute('SELECT COUNT(*) AS cnt FROM product WHERE status = 1');
+    const [purchaseRows] = await pool.execute(
+      'SELECT COALESCE(SUM(total_amount), 0) AS amount FROM purchase_order WHERE created_at >= ?',
+      [monthStartText]
+    );
+    const [saleRows] = await pool.execute(
+      'SELECT COALESCE(SUM(total_amount), 0) AS amount FROM sale_order WHERE created_at >= ?',
+      [monthStartText]
+    );
+
+    const [configRows] = await pool.execute('SELECT value FROM system_config WHERE `key` = ?', ['stock_warning']);
+    const stockWarning = Number(configRows[0]?.value || 10);
+
+    const [alertStocks] = await pool.execute(
+      `SELECT ist.*, p.name AS product_name, p.code, w.name AS warehouse_name
+       FROM inventory_stock ist
+       LEFT JOIN product p ON ist.product_id = p.id
+       LEFT JOIN warehouse w ON ist.warehouse_id = w.id
+       WHERE ist.quantity <= ?
+       ORDER BY ist.quantity ASC, ist.id DESC
+       LIMIT 10`,
+      [stockWarning]
+    );
+    const [alertCountRows] = await pool.execute(
+      'SELECT COUNT(*) AS cnt FROM inventory_stock WHERE quantity <= ?',
+      [stockWarning]
+    );
+    const [recentPurchase] = await pool.execute(
+      `SELECT po.*, sc.name AS supplier_name
+       FROM purchase_order po
+       LEFT JOIN supplier_customer sc ON po.supplier_id = sc.id
+       ORDER BY po.id DESC
+       LIMIT 5`
+    );
+    const [recentSale] = await pool.execute(
+      `SELECT so.*, sc.name AS customer_name
+       FROM sale_order so
+       LEFT JOIN supplier_customer sc ON so.customer_id = sc.id
+       ORDER BY so.id DESC
+       LIMIT 5`
+    );
+
+    res.json(Response.success({
+      productCount: Number(productRows[0]?.cnt || 0),
+      monthPurchase: Number(purchaseRows[0]?.amount || 0),
+      monthSale: Number(saleRows[0]?.amount || 0),
+      alertCount: Number(alertCountRows[0]?.cnt || 0),
+      recentPurchase,
+      recentSale,
+      alertStocks
+    }));
+  } catch (err) {
+    res.json(Response.error(err.message));
+  }
+});
+
 router.get('/stock', async (req, res) => {
   try {
     const pool = getPool();

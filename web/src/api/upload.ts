@@ -1,7 +1,7 @@
 import { post } from './request'
 
 export function uploadFile(data: FormData) {
-  return post('/upload', data, {
+  return post('/upload/file', data, {
     headers: { 'Content-Type': 'multipart/form-data' }
-  } as any)
+  })
 }

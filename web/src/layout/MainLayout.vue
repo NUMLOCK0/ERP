@@ -96,6 +96,7 @@
           </template>
           <el-menu-item index="/supplier/company">企业管理</el-menu-item>
           <el-menu-item index="/supplier/category">企业分类</el-menu-item>
+          <el-menu-item index="/supplier/member-level">会员等级</el-menu-item>
         </el-sub-menu>
 
         <el-sub-menu index="system">

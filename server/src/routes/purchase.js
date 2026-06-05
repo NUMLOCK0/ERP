@@ -8,10 +8,11 @@ const Response = require('../utils/response');
 router.get('/order', async (req, res) => {
   try {
     const pool = getPool();
-    const { page = 1, pageSize = 20, keyword = '', status = '', start_date = '', end_date = '' } = req.query;
+    const { page = 1, pageSize = 20, keyword = '', supplier_id = '', status = '', start_date = '', end_date = '' } = req.query;
     let where = '1=1';
     const params = [];
     if (keyword) { where += ' AND (po.order_no LIKE ? OR sc.name LIKE ?)'; params.push(`%${keyword}%`, `%${keyword}%`); }
+    if (supplier_id) { where += ' AND po.supplier_id = ?'; params.push(Number(supplier_id)); }
     if (status !== '') { where += ' AND po.status = ?'; params.push(Number(status)); }
     if (start_date) { where += ' AND po.created_at >= ?'; params.push(start_date); }
     if (end_date) { where += ' AND po.created_at <= ?'; params.push(end_date + ' 23:59:59'); }
@@ -57,7 +58,7 @@ router.get('/order/:id', async (req, res) => {
 router.post('/order', async (req, res) => {
   try {
     const pool = getPool();
-    const { supplier_id, warehouse_id, items, auditor_id = 0 } = req.body;
+    const { supplier_id, warehouse_id, items } = req.body;
     if (!supplier_id) return res.json(Response.error('供应商不能为空'));
     if (!warehouse_id) return res.json(Response.error('仓库不能为空'));
     if (!items || !items.length) return res.json(Response.error('明细不能为空'));
@@ -75,7 +76,7 @@ router.post('/order', async (req, res) => {
       const [result] = await conn.execute(
         `INSERT INTO purchase_order (order_no, supplier_id, warehouse_id, total_amount, status, auditor_id, creator_id)
          VALUES (?,?,?,?,?,?,?)`,
-        [orderNo, supplier_id, warehouse_id, totalAmount, auditor_id ? 1 : 0, auditor_id, req.user.id]
+        [orderNo, supplier_id, warehouse_id, totalAmount, 0, 0, req.user.id]
       );
       const orderId = result.insertId;
 
@@ -161,6 +162,36 @@ router.delete('/order/:id', async (req, res) => {
   }
 });
 
+router.post('/order/:id/submit', async (req, res) => {
+  try {
+    const pool = getPool();
+    const [rows] = await pool.execute('SELECT * FROM purchase_order WHERE id = ?', [req.params.id]);
+    const order = rows[0];
+    if (!order) return res.json(Response.error('订单不存在'));
+    if (Number(order.status) !== 0) return res.json(Response.error('仅草稿订单允许提交审核'));
+    await pool.execute('UPDATE purchase_order SET status = 2 WHERE id = ?', [req.params.id]);
+    await writeSystemLog(pool, req.user.id, '采购管理', '提交采购订单', order.order_no);
+    res.json(Response.success());
+  } catch (err) {
+    res.json(Response.error(err.message));
+  }
+});
+
+router.post('/order/:id/cancel', async (req, res) => {
+  try {
+    const pool = getPool();
+    const [rows] = await pool.execute('SELECT * FROM purchase_order WHERE id = ?', [req.params.id]);
+    const order = rows[0];
+    if (!order) return res.json(Response.error('订单不存在'));
+    if (![0, 2].includes(Number(order.status))) return res.json(Response.error('仅草稿或待审核订单允许取消'));
+    await pool.execute('UPDATE purchase_order SET status = 3 WHERE id = ?', [req.params.id]);
+    await writeSystemLog(pool, req.user.id, '采购管理', '取消采购订单', order.order_no);
+    res.json(Response.success());
+  } catch (err) {
+    res.json(Response.error(err.message));
+  }
+});
+
 // ==================== 审核采购订单（生成入库单 + 更新库存） ====================
 
 router.post('/order/:id/audit', async (req, res) => {
@@ -171,7 +202,7 @@ router.post('/order/:id/audit', async (req, res) => {
     const [orderRows] = await conn.execute('SELECT * FROM purchase_order WHERE id = ?', [req.params.id]);
     const order = orderRows[0];
     if (!order) { await conn.rollback(); conn.release(); return res.json(Response.error('订单不存在')); }
-    if (order.status !== 0) { await conn.rollback(); conn.release(); return res.json(Response.error('订单状态不允许审核')); }
+    if (![0, 2].includes(Number(order.status))) { await conn.rollback(); conn.release(); return res.json(Response.error('订单状态不允许审核')); }
 
     const [itemRows] = await conn.execute('SELECT * FROM purchase_order_item WHERE order_id = ?', [order.id]);
 
@@ -215,10 +246,11 @@ router.post('/order/:id/audit', async (req, res) => {
 router.get('/inbound', async (req, res) => {
   try {
     const pool = getPool();
-    const { page = 1, pageSize = 20, keyword = '', start_date = '', end_date = '' } = req.query;
+    const { page = 1, pageSize = 20, keyword = '', supplier_id = '', start_date = '', end_date = '' } = req.query;
     let where = '1=1';
     const params = [];
     if (keyword) { where += ' AND (pi.inbound_no LIKE ? OR sc.name LIKE ?)'; params.push(`%${keyword}%`, `%${keyword}%`); }
+    if (supplier_id) { where += ' AND pi.supplier_id = ?'; params.push(Number(supplier_id)); }
     if (start_date) { where += ' AND pi.created_at >= ?'; params.push(start_date); }
     if (end_date) { where += ' AND pi.created_at <= ?'; params.push(end_date + ' 23:59:59'); }
     const offset = (Number(page) - 1) * Number(pageSize);
@@ -265,10 +297,11 @@ router.get('/inbound/:id', async (req, res) => {
 router.get('/return', async (req, res) => {
   try {
     const pool = getPool();
-    const { page = 1, pageSize = 20, keyword = '', start_date = '', end_date = '' } = req.query;
+    const { page = 1, pageSize = 20, keyword = '', supplier_id = '', start_date = '', end_date = '' } = req.query;
     let where = '1=1';
     const params = [];
     if (keyword) { where += ' AND (pr.return_no LIKE ? OR sc.name LIKE ?)'; params.push(`%${keyword}%`, `%${keyword}%`); }
+    if (supplier_id) { where += ' AND pr.supplier_id = ?'; params.push(Number(supplier_id)); }
     if (start_date) { where += ' AND pr.created_at >= ?'; params.push(start_date); }
     if (end_date) { where += ' AND pr.created_at <= ?'; params.push(end_date + ' 23:59:59'); }
     const offset = (Number(page) - 1) * Number(pageSize);

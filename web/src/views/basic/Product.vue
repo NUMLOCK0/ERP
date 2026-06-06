@@ -3,10 +3,9 @@
     <el-card>
       <SearchForm :model="searchForm" @search="handleSearch" @reset="handleReset">
         <el-form-item label="产品编码"><el-input v-model="searchForm.code" placeholder="编码" clearable /></el-form-item>
-        <el-form-item label="产品条码"><el-input v-model="searchForm.barcode" placeholder="条码" clearable /></el-form-item>
         <el-form-item label="产品名称"><el-input v-model="searchForm.name" placeholder="名称" clearable /></el-form-item>
-        <el-form-item label="分类"><el-select v-model="searchForm.category_id" placeholder="请选择" clearable><el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" /></el-select></el-form-item>
-        <el-form-item label="品牌"><el-select v-model="searchForm.brand_id" placeholder="请选择" clearable><el-option v-for="b in brands" :key="b.id" :label="b.name" :value="b.id" /></el-select></el-form-item>
+        <el-form-item label="分类"><el-select v-model="searchForm.category_id" class="search-wide-select" placeholder="请选择" clearable><el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" /></el-select></el-form-item>
+        <el-form-item label="品牌"><el-select v-model="searchForm.brand_id" class="search-wide-select" placeholder="请选择" clearable><el-option v-for="b in brands" :key="b.id" :label="b.name" :value="b.id" /></el-select></el-form-item>
       </SearchForm>
 
       <div class="toolbar">
@@ -58,8 +57,9 @@
         <el-table-column label="更新时间" width="170">
           <template #default="{ row }">{{ formatDateTime(row.updated_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="210" fixed="right">
           <template #default="{ row }">
+            <el-button type="primary" link :icon="View" @click="handleDetail(row)">详情</el-button>
             <el-button type="primary" link :icon="Edit" @click="handleEdit(row)">编辑</el-button>
             <el-button type="danger" link :icon="Delete" @click="handleDelete(row)">删除</el-button>
           </template>
@@ -76,6 +76,9 @@
             <div class="basic-form">
               <el-form-item label="标题" prop="name" required>
                 <el-input v-model="form.name" maxlength="120" placeholder="标题格式1~120个字符" />
+              </el-form-item>
+              <el-form-item label="产品编码">
+                <el-input v-model="form.code" maxlength="100" placeholder="留空按规则自动生成" />
               </el-form-item>
               <el-form-item label="品牌">
                 <el-select v-model="form.brand_id" placeholder="请选择..." clearable filterable>
@@ -145,9 +148,6 @@
                   </template>
                   <template #default="{ row }"><el-input v-model="row.code" placeholder="{product}-{unit}" /></template>
                 </el-table-column>
-                <el-table-column label="条码" width="140">
-                  <template #default="{ row }"><el-input v-model="row.barcode" placeholder="条码" /></template>
-                </el-table-column>
                 <el-table-column label="重量(kg)" width="130">
                   <template #default="{ row }"><el-input-number v-model="row.weight" :min="0" :precision="3" :controls="false" placeholder="重量" /></template>
                 </el-table-column>
@@ -204,13 +204,74 @@
         <el-button type="primary" @click="handleSubmit">确认</el-button>
       </template>
     </el-dialog>
+
+    <el-drawer v-model="detailVisible" title="产品详情" size="520px" direction="rtl" class="product-detail-drawer">
+      <div v-loading="detailLoading" class="product-detail">
+        <div v-if="detailData" class="detail-stack">
+          <div class="detail-title">
+            <div class="detail-name">{{ detailData.name }}</div>
+            <el-tag :type="statusTagType(detailData.status)" size="small">{{ statusText(detailData.status) }}</el-tag>
+          </div>
+
+          <div class="detail-image-block">
+            <el-image
+              v-if="detailImages.length"
+              class="detail-image"
+              :src="assetUrl(detailImages[0])"
+              :preview-src-list="detailImages.map(assetUrl)"
+              fit="cover"
+              preview-teleported
+            />
+            <div v-else class="detail-image-empty">暂无主图</div>
+          </div>
+
+          <el-descriptions :column="1" border>
+            <el-descriptions-item label="产品ID">{{ detailData.id }}</el-descriptions-item>
+            <el-descriptions-item label="产品编码">{{ emptyText(detailData.code) }}</el-descriptions-item>
+            <el-descriptions-item label="规格">{{ emptyText(detailData.spec) }}</el-descriptions-item>
+            <el-descriptions-item label="简介">{{ emptyText(detailData.description) }}</el-descriptions-item>
+            <el-descriptions-item label="零售价">{{ formatMoney(detailData.sale_price) }}</el-descriptions-item>
+            <el-descriptions-item label="成本价">{{ formatMoney(detailData.cost_price) }}</el-descriptions-item>
+            <el-descriptions-item label="库存总量">{{ formatQuantity(detailData.stock_total) }}</el-descriptions-item>
+            <el-descriptions-item label="产品分类">{{ emptyText(detailData.category_name || lookupName(categories, detailData.category_id)) }}</el-descriptions-item>
+            <el-descriptions-item label="品牌">{{ emptyText(detailData.brand_name || lookupName(brands, detailData.brand_id)) }}</el-descriptions-item>
+            <el-descriptions-item label="供应商">{{ emptyText(detailData.supplier_name || lookupName(suppliers, detailData.default_supplier_id)) }}</el-descriptions-item>
+            <el-descriptions-item label="是否多规格">{{ Number(detailData.units?.length || detailData.unit_count || 0) > 1 ? '是' : '否' }}</el-descriptions-item>
+            <el-descriptions-item label="创建时间">{{ formatDateTime(detailData.created_at) }}</el-descriptions-item>
+            <el-descriptions-item label="更新时间">{{ formatDateTime(detailData.updated_at) }}</el-descriptions-item>
+          </el-descriptions>
+
+          <div class="detail-section-title">规格/计量单位</div>
+          <el-table :data="detailData.units || []" border size="small" class="detail-unit-table">
+            <el-table-column label="单位" min-width="90">
+              <template #default="{ row }">{{ emptyText(row.unit_name || lookupName(units, row.unit_id)) }}</template>
+            </el-table-column>
+            <el-table-column label="基准数" width="90">
+              <template #default="{ row }">{{ formatQuantity(row.base_quantity) }}</template>
+            </el-table-column>
+            <el-table-column label="编码" min-width="120">
+              <template #default="{ row }">{{ emptyText(row.code) }}</template>
+            </el-table-column>
+            <el-table-column label="规格" min-width="100">
+              <template #default="{ row }">{{ emptyText(row.spec) }}</template>
+            </el-table-column>
+            <el-table-column label="零售价" width="90" align="right">
+              <template #default="{ row }">{{ formatMoney(row.sale_price) }}</template>
+            </el-table-column>
+            <el-table-column label="成本价" width="90" align="right">
+              <template #default="{ row }">{{ formatMoney(row.cost_price) }}</template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { computed, reactive, ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
-import { CopyDocument, Delete, Download, Edit, Plus, QuestionFilled, Upload } from '@element-plus/icons-vue'
+import { CopyDocument, Delete, Download, Edit, Plus, QuestionFilled, Upload, View } from '@element-plus/icons-vue'
 import { getProducts, getProduct, createProduct, updateProduct, deleteProduct } from '@/api/product'
 import { getCategories } from '@/api/category'
 import { getBrands } from '@/api/brand'
@@ -225,7 +286,6 @@ interface UnitRow {
   is_base: boolean
   base_quantity: number
   code: string
-  barcode: string
   weight: number
   volume: number
   sale_price: number
@@ -246,12 +306,14 @@ const activeTab = ref('basic')
 const codeRuleFocused = ref(false)
 const formRef = ref<FormInstance>()
 const editId = ref<number | null>(null)
+const detailVisible = ref(false)
+const detailLoading = ref(false)
+const detailData = ref<any | null>(null)
 
 const pagination = reactive({ page: 1, size: 20 })
-const searchForm = reactive({ code: '', barcode: '', name: '', category_id: null as any, brand_id: null as any })
+const searchForm = reactive({ code: '', name: '', category_id: null as any, brand_id: null as any })
 const form = reactive({
   code: '',
-  barcode: '',
   name: '',
   spec: '',
   category_id: null as any,
@@ -291,7 +353,6 @@ function createUnitRow(partial: Partial<UnitRow> = {}): UnitRow {
     is_base: partial.is_base ?? unitRows.value.length === 0,
     base_quantity: partial.base_quantity ?? 1,
     code: partial.code ?? '',
-    barcode: partial.barcode ?? '',
     weight: partial.weight ?? 0,
     volume: partial.volume ?? 0,
     sale_price: partial.sale_price ?? 0,
@@ -324,7 +385,7 @@ async function fetchData() {
 }
 
 function handleSearch() { pagination.page = 1; fetchData() }
-function handleReset() { Object.assign(searchForm, { code: '', barcode: '', name: '', category_id: null, brand_id: null }); handleSearch() }
+function handleReset() { Object.assign(searchForm, { code: '', name: '', category_id: null, brand_id: null }); handleSearch() }
 
 function statusText(status: number) {
   const map: Record<number, string> = { 1: '正常', 0: '下架', 2: '停售', 3: '停产' }
@@ -340,6 +401,8 @@ function firstProductImage(row: any) {
   const images = normalizeImageUrls(row.image_urls)
   return images[0] ? assetUrl(images[0]) : ''
 }
+
+const detailImages = computed(() => normalizeImageUrls(detailData.value?.image_urls))
 
 function formatMoney(value: any) {
   const amount = Number(value || 0)
@@ -359,6 +422,15 @@ function formatDateTime(value: any) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 }
 
+function emptyText(value: any) {
+  return value === undefined || value === null || value === '' ? '-' : value
+}
+
+function lookupName(listRef: any, id: any) {
+  const list = Array.isArray(listRef?.value) ? listRef.value : []
+  return list.find((item: any) => item.id === id)?.name || ''
+}
+
 function handleAdd() {
   editId.value = null
   dialogTitle.value = '新增产品'
@@ -376,7 +448,6 @@ async function handleEdit(row: any) {
   const detail = res.data || row
   Object.assign(form, {
     code: detail.code || '',
-    barcode: detail.barcode || '',
     name: detail.name || '',
     spec: detail.spec || '',
     category_id: detail.category_id || null,
@@ -397,7 +468,6 @@ async function handleEdit(row: any) {
     is_base: item.is_base === 1,
     base_quantity: item.base_quantity || 1,
     code: item.code || '',
-    barcode: item.barcode || '',
     weight: item.weight || 0,
     volume: item.volume || 0,
     sale_price: item.sale_price || 0,
@@ -412,6 +482,26 @@ async function handleEdit(row: any) {
   ensureBaseRow()
   activeTab.value = 'basic'
   dialogVisible.value = true
+}
+
+async function handleDetail(row: any) {
+  detailVisible.value = true
+  detailLoading.value = true
+  detailData.value = { ...row, units: [] }
+  try {
+    const res: any = await getProduct(row.id)
+    detailData.value = {
+      ...row,
+      ...(res.data || {}),
+      stock_total: row.stock_total ?? res.data?.stock_total ?? 0,
+      category_name: row.category_name || '',
+      brand_name: row.brand_name || '',
+      supplier_name: row.supplier_name || '',
+      unit_count: row.unit_count ?? res.data?.units?.length ?? 0
+    }
+  } finally {
+    detailLoading.value = false
+  }
 }
 
 async function handleDelete(row: any) {
@@ -460,7 +550,6 @@ function buildPayload() {
   return {
     ...form,
     unit_id: form.unit_id || first?.unit_id || 0,
-    barcode: form.barcode || first?.barcode || '',
     spec: form.spec || first?.spec || unitMeta.spec || '',
     cost_price: form.cost_price || first?.cost_price || 0,
     sale_price: form.sale_price || first?.sale_price || 0,
@@ -501,7 +590,6 @@ async function handleSubmit() {
 function resetForm() {
   Object.assign(form, {
     code: '',
-    barcode: '',
     name: '',
     spec: '',
     category_id: null,
@@ -593,6 +681,9 @@ onMounted(async () => {
   margin-bottom: 16px;
   display: flex;
   gap: 10px;
+}
+.search-wide-select {
+  width: 220px;
 }
 .product-thumb {
   width: 44px;
@@ -704,6 +795,50 @@ onMounted(async () => {
   line-height: 1.8;
   color: #303133;
   font-size: 12px;
+}
+.product-detail {
+  min-height: 240px;
+}
+.detail-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.detail-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.detail-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+.detail-image-block {
+  width: 100%;
+}
+.detail-image {
+  width: 140px;
+  height: 140px;
+  border-radius: 4px;
+}
+.detail-image-empty {
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #dcdfe6;
+  border-radius: 4px;
+  color: #909399;
+}
+.detail-section-title {
+  font-weight: 600;
+  color: #303133;
+}
+.detail-unit-table {
+  width: 100%;
 }
 @media (max-width: 900px) {
   .unit-extra {

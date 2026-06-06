@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getPool } = require('../database');
 const Response = require('../utils/response');
+const { isAuditEnabled } = require('../utils/auditConfig');
 
 // ==================== 库存查询 ====================
 
@@ -139,6 +140,10 @@ router.post('/check', async (req, res) => {
         );
       }
 
+      if (!(await isAuditEnabled(conn, 'inventory_check'))) {
+        await confirmInventoryCheck(conn, checkId);
+      }
+
       await conn.commit();
       await writeSystemLog(pool, req.user.id, '库存管理', '新增盘点单', checkNo);
       res.json(Response.success({ id: checkId, check_no: checkNo }));
@@ -157,21 +162,7 @@ router.post('/check/:id/confirm', async (req, res) => {
   const conn = await getPool().getConnection();
   try {
     await conn.beginTransaction();
-
-    const [checkRows] = await conn.execute('SELECT * FROM inventory_check WHERE id = ?', [req.params.id]);
-    const check = checkRows[0];
-    if (!check) { await conn.rollback(); conn.release(); return res.json(Response.error('盘点单不存在')); }
-    if (check.status !== 0) { await conn.rollback(); conn.release(); return res.json(Response.error('盘点单状态不允许确认')); }
-
-    const [items] = await conn.execute('SELECT * FROM inventory_check_item WHERE check_id = ?', [check.id]);
-
-    for (const item of items) {
-      if (item.difference !== 0) {
-        await updateStock(conn, item.product_id, check.warehouse_id, item.difference, 'inventory_check', check.check_no);
-      }
-    }
-
-    await conn.execute('UPDATE inventory_check SET status = 1, checked_at = NOW() WHERE id = ?', [check.id]);
+    const check = await confirmInventoryCheck(conn, req.params.id);
     await conn.commit();
     await writeSystemLog(getPool(), req.user.id, '库存管理', '确认盘点单', check.check_no);
     res.json(Response.success());
@@ -265,6 +256,7 @@ router.post('/transfer', async (req, res) => {
         }
       }
 
+      const auditEnabled = await isAuditEnabled(conn, 'inventory_transfer');
       const [result] = await conn.execute(
         'INSERT INTO inventory_transfer (transfer_no, from_warehouse_id, to_warehouse_id, total_amount, status, creator_id) VALUES (?,?,?,?,0,?)',
         [transferNo, from_warehouse_id, to_warehouse_id, totalAmount, req.user.id]
@@ -276,13 +268,12 @@ router.post('/transfer', async (req, res) => {
           'INSERT INTO inventory_transfer_item (transfer_id, product_id, quantity, price) VALUES (?,?,?,?)',
           [transferId, item.product_id, item.quantity, item.price]
         );
-        // 调出仓库：减少库存
-        await updateStock(conn, item.product_id, from_warehouse_id, -item.quantity, 'inventory_transfer_out', transferNo);
-        // 调入仓库：增加库存
-        await updateStock(conn, item.product_id, to_warehouse_id, item.quantity, 'inventory_transfer_in', transferNo);
       }
 
-      await conn.execute('UPDATE inventory_transfer SET status = 1 WHERE id = ?', [transferId]);
+      if (!auditEnabled) {
+        await confirmInventoryTransfer(conn, transferId);
+      }
+
       await conn.commit();
       await writeSystemLog(pool, req.user.id, '库存管理', '新增调拨单', transferNo);
       res.json(Response.success({ id: transferId, transfer_no: transferNo }));
@@ -294,6 +285,22 @@ router.post('/transfer', async (req, res) => {
     }
   } catch (err) {
     res.json(Response.error(err.message));
+  }
+});
+
+router.post('/transfer/:id/confirm', async (req, res) => {
+  const conn = await getPool().getConnection();
+  try {
+    await conn.beginTransaction();
+    const transfer = await confirmInventoryTransfer(conn, req.params.id);
+    await conn.commit();
+    await writeSystemLog(getPool(), req.user.id, '库存管理', '确认调拨单', transfer.transfer_no);
+    res.json(Response.success());
+  } catch (err) {
+    await conn.rollback();
+    res.json(Response.error(err.message));
+  } finally {
+    conn.release();
   }
 });
 
@@ -525,6 +532,47 @@ async function updateStock(conn, productId, warehouseId, quantity, changeType, r
      VALUES (?,?,?,?,?,?,?)`,
     [productId, warehouseId, changeType, quantity, beforeQty, afterQty, refNo]
   );
+}
+
+async function confirmInventoryCheck(conn, checkId) {
+  const [checkRows] = await conn.execute('SELECT * FROM inventory_check WHERE id = ?', [checkId]);
+  const check = checkRows[0];
+  if (!check) throw new Error('盘点单不存在');
+  if (Number(check.status) !== 0) throw new Error('盘点单状态不允许确认');
+
+  const [items] = await conn.execute('SELECT * FROM inventory_check_item WHERE check_id = ?', [check.id]);
+  for (const item of items) {
+    if (Number(item.difference) !== 0) {
+      await updateStock(conn, item.product_id, check.warehouse_id, item.difference, 'inventory_check', check.check_no);
+    }
+  }
+
+  await conn.execute('UPDATE inventory_check SET status = 1, checked_at = NOW() WHERE id = ?', [check.id]);
+  return check;
+}
+
+async function confirmInventoryTransfer(conn, transferId) {
+  const [transferRows] = await conn.execute('SELECT * FROM inventory_transfer WHERE id = ?', [transferId]);
+  const transfer = transferRows[0];
+  if (!transfer) throw new Error('调拨单不存在');
+  if (Number(transfer.status) !== 0) throw new Error('调拨单状态不允许确认');
+
+  const [items] = await conn.execute('SELECT * FROM inventory_transfer_item WHERE transfer_id = ?', [transfer.id]);
+  for (const item of items) {
+    const [stockRows] = await conn.execute(
+      'SELECT quantity FROM inventory_stock WHERE product_id = ? AND warehouse_id = ?',
+      [item.product_id, transfer.from_warehouse_id]
+    );
+    const stockQty = stockRows.length ? stockRows[0].quantity : 0;
+    if (stockQty < item.quantity) {
+      throw new Error(`调出仓库库存不足：产品ID ${item.product_id}，当前库存 ${stockQty}，需要 ${item.quantity}`);
+    }
+    await updateStock(conn, item.product_id, transfer.from_warehouse_id, -item.quantity, 'inventory_transfer_out', transfer.transfer_no);
+    await updateStock(conn, item.product_id, transfer.to_warehouse_id, item.quantity, 'inventory_transfer_in', transfer.transfer_no);
+  }
+
+  await conn.execute('UPDATE inventory_transfer SET status = 1 WHERE id = ?', [transfer.id]);
+  return transfer;
 }
 
 async function generateNo(poolOrConn, prefix) {

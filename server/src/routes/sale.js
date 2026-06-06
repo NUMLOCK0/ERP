@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getPool } = require('../database');
 const Response = require('../utils/response');
+const { isAuditEnabled } = require('../utils/auditConfig');
 
 // ==================== 销售订单 ====================
 
@@ -75,7 +76,7 @@ router.post('/order', async (req, res) => {
       const [result] = await conn.execute(
         `INSERT INTO sale_order (order_no, customer_id, warehouse_id, total_amount, status, auditor_id, creator_id)
          VALUES (?,?,?,?,?,?,?)`,
-        [orderNo, customer_id, warehouse_id, totalAmount, auditor_id ? 1 : 0, auditor_id, req.user.id]
+        [orderNo, customer_id, warehouse_id, totalAmount, 0, 0, req.user.id]
       );
       const orderId = result.insertId;
 
@@ -84,6 +85,10 @@ router.post('/order', async (req, res) => {
           'INSERT INTO sale_order_item (order_id, product_id, quantity, price, amount) VALUES (?,?,?,?,?)',
           [orderId, item.product_id, item.quantity, item.price, (item.quantity || 0) * (item.price || 0)]
         );
+      }
+
+      if (auditor_id || !(await isAuditEnabled(conn, 'sale_order'))) {
+        await approveSaleOrder(conn, orderId, auditor_id || req.user.id, {});
       }
 
       await conn.commit();
@@ -142,6 +147,11 @@ router.put('/order/:id', async (req, res) => {
 router.delete('/order/:id', async (req, res) => {
   try {
     const pool = getPool();
+    const [rows] = await pool.execute('SELECT * FROM sale_order WHERE id = ?', [req.params.id]);
+    const order = rows[0];
+    if (!order) return res.json(Response.error('订单不存在'));
+    if (![3, 4].includes(Number(order.status))) return res.json(Response.error('仅已取消或已关闭订单允许删除'));
+
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
@@ -161,62 +171,62 @@ router.delete('/order/:id', async (req, res) => {
   }
 });
 
+router.post('/order/:id/submit', async (req, res) => {
+  try {
+    const pool = getPool();
+    const [rows] = await pool.execute('SELECT * FROM sale_order WHERE id = ?', [req.params.id]);
+    const order = rows[0];
+    if (!order) return res.json(Response.error('订单不存在'));
+    if (Number(order.status) !== 0) return res.json(Response.error('仅草稿订单允许提交审核'));
+    await pool.execute('UPDATE sale_order SET status = 2 WHERE id = ?', [req.params.id]);
+    await writeSystemLog(pool, req.user.id, '销售管理', '提交销售订单', order.order_no);
+    res.json(Response.success());
+  } catch (err) {
+    res.json(Response.error(err.message));
+  }
+});
+
+router.post('/order/:id/cancel', async (req, res) => {
+  try {
+    const pool = getPool();
+    const [rows] = await pool.execute('SELECT * FROM sale_order WHERE id = ?', [req.params.id]);
+    const order = rows[0];
+    if (!order) return res.json(Response.error('订单不存在'));
+    if (![0, 2].includes(Number(order.status))) return res.json(Response.error('仅草稿或待审核订单允许取消'));
+    await pool.execute('UPDATE sale_order SET status = 3, cancel_time = NOW() WHERE id = ?', [req.params.id]);
+    await writeSystemLog(pool, req.user.id, '销售管理', '取消销售订单', order.order_no);
+    res.json(Response.success());
+  } catch (err) {
+    res.json(Response.error(err.message));
+  }
+});
+
+router.post('/order/:id/close', async (req, res) => {
+  try {
+    const pool = getPool();
+    const [rows] = await pool.execute('SELECT * FROM sale_order WHERE id = ?', [req.params.id]);
+    const order = rows[0];
+    if (!order) return res.json(Response.error('订单不存在'));
+    if (Number(order.status) !== 1) return res.json(Response.error('仅进行中订单允许关闭'));
+    await pool.execute('UPDATE sale_order SET status = 4, close_time = NOW() WHERE id = ?', [req.params.id]);
+    await writeSystemLog(pool, req.user.id, '销售管理', '关闭销售订单', order.order_no);
+    res.json(Response.success());
+  } catch (err) {
+    res.json(Response.error(err.message));
+  }
+});
+
 // ==================== 审核销售订单（生成发货单 + 扣减库存） ====================
 
 router.post('/order/:id/audit', async (req, res) => {
   const conn = await getPool().getConnection();
   try {
     await conn.beginTransaction();
-
-    const [orderRows] = await conn.execute('SELECT * FROM sale_order WHERE id = ?', [req.params.id]);
-    const order = orderRows[0];
-    if (!order) { await conn.rollback(); conn.release(); return res.json(Response.error('订单不存在')); }
-    if (order.status !== 0) { await conn.rollback(); conn.release(); return res.json(Response.error('订单状态不允许审核')); }
-
-    const [itemRows] = await conn.execute('SELECT * FROM sale_order_item WHERE order_id = ?', [order.id]);
-
-    // 检查库存
-    for (const item of itemRows) {
-      const [stockRows] = await conn.execute(
-        'SELECT quantity FROM inventory_stock WHERE product_id = ? AND warehouse_id = ?',
-        [item.product_id, order.warehouse_id]
-      );
-      const stockQty = stockRows.length ? stockRows[0].quantity : 0;
-      if (stockQty < item.quantity) {
-        await conn.rollback();
-        conn.release();
-        return res.json(Response.error(`库存不足：产品ID ${item.product_id}，当前库存 ${stockQty}，需要 ${item.quantity}`));
-      }
-    }
-
-    // 生成发货单
-    const deliveryNo = await generateNo(conn, 'FH');
-    const { logistics_company = '', logistics_no = '' } = req.body;
-    const [result] = await conn.execute(
-      `INSERT INTO sale_delivery (delivery_no, order_id, customer_id, warehouse_id, total_amount, status, logistics_company, logistics_no, creator_id)
-       VALUES (?,?,?,?,?,1,?,?,?)`,
-      [deliveryNo, order.id, order.customer_id, order.warehouse_id, order.total_amount, logistics_company, logistics_no, req.user.id]
-    );
-    const deliveryId = result.insertId;
-
-    for (const item of itemRows) {
-      await conn.execute(
-        'INSERT INTO sale_delivery_item (delivery_id, product_id, quantity, price, amount) VALUES (?,?,?,?,?)',
-        [deliveryId, item.product_id, item.quantity, item.price, item.amount]
-      );
-      // 扣减库存（负数量）
-      await updateStock(conn, item.product_id, order.warehouse_id, -item.quantity, 'sale_delivery', deliveryNo);
-    }
-
-    // 更新订单状态
-    await conn.execute(
-      'UPDATE sale_order SET status = 1, auditor_id = ?, audit_time = NOW() WHERE id = ?',
-      [req.user.id, order.id]
-    );
+    const result = await approveSaleOrder(conn, req.params.id, req.user.id, req.body);
 
     await conn.commit();
-    await writeSystemLog(getPool(), req.user.id, '销售管理', '审核销售订单', order.order_no);
-    res.json(Response.success({ delivery_id: deliveryId, delivery_no: deliveryNo }));
+    await writeSystemLog(getPool(), req.user.id, '销售管理', '审核销售订单', result.order_no);
+    res.json(Response.success({ delivery_id: result.delivery_id, delivery_no: result.delivery_no }));
   } catch (err) {
     await conn.rollback();
     res.json(Response.error(err.message));
@@ -401,6 +411,49 @@ async function updateStock(conn, productId, warehouseId, quantity, changeType, r
      VALUES (?,?,?,?,?,?,?)`,
     [productId, warehouseId, changeType, quantity, beforeQty, afterQty, refNo]
   );
+}
+
+async function approveSaleOrder(conn, orderId, userId, options = {}) {
+  const [orderRows] = await conn.execute('SELECT * FROM sale_order WHERE id = ?', [orderId]);
+  const order = orderRows[0];
+  if (!order) throw new Error('订单不存在');
+  if (![0, 2].includes(Number(order.status))) throw new Error('订单状态不允许审核');
+
+  const [itemRows] = await conn.execute('SELECT * FROM sale_order_item WHERE order_id = ?', [order.id]);
+  for (const item of itemRows) {
+    const [stockRows] = await conn.execute(
+      'SELECT quantity FROM inventory_stock WHERE product_id = ? AND warehouse_id = ?',
+      [item.product_id, order.warehouse_id]
+    );
+    const stockQty = stockRows.length ? stockRows[0].quantity : 0;
+    if (stockQty < item.quantity) {
+      throw new Error(`库存不足：产品ID ${item.product_id}，当前库存 ${stockQty}，需要 ${item.quantity}`);
+    }
+  }
+
+  const deliveryNo = await generateNo(conn, 'FH');
+  const { logistics_company = '', logistics_no = '' } = options;
+  const [result] = await conn.execute(
+    `INSERT INTO sale_delivery (delivery_no, order_id, customer_id, warehouse_id, total_amount, status, logistics_company, logistics_no, creator_id)
+     VALUES (?,?,?,?,?,1,?,?,?)`,
+    [deliveryNo, order.id, order.customer_id, order.warehouse_id, order.total_amount, logistics_company, logistics_no, userId]
+  );
+  const deliveryId = result.insertId;
+
+  for (const item of itemRows) {
+    await conn.execute(
+      'INSERT INTO sale_delivery_item (delivery_id, product_id, quantity, price, amount) VALUES (?,?,?,?,?)',
+      [deliveryId, item.product_id, item.quantity, item.price, item.amount]
+    );
+    await updateStock(conn, item.product_id, order.warehouse_id, -item.quantity, 'sale_delivery', deliveryNo);
+  }
+
+  await conn.execute(
+    'UPDATE sale_order SET status = 1, auditor_id = ?, audit_time = NOW() WHERE id = ?',
+    [userId, order.id]
+  );
+
+  return { order_no: order.order_no, delivery_id: deliveryId, delivery_no: deliveryNo };
 }
 
 async function generateNo(poolOrConn, prefix) {

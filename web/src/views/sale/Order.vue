@@ -4,7 +4,7 @@
       <SearchForm :model="searchForm" @search="handleSearch" @reset="handleReset">
         <el-form-item label="订单号"><el-input v-model="searchForm.order_no" placeholder="订单号" clearable /></el-form-item>
         <el-form-item label="客户"><el-select v-model="searchForm.customer_id" placeholder="请选择" clearable><el-option v-for="c in customers" :key="c.id" :label="c.name" :value="c.id" /></el-select></el-form-item>
-        <el-form-item label="状态"><el-select v-model="searchForm.status" placeholder="请选择" clearable><el-option label="草稿" value="draft" /><el-option label="待审核" value="pending" /><el-option label="已审核" value="audited" /><el-option label="已发货" value="delivered" /><el-option label="已完成" value="completed" /><el-option label="已取消" value="cancelled" /></el-select></el-form-item>
+        <el-form-item label="状态"><el-select v-model="searchForm.status" placeholder="请选择" clearable><el-option label="草稿" :value="0" /><el-option label="待审核" :value="2" /><el-option label="进行中" :value="1" /><el-option label="已取消" :value="3" /><el-option label="已关闭" :value="4" /></el-select></el-form-item>
       </SearchForm>
 
       <div class="toolbar">
@@ -19,16 +19,18 @@
           <template #default="{ row }">¥{{ row.total_amount?.toLocaleString() }}</template>
         </el-table-column>
         <el-table-column label="状态" width="90">
-          <template #default="{ row }"><el-tag :type="sMap[row.status]||'info'" size="small">{{ sText[row.status] || row.status }}</el-tag></template>
+          <template #default="{ row }"><el-tag :type="statusTagType(row.status)" size="small">{{ statusText(row.status) }}</el-tag></template>
         </el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="120" />
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" width="340" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleView(row)">详情</el-button>
-            <el-button v-if="row.status==='draft'" type="warning" link @click="handleSubmit(row)">提审</el-button>
-            <el-button v-if="row.status==='pending'" type="success" link @click="handleAudit(row)">审核</el-button>
-            <el-button v-if="row.status==='draft'" type="primary" link @click="handleEdit(row)">编辑</el-button>
-            <el-button v-if="['draft','pending'].includes(row.status)" type="danger" link @click="handleCancel(row)">取消</el-button>
+            <el-button v-if="Number(row.status) === 0" type="warning" link @click="handleSubmit(row)">提审</el-button>
+            <el-button v-if="[0, 2].includes(Number(row.status))" type="success" link @click="handleAudit(row)">审核</el-button>
+            <el-button v-if="Number(row.status) === 0" type="primary" link @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="[0, 2].includes(Number(row.status))" type="danger" link @click="handleCancel(row)">取消</el-button>
+            <el-button v-if="Number(row.status) === 1" type="warning" link @click="handleClose(row)">关闭</el-button>
+            <el-button v-if="[3, 4].includes(Number(row.status))" type="danger" link @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -42,7 +44,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { getSaleOrders, submitSaleOrder, auditSaleOrder, cancelSaleOrder } from '@/api/sale'
+import { getSaleOrders, submitSaleOrder, auditSaleOrder, cancelSaleOrder, closeSaleOrder, deleteSaleOrder } from '@/api/sale'
 import { getSuppliers } from '@/api/supplier'
 import SearchForm from '@/components/SearchForm.vue'
 import Pagination from '@/components/Pagination.vue'
@@ -52,9 +54,7 @@ const tableData = ref<any[]>([])
 const total = ref(0)
 const customers = ref<any[]>([])
 const pagination = reactive({ page: 1, size: 20 })
-const searchForm = reactive({ order_no: '', customer_id: null as any, status: '' })
-const sText: Record<string, string> = { draft:'草稿', pending:'待审核', audited:'已审核', delivered:'已发货', completed:'已完成', cancelled:'已取消' }
-const sMap: Record<string, string> = { draft:'info', pending:'warning', audited:'', delivered:'success', completed:'success', cancelled:'danger' }
+const searchForm = reactive({ order_no: '', customer_id: null as any, status: '' as any })
 
 async function fetchData() {
   loading.value = true
@@ -71,6 +71,16 @@ function handleEdit(row: any) { ElMessage.info(`编辑 ${row.order_no}`) }
 async function handleSubmit(row: any) { await ElMessageBox.confirm('确认提交审核？', '提示', { type: 'warning' }); await submitSaleOrder(row.id); ElMessage.success('已提交'); fetchData() }
 async function handleAudit(row: any) { await ElMessageBox.confirm('确认审核通过？', '提示', { type: 'warning' }); await auditSaleOrder(row.id); ElMessage.success('审核通过'); fetchData() }
 async function handleCancel(row: any) { await ElMessageBox.confirm('确认取消？', '提示', { type: 'warning' }); await cancelSaleOrder(row.id); ElMessage.success('已取消'); fetchData() }
+async function handleClose(row: any) { await ElMessageBox.confirm('确认关闭？', '提示', { type: 'warning' }); await closeSaleOrder(row.id); ElMessage.success('已关闭'); fetchData() }
+async function handleDelete(row: any) { await ElMessageBox.confirm('确认删除？', '提示', { type: 'warning' }); await deleteSaleOrder(row.id); ElMessage.success('删除成功'); fetchData() }
+function statusText(status: any) {
+  const map: Record<number, string> = { 0: '草稿', 1: '进行中', 2: '待审核', 3: '已取消', 4: '已关闭' }
+  return map[Number(status)] || '未知'
+}
+function statusTagType(status: any) {
+  const map: Record<number, 'info' | 'success' | 'warning' | 'danger'> = { 0: 'info', 1: 'success', 2: 'warning', 3: 'danger', 4: 'info' }
+  return map[Number(status)] || 'info'
+}
 
 onMounted(async () => {
   fetchData()

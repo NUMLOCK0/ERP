@@ -176,10 +176,20 @@ async function createTables() {
       order_no VARCHAR(50) NOT NULL UNIQUE,
       supplier_id INT DEFAULT 0,
       warehouse_id INT DEFAULT 0,
+      payment_method VARCHAR(50) DEFAULT '',
       total_amount DOUBLE DEFAULT 0,
+      admin_remark TEXT DEFAULT NULL,
+      purchase_remark TEXT DEFAULT NULL,
       status INT DEFAULT 0,
       auditor_id INT DEFAULT 0,
       audit_time DATETIME DEFAULT NULL,
+      submit_time DATETIME DEFAULT NULL,
+      purchase_start_time DATETIME DEFAULT NULL,
+      purchase_completed_time DATETIME DEFAULT NULL,
+      inbound_start_time DATETIME DEFAULT NULL,
+      completed_time DATETIME DEFAULT NULL,
+      cancel_time DATETIME DEFAULT NULL,
+      close_time DATETIME DEFAULT NULL,
       creator_id INT DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -191,7 +201,14 @@ async function createTables() {
       product_id INT DEFAULT 0,
       quantity DOUBLE DEFAULT 0,
       price DOUBLE DEFAULT 0,
-      amount DOUBLE DEFAULT 0
+      tax DOUBLE DEFAULT 0,
+      amount DOUBLE DEFAULT 0,
+      remark VARCHAR(255) DEFAULT '',
+      final_quantity DOUBLE DEFAULT NULL,
+      final_price DOUBLE DEFAULT NULL,
+      final_tax DOUBLE DEFAULT 0,
+      final_amount DOUBLE DEFAULT NULL,
+      final_remark VARCHAR(255) DEFAULT ''
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS purchase_inbound (
@@ -202,6 +219,7 @@ async function createTables() {
       supplier_id INT DEFAULT 0,
       total_amount DOUBLE DEFAULT 0,
       status INT DEFAULT 0,
+      remark TEXT DEFAULT NULL,
       creator_id INT DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
@@ -212,16 +230,24 @@ async function createTables() {
       product_id INT DEFAULT 0,
       quantity DOUBLE DEFAULT 0,
       price DOUBLE DEFAULT 0,
-      amount DOUBLE DEFAULT 0
+      amount DOUBLE DEFAULT 0,
+      location VARCHAR(100) DEFAULT '',
+      remark VARCHAR(255) DEFAULT ''
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS purchase_return (
       id INT PRIMARY KEY AUTO_INCREMENT,
       return_no VARCHAR(50) NOT NULL UNIQUE,
       inbound_id INT DEFAULT 0,
+      order_id INT DEFAULT 0,
       supplier_id INT DEFAULT 0,
       total_amount DOUBLE DEFAULT 0,
       status INT DEFAULT 0,
+      express_name VARCHAR(100) DEFAULT '',
+      express_no VARCHAR(100) DEFAULT '',
+      contact VARCHAR(100) DEFAULT '',
+      phone VARCHAR(50) DEFAULT '',
+      address VARCHAR(255) DEFAULT '',
       reason TEXT DEFAULT NULL,
       creator_id INT DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -233,7 +259,8 @@ async function createTables() {
       product_id INT DEFAULT 0,
       quantity DOUBLE DEFAULT 0,
       price DOUBLE DEFAULT 0,
-      amount DOUBLE DEFAULT 0
+      amount DOUBLE DEFAULT 0,
+      remark VARCHAR(255) DEFAULT ''
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS sale_order (
@@ -245,6 +272,8 @@ async function createTables() {
       status INT DEFAULT 0,
       auditor_id INT DEFAULT 0,
       audit_time DATETIME DEFAULT NULL,
+      cancel_time DATETIME DEFAULT NULL,
+      close_time DATETIME DEFAULT NULL,
       creator_id INT DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -463,6 +492,35 @@ async function createTables() {
 
   await ensureColumn('product', 'default_supplier_id', 'INT DEFAULT 0');
   await ensureColumn('product_unit', 'warehouse_id', 'INT DEFAULT 0');
+  await ensureColumn('purchase_order', 'submit_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('purchase_order', 'payment_method', "VARCHAR(50) DEFAULT ''");
+  await ensureColumn('purchase_order', 'admin_remark', 'TEXT DEFAULT NULL');
+  await ensureColumn('purchase_order', 'purchase_remark', 'TEXT DEFAULT NULL');
+  await ensureColumn('purchase_order', 'purchase_start_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('purchase_order', 'purchase_completed_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('purchase_order', 'inbound_start_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('purchase_order', 'completed_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('purchase_order', 'cancel_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('purchase_order', 'close_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('purchase_order_item', 'tax', 'DOUBLE DEFAULT 0');
+  await ensureColumn('purchase_order_item', 'remark', "VARCHAR(255) DEFAULT ''");
+  await ensureColumn('purchase_order_item', 'final_quantity', 'DOUBLE DEFAULT NULL');
+  await ensureColumn('purchase_order_item', 'final_price', 'DOUBLE DEFAULT NULL');
+  await ensureColumn('purchase_order_item', 'final_tax', 'DOUBLE DEFAULT 0');
+  await ensureColumn('purchase_order_item', 'final_amount', 'DOUBLE DEFAULT NULL');
+  await ensureColumn('purchase_order_item', 'final_remark', "VARCHAR(255) DEFAULT ''");
+  await ensureColumn('purchase_inbound', 'remark', 'TEXT DEFAULT NULL');
+  await ensureColumn('purchase_inbound_item', 'location', "VARCHAR(100) DEFAULT ''");
+  await ensureColumn('purchase_inbound_item', 'remark', "VARCHAR(255) DEFAULT ''");
+  await ensureColumn('purchase_return', 'order_id', 'INT DEFAULT 0');
+  await ensureColumn('purchase_return', 'express_name', "VARCHAR(100) DEFAULT ''");
+  await ensureColumn('purchase_return', 'express_no', "VARCHAR(100) DEFAULT ''");
+  await ensureColumn('purchase_return', 'contact', "VARCHAR(100) DEFAULT ''");
+  await ensureColumn('purchase_return', 'phone', "VARCHAR(50) DEFAULT ''");
+  await ensureColumn('purchase_return', 'address', "VARCHAR(255) DEFAULT ''");
+  await ensureColumn('purchase_return_item', 'remark', "VARCHAR(255) DEFAULT ''");
+  await ensureColumn('sale_order', 'cancel_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('sale_order', 'close_time', 'DATETIME DEFAULT NULL');
 }
 
 async function ensureColumn(table, column, definition) {
@@ -526,7 +584,11 @@ async function initData() {
       ['company_name', '', '公司名称'],
       ['company_address', '', '公司地址'],
       ['company_phone', '', '公司电话'],
-      ['default_warehouse_id', '1', '默认仓库ID']
+      ['default_warehouse_id', '1', '默认仓库ID'],
+      ['audit_purchase_order_enabled', 'true', '采购订单是否开启审核'],
+      ['audit_sale_order_enabled', 'true', '销售订单是否开启审核'],
+      ['audit_inventory_check_enabled', 'true', '库存盘点是否开启审核'],
+      ['audit_inventory_transfer_enabled', 'false', '库存调拨是否开启审核']
     ];
     for (const [key, value, desc] of configs) {
       await conn.execute('INSERT INTO system_config (`key`, value, description) VALUES (?, ?, ?)', [key, value, desc]);

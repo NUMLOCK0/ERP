@@ -16,12 +16,12 @@
           <template #default="{ row }">¥{{ row.total_amount?.toLocaleString() }}</template>
         </el-table-column>
         <el-table-column label="状态" width="100">
-          <template #default="{ row }"><el-tag :type="row.status==='completed'?'success':'warning'" size="small">{{ row.status }}</el-tag></template>
+          <template #default="{ row }"><el-tag :type="statusTagType(row.status)" size="small">{{ statusText(row.status) }}</el-tag></template>
         </el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="120" />
         <el-table-column label="操作" width="150">
           <template #default="{ row }">
-            <el-button v-if="row.status==='pending'" type="success" link @click="handleConfirm(row)">确认调拨</el-button>
+            <el-button v-if="Number(row.status) === 0" type="success" link @click="handleConfirm(row)">确认调拨</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -57,6 +57,12 @@ function handleReset() { Object.assign(searchForm, { transfer_no: '' }); handleS
 async function handleConfirm(row: any) {
   await ElMessageBox.confirm('确认调拨？将自动执行跨仓库库存转移。', '提示', { type: 'warning' })
   await confirmTransfer(row.id); ElMessage.success('调拨确认成功'); fetchData()
+}
+function statusText(status: any) {
+  return Number(status) === 1 ? '已完成' : '待确认'
+}
+function statusTagType(status: any) {
+  return Number(status) === 1 ? 'success' : 'warning'
 }
 
 onMounted(fetchData)

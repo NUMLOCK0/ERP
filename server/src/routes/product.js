@@ -6,12 +6,11 @@ const Response = require('../utils/response');
 router.get('/', async (req, res) => {
   try {
     const pool = getPool();
-    const { page = 1, pageSize = 20, keyword = '', code = '', barcode = '', name = '', category_id = '', brand_id = '', status = '' } = req.query;
+    const { page = 1, pageSize = 20, keyword = '', code = '', name = '', category_id = '', brand_id = '', status = '' } = req.query;
     let where = '1=1';
     const params = [];
-    if (keyword) { where += ' AND (p.name LIKE ? OR p.code LIKE ? OR p.barcode LIKE ?)'; params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`); }
+    if (keyword) { where += ' AND (p.name LIKE ? OR p.code LIKE ?)'; params.push(`%${keyword}%`, `%${keyword}%`); }
     if (code) { where += ' AND p.code LIKE ?'; params.push(`%${code}%`); }
-    if (barcode) { where += ' AND p.barcode LIKE ?'; params.push(`%${barcode}%`); }
     if (name) { where += ' AND p.name LIKE ?'; params.push(`%${name}%`); }
     if (category_id) { where += ' AND p.category_id = ?'; params.push(Number(category_id)); }
     if (brand_id) { where += ' AND p.brand_id = ?'; params.push(Number(brand_id)); }
@@ -88,7 +87,6 @@ router.post('/', async (req, res) => {
     const {
       name,
       code = '',
-      barcode = '',
       spec = '',
       unit_id = 0,
       category_id = 0,
@@ -108,14 +106,15 @@ router.post('/', async (req, res) => {
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
+      const productCode = String(code || '').trim() || await generateProductCode(conn);
       const [result] = await conn.execute(
         `INSERT INTO product
          (name, code, barcode, spec, unit_id, category_id, brand_id, default_supplier_id, cost_price, sale_price, description, image_urls, status)
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
           name,
-          code || firstUnit.code || '',
-          barcode || firstUnit.barcode || '',
+          productCode,
+          '',
           spec || firstUnit.spec || '',
           unit_id || firstUnit.unit_id || 0,
           category_id,
@@ -262,6 +261,26 @@ function parseJson(value, fallback) {
   } catch {
     return fallback;
   }
+}
+
+async function generateProductCode(conn) {
+  const now = new Date();
+  const date = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+  for (let i = 0; i < 20; i += 1) {
+    const code = `pu${date}${randomChars(3)}`;
+    const [rows] = await conn.execute('SELECT id FROM product WHERE code = ? LIMIT 1', [code]);
+    if (!rows.length) return code;
+  }
+  return `pu${date}${randomChars(3)}${Date.now().toString(36).slice(-2)}`;
+}
+
+function randomChars(length) {
+  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let text = '';
+  for (let i = 0; i < length; i += 1) {
+    text += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return text;
 }
 
 async function writeSystemLog(pool, userId, module, action, target) {

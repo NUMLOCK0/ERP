@@ -9,6 +9,7 @@ export function deleteSaleOrder(id: number) { return del(`/sale/order/${id}`) }
 export function submitSaleOrder(id: number) { return post(`/sale/order/${id}/submit`) }
 export function auditSaleOrder(id: number, data?: any) { return post(`/sale/order/${id}/audit`, data) }
 export function cancelSaleOrder(id: number) { return post(`/sale/order/${id}/cancel`) }
+export function closeSaleOrder(id: number) { return post(`/sale/order/${id}/close`) }
 
 // 销售发货单
 export function getSaleDeliveries(params?: any) { return get('/sale/delivery', params) }

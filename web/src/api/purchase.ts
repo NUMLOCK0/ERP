@@ -8,7 +8,15 @@ export function updatePurchaseOrder(id: number, data: any) { return put(`/purcha
 export function deletePurchaseOrder(id: number) { return del(`/purchase/order/${id}`) }
 export function submitPurchaseOrder(id: number) { return post(`/purchase/order/${id}/submit`) }
 export function auditPurchaseOrder(id: number, data?: any) { return post(`/purchase/order/${id}/audit`, data) }
+export function rejectPurchaseOrder(id: number) { return post(`/purchase/order/${id}/reject`) }
 export function cancelPurchaseOrder(id: number) { return post(`/purchase/order/${id}/cancel`) }
+export function closePurchaseOrder(id: number) { return post(`/purchase/order/${id}/close`) }
+export function startPurchaseOrder(id: number) { return post(`/purchase/order/${id}/start-purchase`) }
+export function confirmPurchasedOrder(id: number, data: any) { return post(`/purchase/order/${id}/confirm-purchased`, data) }
+export function startPurchaseInbound(id: number) { return post(`/purchase/order/${id}/start-inbound`) }
+export function completePurchaseInboundByOrder(id: number) { return post(`/purchase/order/${id}/complete-inbound`) }
+export function createPurchaseOrderInbound(id: number, data: any) { return post(`/purchase/order/${id}/inbound`, data) }
+export function createPurchaseOrderReturn(id: number, data: any) { return post(`/purchase/order/${id}/return`, data) }
 
 // 采购入库单
 export function getPurchaseInbounds(params?: any) { return get('/purchase/inbound', params) }

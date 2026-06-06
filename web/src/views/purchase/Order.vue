@@ -1258,11 +1258,17 @@ async function handleInboundSubmit() {
     ElMessage.warning('请选择入库状态')
     return
   }
-  const items = inboundForm.items.filter(item => item.product_id && Number(item.inbound_quantity || 0) > 0)
-  if (!items.length) {
-    ElMessage.warning('请至少填写一条入库明细')
+  const detailItems = inboundForm.items.filter(item => item.product_id)
+  if (!detailItems.length) {
+    ElMessage.warning('请至少添加一条产品明细')
     return
   }
+  const hasEmptyQuantity = detailItems.some(item => !item.inbound_quantity || Number(item.inbound_quantity) <= 0)
+  if (hasEmptyQuantity) {
+    ElMessage.warning('入库数量不能为空，请填写每条明细的入库数量')
+    return
+  }
+  const items = detailItems.filter(item => Number(item.inbound_quantity || 0) > 0)
   await createPurchaseOrderInbound(inboundForm.id, {
     warehouse_id: inboundForm.warehouse_id,
     inbound_status: inboundForm.inbound_status,
@@ -1277,6 +1283,29 @@ async function handleInboundSubmit() {
   })
   ElMessage.success('入库单已提交')
   inboundVisible.value = false
+
+  // 入库提交成功后，检查是否可以自动完成入库
+  try {
+    const detail = await fetchOrderDetail(inboundForm.id!)
+    const currentStatus = Number(detail.status)
+    // 仅当订单状态为"入库中"且用户选择了"等待入库"时，检查剩余数量
+    if (currentStatus === 7 && Number(inboundForm.inbound_status) === 0) {
+      const orderItems = detail.items || []
+      const allComplete = orderItems.length > 0 && orderItems.every((orderItem: any) => {
+        const finalQty = Number(orderItem.final_quantity || orderItem.quantity || 0)
+        const batchItem = inboundForm.items.find((bi: any) => bi.product_id === orderItem.product_id)
+        const batchQty = Number(batchItem?.inbound_quantity || 0)
+        return batchQty >= finalQty
+      })
+      if (allComplete) {
+        await completePurchaseInboundByOrder(inboundForm.id!)
+        ElMessage.success('入库数量已全部完成，订单已自动更新为已入库')
+      }
+    }
+  } catch {
+    // 静默处理：如果后端拒绝（如分批入库已有入库单），不影响入库主流程
+  }
+
   fetchData()
 }
 
@@ -1309,11 +1338,17 @@ async function handleReturnSubmit() {
     ElMessage.warning('请选择退货状态')
     return
   }
-  const items = returnForm.items.filter(item => item.product_id && (Number(item.return_quantity || 0) > 0 || Number(item.return_amount || 0) > 0))
-  if (!items.length) {
-    ElMessage.warning('请至少填写一条退单明细')
+  const detailItems = returnForm.items.filter(item => item.product_id)
+  if (!detailItems.length) {
+    ElMessage.warning('请至少添加一条产品明细')
     return
   }
+  const hasEmptyQuantity = detailItems.some(item => !item.return_quantity || Number(item.return_quantity) <= 0)
+  if (hasEmptyQuantity) {
+    ElMessage.warning('退货数量不能为空，请填写每条明细的退货数量')
+    return
+  }
+  const items = detailItems.filter(item => Number(item.return_quantity || 0) > 0 || Number(item.return_amount || 0) > 0)
   await createPurchaseOrderReturn(returnForm.id, {
     return_status: returnForm.return_status,
     express_name: returnForm.express_name,

@@ -22,11 +22,66 @@ router.get('/order', async (req, res) => {
     );
     const total = Number(totalRows[0].cnt);
     const [list] = await pool.execute(
-      `SELECT po.*, sc.name AS supplier_name, w.name AS warehouse_name, u.real_name AS creator_name
+      `SELECT po.*, sc.name AS supplier_name, sc.contact, sc.phone, sc.bank_name, sc.address AS bank_address,
+              sc.name AS bank_account_name, sc.bank_account, w.name AS warehouse_name, u.real_name AS creator_name,
+              COALESCE(item_stats.product_total_quantity, 0) AS product_total_quantity,
+              COALESCE(item_stats.unit_price, 0) AS unit_price,
+              0 AS tax_amount,
+              po.total_amount AS total_price,
+              COALESCE(item_stats.unit_price, 0) AS final_unit_price,
+              0 AS final_tax_amount,
+              COALESCE(item_stats.product_total_quantity, 0) AS final_product_total_quantity,
+              COALESCE(payment_stats.payment_total_amount, 0) AS payment_total_amount,
+              payment_stats.payment_method,
+              CASE
+                WHEN COALESCE(payment_stats.payment_total_amount, 0) <= 0 THEN 0
+                WHEN COALESCE(payment_stats.payment_total_amount, 0) >= po.total_amount THEN 2
+                ELSE 1
+              END AS payment_status,
+              COALESCE(return_stats.refund_amount, 0) AS refund_amount,
+              COALESCE(return_stats.return_quantity, 0) AS return_quantity,
+              CASE WHEN COALESCE(return_stats.return_quantity, 0) > 0 THEN 1 ELSE 0 END AS return_status,
+              '' AS admin_remark,
+              '' AS purchase_remark,
+              NULL AS completed_time,
+              inbound_stats.inbound_start_time,
+              po.audit_time AS purchase_completed_time,
+              po.created_at AS purchase_start_time,
+              po.audit_time,
+              NULL AS submit_time,
+              NULL AS cancel_time,
+              NULL AS close_time
        FROM purchase_order po
        LEFT JOIN supplier_customer sc ON po.supplier_id = sc.id
        LEFT JOIN warehouse w ON po.warehouse_id = w.id
        LEFT JOIN sys_user u ON po.creator_id = u.id
+       LEFT JOIN (
+         SELECT order_id, SUM(quantity) AS product_total_quantity, AVG(price) AS unit_price
+         FROM purchase_order_item
+         GROUP BY order_id
+       ) item_stats ON po.id = item_stats.order_id
+       LEFT JOIN (
+         SELECT pi.order_id, SUM(fp.amount) AS payment_total_amount, GROUP_CONCAT(DISTINCT fp.pay_method ORDER BY fp.id SEPARATOR '、') AS payment_method
+         FROM finance_payment fp
+         LEFT JOIN purchase_inbound pi ON fp.inbound_id = pi.id
+         GROUP BY pi.order_id
+       ) payment_stats ON po.id = payment_stats.order_id
+       LEFT JOIN (
+         SELECT pi.order_id, MIN(pi.created_at) AS inbound_start_time
+         FROM purchase_inbound pi
+         GROUP BY pi.order_id
+       ) inbound_stats ON po.id = inbound_stats.order_id
+       LEFT JOIN (
+         SELECT pi.order_id, SUM(pr.total_amount) AS refund_amount, SUM(COALESCE(pri.return_quantity, 0)) AS return_quantity
+         FROM purchase_return pr
+         LEFT JOIN purchase_inbound pi ON pr.inbound_id = pi.id
+         LEFT JOIN (
+           SELECT return_id, SUM(quantity) AS return_quantity
+           FROM purchase_return_item
+           GROUP BY return_id
+         ) pri ON pr.id = pri.return_id
+         GROUP BY pi.order_id
+       ) return_stats ON po.id = return_stats.order_id
        WHERE ${where} ORDER BY po.id DESC LIMIT ?, ?`,
       [...params, offset, Number(pageSize)]
     );

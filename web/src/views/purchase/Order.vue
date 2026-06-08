@@ -372,12 +372,15 @@
             <el-table-column label="采购数量" width="110" align="right">
               <template #default="{ row }">{{ formatQuantity(row.final_quantity) }}</template>
             </el-table-column>
+            <el-table-column label="已处理 / 剩余" width="140">
+              <template #default="{ row }">{{ formatQuantity(Number(row.inbounded_quantity || 0) + Number(row.returned_quantity || 0)) }} / {{ formatQuantity(row.remaining_quantity) }}</template>
+            </el-table-column>
             <el-table-column label="入库数量" width="150">
               <template #header>
                 <span>入库数量 <span class="edit-mark">✎</span> <span class="help-dot">?</span></span>
               </template>
               <template #default="{ row }">
-                <el-input-number v-model="row.inbound_quantity" :min="0" :max="Number(row.final_quantity || row.quantity || 0)" :precision="3" :controls="false" placeholder="入库数量" />
+                <el-input-number v-model="row.inbound_quantity" :min="0" :max="Number(row.remaining_quantity || 0)" :precision="3" :controls="false" placeholder="入库数量" />
               </template>
             </el-table-column>
             <el-table-column label="仓位" width="160">
@@ -458,12 +461,15 @@
             <el-table-column label="采购数量" width="110" align="right">
               <template #default="{ row }">{{ formatQuantity(row.final_quantity) }}</template>
             </el-table-column>
+            <el-table-column label="已处理 / 剩余" width="140">
+              <template #default="{ row }">{{ formatQuantity(Number(row.inbounded_quantity || 0) + Number(row.returned_quantity || 0)) }} / {{ formatQuantity(row.remaining_quantity) }}</template>
+            </el-table-column>
             <el-table-column label="退货数量" width="150">
               <template #header>
                 <span>退货数量 <span class="edit-mark">✎</span> <span class="help-dot">?</span></span>
               </template>
               <template #default="{ row }">
-                <el-input-number v-model="row.return_quantity" :min="0" :max="Number(row.final_quantity || row.quantity || 0)" :precision="3" :controls="false" placeholder="退货数量" @change="recalculateReturnRow(row)" />
+                <el-input-number v-model="row.return_quantity" :min="0" :max="Number(row.remaining_quantity || 0)" :precision="3" :controls="false" placeholder="退货数量" @change="recalculateReturnRow(row)" />
               </template>
             </el-table-column>
             <el-table-column label="退款金额" width="150">
@@ -533,7 +539,7 @@
           </el-table-column>
           <el-table-column label="退货状态" width="100">
             <template #default="{ row }">
-              <el-tag :type="row.return_status ? 'warning' : 'info'" size="small">{{ row.return_status ? '有退货' : '无退货' }}</el-tag>
+              <el-tag :type="row.return_status ? 'danger' : 'info'" size="small">{{ row.return_status ? '已退货' : '无退货' }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="payment_method" label="付款方式" width="120" show-overflow-tooltip>
@@ -772,6 +778,9 @@ interface PurchaseItem {
   return_quantity: number
   return_amount: number
   return_remark: string
+  inbounded_quantity: number
+  returned_quantity: number
+  remaining_quantity: number
 }
 
 const loading = ref(false)
@@ -1015,7 +1024,10 @@ function normalizeOrderItems(items: any[]) {
     location: item.location || '',
     return_quantity: Number(item.final_quantity ?? item.quantity ?? 1),
     return_amount: Number(item.final_amount ?? item.amount ?? 0),
-    return_remark: item.return_remark || item.final_remark || item.remark || ''
+    return_remark: item.return_remark || item.final_remark || item.remark || '',
+    inbounded_quantity: Number(item.inbounded_quantity || 0),
+    returned_quantity: Number(item.returned_quantity || 0),
+    remaining_quantity: Number(item.remaining_quantity ?? item.final_quantity ?? item.quantity ?? 0)
   }))
 }
 
@@ -1042,7 +1054,10 @@ function createItem(partial: Partial<PurchaseItem> = {}): PurchaseItem {
     location: partial.location ?? '',
     return_quantity: partial.return_quantity ?? partial.final_quantity ?? partial.quantity ?? 1,
     return_amount: partial.return_amount ?? partial.final_amount ?? partial.amount ?? 0,
-    return_remark: partial.return_remark ?? partial.final_remark ?? partial.remark ?? ''
+    return_remark: partial.return_remark ?? partial.final_remark ?? partial.remark ?? '',
+    inbounded_quantity: partial.inbounded_quantity ?? 0,
+    returned_quantity: partial.returned_quantity ?? 0,
+    remaining_quantity: partial.remaining_quantity ?? partial.final_quantity ?? partial.quantity ?? 0
   }
 }
 
@@ -1231,6 +1246,11 @@ async function handleConfirmPurchasedSubmit() {
 
 async function handleInbound(row: any) {
   const detail = await fetchOrderDetail(row.id)
+  const remainingItems = normalizeOrderItems(detail.items || []).filter(item => Number(item.remaining_quantity || 0) > 0)
+  if (!remainingItems.length) {
+    ElMessage.warning('该采购单没有剩余可入库数量')
+    return
+  }
   Object.assign(inboundForm, {
     id: detail.id,
     order_no: detail.order_no || '',
@@ -1238,9 +1258,9 @@ async function handleInbound(row: any) {
     warehouse_id: detail.warehouse_id || warehouses.value[0]?.id || null,
     inbound_status: null,
     remark: '',
-    items: normalizeOrderItems(detail.items || []).map(item => ({
+    items: remainingItems.map(item => ({
       ...item,
-      inbound_quantity: Number(item.final_quantity || item.quantity || 0),
+      inbound_quantity: Number(item.remaining_quantity || 0),
       location: '',
       final_remark: item.final_remark || ''
     }))
@@ -1263,7 +1283,7 @@ async function handleInboundSubmit() {
     ElMessage.warning('请至少添加一条产品明细')
     return
   }
-  const hasEmptyQuantity = detailItems.some(item => !item.inbound_quantity || Number(item.inbound_quantity) <= 0)
+  const hasEmptyQuantity = detailItems.some(item => Number(item.remaining_quantity || 0) > 0 && (!item.inbound_quantity || Number(item.inbound_quantity) <= 0))
   if (hasEmptyQuantity) {
     ElMessage.warning('入库数量不能为空，请填写每条明细的入库数量')
     return
@@ -1283,34 +1303,16 @@ async function handleInboundSubmit() {
   })
   ElMessage.success('入库单已提交')
   inboundVisible.value = false
-
-  // 入库提交成功后，检查是否可以自动完成入库
-  try {
-    const detail = await fetchOrderDetail(inboundForm.id!)
-    const currentStatus = Number(detail.status)
-    // 仅当订单状态为"入库中"且用户选择了"等待入库"时，检查剩余数量
-    if (currentStatus === 7 && Number(inboundForm.inbound_status) === 0) {
-      const orderItems = detail.items || []
-      const allComplete = orderItems.length > 0 && orderItems.every((orderItem: any) => {
-        const finalQty = Number(orderItem.final_quantity || orderItem.quantity || 0)
-        const batchItem = inboundForm.items.find((bi: any) => bi.product_id === orderItem.product_id)
-        const batchQty = Number(batchItem?.inbound_quantity || 0)
-        return batchQty >= finalQty
-      })
-      if (allComplete) {
-        await completePurchaseInboundByOrder(inboundForm.id!)
-        ElMessage.success('入库数量已全部完成，订单已自动更新为已入库')
-      }
-    }
-  } catch {
-    // 静默处理：如果后端拒绝（如分批入库已有入库单），不影响入库主流程
-  }
-
   fetchData()
 }
 
 async function handleReturn(row: any) {
   const detail = await fetchOrderDetail(row.id)
+  const remainingItems = normalizeOrderItems(detail.items || []).filter(item => Number(item.remaining_quantity || 0) > 0)
+  if (!remainingItems.length) {
+    ElMessage.warning('该采购单没有剩余可退货数量')
+    return
+  }
   Object.assign(returnForm, {
     id: detail.id,
     order_no: detail.order_no || '',
@@ -1322,10 +1324,10 @@ async function handleReturn(row: any) {
     phone: detail.phone || '',
     address: detail.bank_address || '',
     remark: '',
-    items: normalizeOrderItems(detail.items || []).map(item => ({
+    items: remainingItems.map(item => ({
       ...item,
-      return_quantity: Number(item.final_quantity || item.quantity || 0),
-      return_amount: Number(item.final_amount || item.amount || 0),
+      return_quantity: Number(item.remaining_quantity || 0),
+      return_amount: Number((Number(item.remaining_quantity || 0) * Number(item.final_price || item.price || 0)).toFixed(2)),
       return_remark: ''
     }))
   })
@@ -1343,7 +1345,7 @@ async function handleReturnSubmit() {
     ElMessage.warning('请至少添加一条产品明细')
     return
   }
-  const hasEmptyQuantity = detailItems.some(item => !item.return_quantity || Number(item.return_quantity) <= 0)
+  const hasEmptyQuantity = detailItems.some(item => Number(item.remaining_quantity || 0) > 0 && (!item.return_quantity || Number(item.return_quantity) <= 0))
   if (hasEmptyQuantity) {
     ElMessage.warning('退货数量不能为空，请填写每条明细的退货数量')
     return
@@ -1423,14 +1425,14 @@ function handleOrderCommand(command: string, row: any) {
 
 function orderActions(row: any) {
   const status = Number(row.status)
+  const hasRemaining = Number(row.remaining_quantity || 0) > 0
   const actions: Array<{ command: string; label: string }> = []
   if (status === 0) actions.push({ command: 'edit', label: '编辑' }, { command: 'submit', label: '提审' }, { command: 'cancel', label: '取消' })
   if (status === 2) actions.push({ command: 'audit', label: '审核通过' }, { command: 'reject', label: '拒绝' }, { command: 'cancel', label: '取消' })
   if (status === 5) actions.push({ command: 'startPurchase', label: '开始采购' }, { command: 'cancel', label: '取消' }, { command: 'close', label: '关闭' })
   if (status === 1) actions.push({ command: 'confirmPurchased', label: '已采确认' }, { command: 'cancel', label: '取消' })
-  if (status === 6) actions.push({ command: 'inbound', label: '入库' }, { command: 'returnOrder', label: '退单' }, { command: 'close', label: '关闭' })
-  if (status === 7) actions.push({ command: 'completeInbound', label: '确认入库' }, { command: 'close', label: '关闭' })
-  if (status === 8) actions.push({ command: 'close', label: '关闭' })
+  if ([6, 7, 8].includes(status) && hasRemaining) actions.push({ command: 'inbound', label: '入库' }, { command: 'returnOrder', label: '退单' })
+  if ([6, 7, 8].includes(status)) actions.push({ command: 'close', label: '关闭' })
   if ([3, 4].includes(status)) actions.push({ command: 'delete', label: '删除' })
   return actions
 }

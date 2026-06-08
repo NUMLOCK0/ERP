@@ -20,21 +20,65 @@
       </SearchForm>
 
       <el-table :data="tableData" stripe v-loading="loading">
-        <el-table-column prop="return_no" label="退货单号" width="180" />
-        <el-table-column prop="supplier_name" label="供应商" min-width="150" show-overflow-tooltip />
-        <el-table-column label="金额" width="120" align="right">
-          <template #default="{ row }">¥{{ formatMoney(row.total_amount) }}</template>
+        <el-table-column prop="return_no" label="退货单号" width="190" show-overflow-tooltip />
+        <el-table-column prop="order_no" label="采购单号" width="190" show-overflow-tooltip>
+          <template #default="{ row }">{{ emptyText(row.order_no) }}</template>
         </el-table-column>
-        <el-table-column prop="reason" label="退货原因" min-width="180" show-overflow-tooltip />
-        <el-table-column label="状态" width="90">
-          <template #default="{ row }"><el-tag type="success" size="small">{{ statusText(row.status) }}</el-tag></template>
+        <el-table-column label="状态" width="110">
+          <template #default="{ row }"><el-tag :type="statusTagType(row.status)" size="small">{{ statusText(row.status) }}</el-tag></template>
+        </el-table-column>
+        <el-table-column prop="supplier_name" label="供应商" min-width="150" show-overflow-tooltip>
+          <template #default="{ row }">{{ emptyText(row.supplier_name) }}</template>
+        </el-table-column>
+        <el-table-column label="退款总额" width="120" align="right">
+          <template #default="{ row }">¥{{ formatMoney(row.refund_total_amount ?? row.total_amount) }}</template>
+        </el-table-column>
+        <el-table-column label="退款总数" width="120" align="right">
+          <template #default="{ row }">{{ formatQuantity(row.refund_total_quantity) }}</template>
+        </el-table-column>
+        <el-table-column label="单价" width="110" align="right">
+          <template #default="{ row }">¥{{ formatMoney(row.unit_price) }}</template>
+        </el-table-column>
+        <el-table-column label="税金" width="110" align="right">
+          <template #default="{ row }">¥{{ formatMoney(row.tax_amount) }}</template>
+        </el-table-column>
+        <el-table-column label="总价" width="120" align="right">
+          <template #default="{ row }">¥{{ formatMoney(row.total_price ?? row.total_amount) }}</template>
+        </el-table-column>
+        <el-table-column prop="contact" label="联系人" width="110" show-overflow-tooltip>
+          <template #default="{ row }">{{ emptyText(row.contact) }}</template>
+        </el-table-column>
+        <el-table-column prop="phone" label="联系电话" width="130" show-overflow-tooltip>
+          <template #default="{ row }">{{ emptyText(row.phone) }}</template>
+        </el-table-column>
+        <el-table-column prop="address" label="收获地址" width="180" show-overflow-tooltip>
+          <template #default="{ row }">{{ emptyText(row.address) }}</template>
+        </el-table-column>
+        <el-table-column prop="express_name" label="快递名称" width="130" show-overflow-tooltip>
+          <template #default="{ row }">{{ emptyText(row.express_name) }}</template>
+        </el-table-column>
+        <el-table-column prop="express_no" label="快递单号" width="150" show-overflow-tooltip>
+          <template #default="{ row }">{{ emptyText(row.express_no) }}</template>
+        </el-table-column>
+        <el-table-column prop="reason" label="备注信息" width="160" show-overflow-tooltip>
+          <template #default="{ row }">{{ emptyText(row.reason) }}</template>
+        </el-table-column>
+        <el-table-column label="完成时间" width="170">
+          <template #default="{ row }">{{ formatDateTime(row.completed_time) }}</template>
+        </el-table-column>
+        <el-table-column label="取消时间" width="170">
+          <template #default="{ row }">{{ formatDateTime(row.cancel_time) }}</template>
         </el-table-column>
         <el-table-column label="创建时间" width="170">
           <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="100" fixed="right">
+        <el-table-column label="更新时间" width="170">
+          <template #default="{ row }">{{ formatDateTime(row.updated_at) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="140" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link :icon="View" @click="handleView(row)">详情</el-button>
+            <el-button v-if="Number(row.status) === 0" type="success" link @click="handleComplete(row)">退货</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -111,6 +155,71 @@
         <el-button v-if="dialogMode === 'create'" type="primary" @click="handleSave">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-drawer v-model="drawerVisible" title="采购退货单详情" size="72%" direction="rtl" class="detail-drawer">
+      <el-tabs v-model="activeTab">
+        <el-tab-pane label="基本信息" name="basic">
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="退货单号">{{ emptyText(detail.return_no) }}</el-descriptions-item>
+            <el-descriptions-item label="采购单号">{{ emptyText(detail.order_no) }}</el-descriptions-item>
+            <el-descriptions-item label="状态">
+              <el-tag :type="statusTagType(detail.status)" size="small">{{ statusText(detail.status) }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="供应商">{{ emptyText(detail.supplier_name) }}</el-descriptions-item>
+            <el-descriptions-item label="退款总额">¥{{ formatMoney(detail.refund_total_amount ?? detail.total_amount) }}</el-descriptions-item>
+            <el-descriptions-item label="退款总数">{{ formatQuantity(detailRefundTotalQuantity) }}</el-descriptions-item>
+            <el-descriptions-item label="联系人">{{ emptyText(detail.contact) }}</el-descriptions-item>
+            <el-descriptions-item label="联系电话">{{ emptyText(detail.phone) }}</el-descriptions-item>
+            <el-descriptions-item label="收货地址">{{ emptyText(detail.address) }}</el-descriptions-item>
+            <el-descriptions-item label="快递名称">{{ emptyText(detail.express_name) }}</el-descriptions-item>
+            <el-descriptions-item label="快递单号">{{ emptyText(detail.express_no) }}</el-descriptions-item>
+            <el-descriptions-item label="备注信息">{{ emptyText(detail.reason) }}</el-descriptions-item>
+            <el-descriptions-item label="完成时间">{{ formatDateTime(detail.completed_time) }}</el-descriptions-item>
+            <el-descriptions-item label="取消时间">{{ formatDateTime(detail.cancel_time) }}</el-descriptions-item>
+            <el-descriptions-item label="创建时间">{{ formatDateTime(detail.created_at) }}</el-descriptions-item>
+            <el-descriptions-item label="更新时间">{{ formatDateTime(detail.updated_at) }}</el-descriptions-item>
+          </el-descriptions>
+        </el-tab-pane>
+        <el-tab-pane label="商品列表" name="items">
+          <el-table :data="detail.items" stripe class="detail-table">
+            <el-table-column prop="product_name" label="产品标题" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="code" label="编码" width="120" show-overflow-tooltip />
+            <el-table-column prop="spec" label="规格" width="120" show-overflow-tooltip />
+            <el-table-column label="数量" width="110" align="right">
+              <template #default="{ row }">{{ formatQuantity(row.quantity) }}</template>
+            </el-table-column>
+            <el-table-column label="单价" width="110" align="right">
+              <template #default="{ row }">¥{{ formatMoney(row.price) }}</template>
+            </el-table-column>
+            <el-table-column label="金额" width="120" align="right">
+              <template #default="{ row }">¥{{ formatMoney(row.amount) }}</template>
+            </el-table-column>
+            <el-table-column prop="remark" label="备注" min-width="140" show-overflow-tooltip>
+              <template #default="{ row }">{{ emptyText(row.remark) }}</template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
+      </el-tabs>
+    </el-drawer>
+
+    <el-dialog v-model="completeDialogVisible" title="退货" width="520px" @close="resetCompleteForm">
+      <el-form ref="completeFormRef" :model="completeForm" :rules="completeRules" label-width="90px">
+        <el-form-item label="快递名称">
+          <el-input v-model="completeForm.express_name" placeholder="请输入快递名称" clearable />
+        </el-form-item>
+        <el-form-item label="快递单号">
+          <el-input v-model="completeForm.express_no" placeholder="请输入快递单号" clearable />
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
+          <el-input v-model="completeForm.remark" type="textarea" :rows="4" maxlength="200" show-word-limit placeholder="请输入备注" />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="completeDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleCompleteSubmit">确认退货</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -118,7 +227,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, type FormInstance } from 'element-plus'
 import { Delete, Plus, View } from '@element-plus/icons-vue'
-import { createPurchaseReturn, getPurchaseInbound, getPurchaseInbounds, getPurchaseReturn, getPurchaseReturns } from '@/api/purchase'
+import { completePurchaseReturn, createPurchaseReturn, getPurchaseInbound, getPurchaseInbounds, getPurchaseReturn, getPurchaseReturns } from '@/api/purchase'
 import { getProducts } from '@/api/product'
 import { getSuppliers } from '@/api/supplier'
 import SearchForm from '@/components/SearchForm.vue'
@@ -142,10 +251,22 @@ const products = ref<any[]>([])
 const inbounds = ref<any[]>([])
 const dialogVisible = ref(false)
 const dialogMode = ref<'create' | 'view'>('create')
+const drawerVisible = ref(false)
+const completeDialogVisible = ref(false)
+const activeTab = ref('basic')
 const formRef = ref<FormInstance>()
+const completeFormRef = ref<FormInstance>()
 const selectedProductId = ref<number | null>(null)
 const pagination = reactive({ page: 1, size: 20 })
 const searchForm = reactive({ keyword: '', supplier_id: null as any, dateRange: null as any })
+const detail = reactive<any>({ items: [] })
+const completeForm = reactive({
+  id: null as number | null,
+  return_no: '',
+  express_name: '',
+  express_no: '',
+  remark: ''
+})
 const form = reactive({
   id: null as number | null,
   return_no: '',
@@ -158,7 +279,11 @@ const form = reactive({
 const formRules = {
   supplier_id: [{ required: true, message: '请选择供应商', trigger: 'change' }]
 }
+const completeRules = {
+  remark: [{ max: 200, message: '备注最多200个字', trigger: 'blur' }]
+}
 const totalAmount = computed(() => form.items.reduce((sum, item) => sum + Number(item.amount || 0), 0))
+const detailRefundTotalQuantity = computed(() => detail.items.reduce((sum: number, item: any) => sum + Number(item.quantity || 0), 0))
 
 async function fetchData() {
   loading.value = true
@@ -185,6 +310,11 @@ function resetForm() {
   formRef.value?.clearValidate()
 }
 
+function resetCompleteForm() {
+  Object.assign(completeForm, { id: null, return_no: '', express_name: '', express_no: '', remark: '' })
+  completeFormRef.value?.clearValidate()
+}
+
 function handleAdd() {
   resetForm()
   dialogMode.value = 'create'
@@ -192,28 +322,34 @@ function handleAdd() {
 }
 
 async function handleView(row: any) {
-  resetForm()
   const res: any = await getPurchaseReturn(row.id)
-  const detail = res.data || {}
-  Object.assign(form, {
-    id: detail.id,
-    return_no: detail.return_no || row.return_no || '',
-    inbound_id: detail.inbound_id || null,
-    supplier_id: detail.supplier_id || row.supplier_id || null,
-    reason: detail.reason || '',
-    status: Number(detail.status || 0),
-    items: (detail.items || []).map((item: any) => createItem({
-      product_id: item.product_id || null,
-      product_name: item.product_name || '',
-      code: item.code || '',
-      spec: item.spec || '',
-      quantity: Number(item.quantity || 1),
-      price: Number(item.price || 0),
-      amount: Number(item.amount || 0)
-    }))
+  Object.assign(detail, { ...row, ...(res.data || {}), items: res.data?.items || [] })
+  activeTab.value = 'basic'
+  drawerVisible.value = true
+}
+
+function handleComplete(row: any) {
+  Object.assign(completeForm, {
+    id: row.id,
+    return_no: row.return_no || '',
+    express_name: row.express_name || '',
+    express_no: row.express_no || '',
+    remark: row.reason || ''
   })
-  dialogMode.value = 'view'
-  dialogVisible.value = true
+  completeDialogVisible.value = true
+}
+
+async function handleCompleteSubmit() {
+  const valid = await completeFormRef.value?.validate().catch(() => false)
+  if (!valid || !completeForm.id) return
+  await completePurchaseReturn(completeForm.id, {
+    express_name: completeForm.express_name,
+    express_no: completeForm.express_no,
+    remark: completeForm.remark
+  })
+  ElMessage.success('退货成功')
+  completeDialogVisible.value = false
+  fetchData()
 }
 
 async function handleInboundChange(value: number) {
@@ -299,11 +435,20 @@ async function handleSave() {
 }
 
 function statusText(_status: any) {
-  return '已退货'
+  return Number(_status) === 1 ? '已退货' : '待退货'
+}
+
+function statusTagType(status: any) {
+  return Number(status) === 1 ? 'success' : 'warning'
 }
 
 function formatMoney(value: any) {
   return Number(value || 0).toFixed(2)
+}
+
+function formatQuantity(value: any) {
+  const quantity = Number(value || 0)
+  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(3)))
 }
 
 function formatDateTime(value: any) {
@@ -312,6 +457,10 @@ function formatDateTime(value: any) {
   if (Number.isNaN(date.getTime())) return String(value)
   const pad = (num: number) => String(num).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function emptyText(value: any) {
+  return value === undefined || value === null || value === '' ? '-' : value
 }
 
 function productOptionLabel(product: any) {

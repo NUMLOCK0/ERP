@@ -4,6 +4,8 @@ import { get, post, put, del } from './request'
 export function getPayments(params?: any) { return get('/finance/payment', params) }
 export function getPayment(id: number) { return get(`/finance/payment/${id}`) }
 export function createPayment(data: any) { return post('/finance/payment', data) }
+export function payPayment(id: number, data: any) { return post(`/finance/payment/${id}/pay`, data) }
+export function invoicePayment(id: number, data: any) { return post(`/finance/payment/${id}/invoice`, data) }
 
 // 销售收款单
 export function getReceipts(params?: any) { return get('/finance/receipt', params) }

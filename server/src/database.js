@@ -550,6 +550,7 @@ async function createTables() {
   await ensureColumn('finance_payment', 'remark', 'TEXT DEFAULT NULL');
   await ensureColumn('finance_payment', 'payer', 'VARCHAR(50) DEFAULT \'\'');
   await ensureColumn('finance_payment', 'pay_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('finance_payment', 'invoice_remark', 'TEXT DEFAULT NULL');
   await ensureColumn('finance_payment', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
   await ensureColumn('sale_order', 'cancel_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('sale_order', 'close_time', 'DATETIME DEFAULT NULL');

@@ -182,27 +182,70 @@
       </template>
     </el-drawer>
 
-    <!-- 开票弹窗 -->
-    <el-dialog v-model="invoiceDialogVisible" title="开票" width="520px" @close="resetInvoiceForm">
+    <!-- 开票抽屉 -->
+    <el-drawer v-model="invoiceDrawerVisible" direction="rtl" size="560px" @close="resetInvoiceForm">
+      <template #header>
+        <div class="drawer-header-row">
+          <span>开票</span>
+          <el-button type="primary" link @click="openInvoiceOrderDetail">查看采购单</el-button>
+        </div>
+      </template>
+
       <el-form ref="invoiceFormRef" :model="invoiceForm" :rules="invoiceRules" label-width="90px">
-        <el-form-item label="付款单id">
-          <el-input v-model="invoiceForm.id" disabled />
+        <el-form-item label="应付金额">
+          <el-input :model-value="formatMoney(invoiceForm.receivable_amount)" disabled />
+        </el-form-item>
+        <el-form-item label="未付金额">
+          <el-input :model-value="formatMoney(invoiceForm.unpaid_amount)" disabled />
+        </el-form-item>
+        <el-form-item label="已付金额">
+          <el-input :model-value="formatMoney(invoiceForm.paid_amount)" disabled />
+        </el-form-item>
+        <el-form-item label="状态" prop="invoice_status">
+          <el-select v-model="invoiceForm.invoice_status" placeholder="请选择">
+            <el-option label="未开票" :value="0" />
+            <el-option label="开票中" :value="1" />
+            <el-option label="已开票" :value="2" />
+            <el-option label="无需开票" :value="3" />
+          </el-select>
         </el-form-item>
         <el-form-item label="开票时间" prop="invoice_time">
           <el-date-picker v-model="invoiceForm.invoice_time" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择开票时间" />
         </el-form-item>
-        <el-form-item label="开票状态">
-          <el-select v-model="invoiceForm.invoice_status" placeholder="请选择">
-            <el-option label="未开票" :value="0" />
-            <el-option label="已开票" :value="1" />
-          </el-select>
+        <el-form-item label="付款方式">
+          <el-input :model-value="invoiceForm.pay_method" disabled />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="invoiceForm.invoice_remark" type="textarea" :rows="3" maxlength="200" show-word-limit placeholder="备注信息（选填）" />
+        </el-form-item>
+        <el-form-item label="开票附件">
+          <div class="voucher-upload">
+            <div v-for="(file, index) in invoiceForm.invoice_vouchers" :key="index" class="voucher-item">
+              <img v-if="file.url" :src="file.url" class="voucher-img" />
+              <div class="voucher-placeholder" v-else>
+                <span>{{ file.name }}</span>
+              </div>
+              <el-icon class="voucher-remove" @click="removeInvoiceVoucher(index)"><Close /></el-icon>
+            </div>
+            <el-upload
+              v-if="invoiceForm.invoice_vouchers.length < 10"
+              :auto-upload="true"
+              :show-file-list="false"
+              :http-request="handleInvoiceVoucherUpload"
+              accept="image/*"
+              class="voucher-uploader"
+            >
+              <el-icon class="voucher-add"><Plus /></el-icon>
+            </el-upload>
+          </div>
         </el-form-item>
       </el-form>
+
       <template #footer>
-        <el-button @click="invoiceDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleInvoiceSubmit">确认开票</el-button>
+        <el-button @click="invoiceDrawerVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleInvoiceSubmit" :loading="invoiceSubmitting">确认开票</el-button>
       </template>
-    </el-dialog>
+    </el-drawer>
 
     <!-- 采购单详情抽屉 -->
     <el-drawer v-model="orderDetailVisible" title="采购单详情" size="72%" direction="rtl">
@@ -294,13 +337,15 @@ const tableData = ref<any[]>([])
 const total = ref(0)
 const suppliers = ref<any[]>([])
 const payDrawerVisible = ref(false)
-const invoiceDialogVisible = ref(false)
+const invoiceDrawerVisible = ref(false)
 const orderDetailVisible = ref(false)
 const orderDetailTab = ref('basic')
 const payFormRef = ref<FormInstance>()
 const invoiceFormRef = ref<FormInstance>()
 const paySubmitting = ref(false)
+const invoiceSubmitting = ref(false)
 const currentPaymentRow = ref<any>(null)
+const invoicePaymentRow = ref<any>(null)
 const pagination = reactive({ page: 1, size: 20 })
 const searchForm = reactive({ keyword: '', supplier_id: null as any, status: null as any, dateRange: null as any })
 const payForm = reactive({
@@ -315,7 +360,17 @@ const payForm = reactive({
   remark: '',
   vouchers: [] as { url: string; name: string }[]
 })
-const invoiceForm = reactive({ id: null as number | null, invoice_time: '', invoice_status: 1 })
+const invoiceForm = reactive({
+  id: null as number | null,
+  receivable_amount: 0,
+  unpaid_amount: 0,
+  paid_amount: 0,
+  invoice_time: '',
+  invoice_status: 0,
+  pay_method: '',
+  invoice_remark: '',
+  invoice_vouchers: [] as { url: string; name: string }[]
+})
 const orderDetail = reactive<any>({ items: [] })
 
 const orderFinalAmount = computed(() =>
@@ -333,6 +388,7 @@ const payRules = {
 }
 
 const invoiceRules = {
+  invoice_status: [{ required: true, message: '请选择开票状态', trigger: 'change' }],
   invoice_time: [{ required: true, message: '请选择开票时间', trigger: 'change' }]
 }
 
@@ -386,12 +442,22 @@ function fillAllAmount() {
 }
 
 function openInvoiceDialog(row: any) {
+  invoicePaymentRow.value = row
+  const receivable = Number(row.receivable_total_amount ?? 0)
+  const paid = Number(row.paid_total_amount ?? row.amount ?? 0)
+  const unpaid = Math.max(receivable - paid, 0)
   Object.assign(invoiceForm, {
     id: row.id,
+    receivable_amount: receivable,
+    unpaid_amount: unpaid,
+    paid_amount: paid,
     invoice_time: row.invoice_time ? formatInputDateTime(row.invoice_time) : formatInputDateTime(new Date()),
-    invoice_status: Number(row.invoice_status || 0) || 1
+    invoice_status: Number(row.invoice_status || 0),
+    pay_method: row.pay_method || '',
+    invoice_remark: row.invoice_remark || '',
+    invoice_vouchers: []
   })
-  invoiceDialogVisible.value = true
+  invoiceDrawerVisible.value = true
 }
 
 function resetPayForm() {
@@ -404,8 +470,12 @@ function resetPayForm() {
 }
 
 function resetInvoiceForm() {
-  Object.assign(invoiceForm, { id: null, invoice_time: '', invoice_status: 1 })
+  Object.assign(invoiceForm, {
+    id: null, receivable_amount: 0, unpaid_amount: 0, paid_amount: 0,
+    invoice_time: '', invoice_status: 0, pay_method: '', invoice_remark: '', invoice_vouchers: []
+  })
   invoiceFormRef.value?.clearValidate()
+  invoicePaymentRow.value = null
 }
 
 async function handleVoucherUpload(options: UploadRequestOptions) {
@@ -423,6 +493,41 @@ async function handleVoucherUpload(options: UploadRequestOptions) {
 
 function removeVoucher(index: number) {
   payForm.vouchers.splice(index, 1)
+}
+
+async function handleInvoiceVoucherUpload(options: UploadRequestOptions) {
+  const formData = new FormData()
+  formData.append('file', options.file)
+  try {
+    const res: any = await uploadFile(formData)
+    const url = res.data?.url || ''
+    invoiceForm.invoice_vouchers.push({ url, name: res.data?.originalname || options.file.name })
+    ElMessage.success('上传成功')
+  } catch {
+    ElMessage.error('上传失败')
+  }
+}
+
+function removeInvoiceVoucher(index: number) {
+  invoiceForm.invoice_vouchers.splice(index, 1)
+}
+
+async function openInvoiceOrderDetail() {
+  const row = invoicePaymentRow.value
+  if (!row || !row.order_id) {
+    ElMessage.warning('未关联采购单')
+    return
+  }
+  try {
+    const res: any = await getPurchaseOrder(row.order_id)
+    const detail = res.data || {}
+    Object.keys(orderDetail).forEach(key => delete orderDetail[key])
+    Object.assign(orderDetail, detail, { items: detail.items || [] })
+    orderDetailTab.value = 'basic'
+    orderDetailVisible.value = true
+  } catch {
+    ElMessage.error('获取采购单详情失败')
+  }
 }
 
 async function openOrderDetail() {
@@ -470,13 +575,19 @@ async function handlePaySubmit() {
 async function handleInvoiceSubmit() {
   const valid = await invoiceFormRef.value?.validate().catch(() => false)
   if (!valid || !invoiceForm.id) return
-  await invoicePayment(invoiceForm.id, {
-    invoice_time: invoiceForm.invoice_time,
-    invoice_status: invoiceForm.invoice_status
-  })
-  ElMessage.success('开票成功')
-  invoiceDialogVisible.value = false
-  fetchData()
+  invoiceSubmitting.value = true
+  try {
+    await invoicePayment(invoiceForm.id, {
+      invoice_time: invoiceForm.invoice_time,
+      invoice_status: invoiceForm.invoice_status,
+      invoice_remark: invoiceForm.invoice_remark
+    })
+    ElMessage.success('开票成功')
+    invoiceDrawerVisible.value = false
+    fetchData()
+  } finally {
+    invoiceSubmitting.value = false
+  }
 }
 
 function paymentStatusText(status: any) {
@@ -499,8 +610,14 @@ function purchaseStatusTagType(status: any) {
   return map[Number(status)] || 'info'
 }
 
-function invoiceStatusText(status: any) { return Number(status) === 1 ? '已开票' : '未开票' }
-function invoiceStatusTagType(status: any) { return Number(status) === 1 ? 'success' : 'info' }
+function invoiceStatusText(status: any) {
+  const map: Record<number, string> = { 0: '未开票', 1: '开票中', 2: '已开票', 3: '无需开票' }
+  return map[Number(status)] || '未开票'
+}
+function invoiceStatusTagType(status: any) {
+  const map: Record<number, 'info' | 'success' | 'warning'> = { 0: 'info', 1: 'warning', 2: 'success', 3: '' }
+  return map[Number(status)] || 'info'
+}
 
 function formatMoney(value: any) { return Number(value || 0).toFixed(2) }
 function formatQuantity(value: any) {

@@ -42,7 +42,7 @@ router.get('/payment', async (req, res) => {
               fp.status, fp.amount AS paid_total_amount,
               COALESCE(NULLIF(fp.should_amount, 0), po.total_amount, 0) AS receivable_total_amount,
               COALESCE(NULLIF(fp.pay_method, ''), po.payment_method) AS pay_method,
-              fp.invoice_time, fp.invoice_status,
+              fp.invoice_time, fp.invoice_status, fp.invoice_remark,
               po.total_amount AS purchase_total_amount,
               COALESCE(item_stats.purchase_total_quantity, 0) AS purchase_total_quantity,
               COALESCE(return_stats.refund_amount, 0) AS purchase_refund_amount,
@@ -186,9 +186,10 @@ router.post('/payment/:id/invoice', async (req, res) => {
     const pool = getPool();
     const invoiceTime = req.body.invoice_time || new Date();
     const invoiceStatus = req.body.invoice_status === undefined ? 1 : Number(req.body.invoice_status);
+    const invoiceRemark = req.body.invoice_remark || '';
     await pool.execute(
-      'UPDATE finance_payment SET invoice_status = ?, invoice_time = ? WHERE id = ?',
-      [invoiceStatus, invoiceTime, req.params.id]
+      'UPDATE finance_payment SET invoice_status = ?, invoice_time = ?, invoice_remark = ? WHERE id = ?',
+      [invoiceStatus, invoiceTime, invoiceRemark, req.params.id]
     );
     await writeSystemLog(pool, req.user.id, '资金账单', '采购付款单开票', String(req.params.id));
     res.json(Response.success());

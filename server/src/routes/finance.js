@@ -152,6 +152,8 @@ router.post('/payment/:id/pay', async (req, res) => {
 
     const payAmount = Number(req.body.amount || 0);
     const payMethod = req.body.pay_method || payment.pay_method || '';
+    const payer = req.body.payer || '';
+    const payTime = req.body.pay_time || new Date();
     const remark = req.body.remark ?? payment.remark ?? '';
     if (payAmount <= 0) throw new Error('支付金额无效');
 
@@ -161,10 +163,11 @@ router.post('/payment/:id/pay', async (req, res) => {
     await conn.execute(
       `UPDATE finance_payment
        SET amount = ?, should_amount = ?, pay_method = ?, status = ?,
+           payer = ?, pay_time = ?,
            remark = ?, payment_start_time = COALESCE(payment_start_time, NOW()),
            payment_completed_time = ?
        WHERE id = ?`,
-      [paidAmount, shouldAmount, payMethod, nextStatus, remark, nextStatus === PAYMENT_STATUS.PAID ? new Date() : null, payment.id]
+      [paidAmount, shouldAmount, payMethod, nextStatus, payer, payTime, remark, nextStatus === PAYMENT_STATUS.PAID ? new Date() : null, payment.id]
     );
 
     await conn.commit();

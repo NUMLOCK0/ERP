@@ -102,7 +102,7 @@
         </el-table-column>
         <el-table-column label="操作" width="120" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link :disabled="Number(row.status) >= 2" @click="openPayDialog(row)">支付</el-button>
+            <el-button type="primary" link :disabled="Number(row.status) >= 2" @click="openPayDrawer(row)">付款</el-button>
             <el-button type="success" link @click="openInvoiceDialog(row)">开票</el-button>
           </template>
         </el-table-column>
@@ -111,15 +111,38 @@
       <Pagination v-model:page="pagination.page" v-model:size="pagination.size" :total="total" @change="fetchData" />
     </el-card>
 
-    <el-dialog v-model="payDialogVisible" title="支付" width="520px" @close="resetPayForm">
+    <!-- 付款抽屉 -->
+    <el-drawer v-model="payDrawerVisible" direction="rtl" size="560px" :close-on-click-modal="false" @close="resetPayForm">
+      <template #header>
+        <div class="drawer-header">
+          <span class="drawer-title">付款</span>
+          <el-button type="primary" link @click="openOrderDetail">查看采购单</el-button>
+        </div>
+      </template>
+
       <el-form ref="payFormRef" :model="payForm" :rules="payRules" label-width="90px">
-        <el-form-item label="付款单id">
-          <el-input v-model="payForm.id" disabled />
+        <el-form-item label="应付金额">
+          <el-input :model-value="formatMoney(payForm.receivable_amount)" disabled />
         </el-form-item>
-        <el-form-item label="支付金额" prop="amount">
-          <el-input-number v-model="payForm.amount" :min="0.01" :precision="2" :controls="false" />
+        <el-form-item label="未付金额">
+          <el-input :model-value="formatMoney(payForm.unpaid_amount)" disabled />
         </el-form-item>
-        <el-form-item label="付款方式">
+        <el-form-item label="已付金额">
+          <el-input :model-value="formatMoney(payForm.paid_amount)" disabled />
+        </el-form-item>
+        <el-form-item label="付款金额" prop="pay_amount">
+          <div class="pay-amount-row">
+            <el-input-number v-model="payForm.pay_amount" :min="0.01" :precision="2" :controls="false" />
+            <el-button @click="fillAllAmount">全部</el-button>
+          </div>
+        </el-form-item>
+        <el-form-item label="付款人" prop="payer">
+          <el-input v-model="payForm.payer" placeholder="请输入付款人" maxlength="30" show-word-limit />
+        </el-form-item>
+        <el-form-item label="付款时间" prop="pay_time">
+          <el-date-picker v-model="payForm.pay_time" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择付款时间" />
+        </el-form-item>
+        <el-form-item label="付款方式" prop="pay_method">
           <el-select v-model="payForm.pay_method" placeholder="请选择" clearable>
             <el-option label="现金" value="现金" />
             <el-option label="银行转账" value="银行转账" />
@@ -128,15 +151,38 @@
           </el-select>
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="payForm.remark" type="textarea" :rows="3" maxlength="200" show-word-limit />
+          <el-input v-model="payForm.remark" type="textarea" :rows="3" maxlength="200" show-word-limit placeholder="备注信息（选填）" />
+        </el-form-item>
+        <el-form-item label="付款凭证">
+          <div class="voucher-upload">
+            <div v-for="(file, index) in payForm.vouchers" :key="index" class="voucher-item">
+              <img v-if="file.url" :src="file.url" class="voucher-img" />
+              <div class="voucher-placeholder" v-else>
+                <span>{{ file.name }}</span>
+              </div>
+              <el-icon class="voucher-remove" @click="removeVoucher(index)"><Close /></el-icon>
+            </div>
+            <el-upload
+              v-if="payForm.vouchers.length < 10"
+              :auto-upload="true"
+              :show-file-list="false"
+              :http-request="handleVoucherUpload"
+              accept="image/*"
+              class="voucher-uploader"
+            >
+              <el-icon class="voucher-add"><Plus /></el-icon>
+            </el-upload>
+          </div>
         </el-form-item>
       </el-form>
-      <template #footer>
-        <el-button @click="payDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handlePaySubmit">确认支付</el-button>
-      </template>
-    </el-dialog>
 
+      <template #footer>
+        <el-button @click="payDrawerVisible = false">取消</el-button>
+        <el-button type="primary" @click="handlePaySubmit" :loading="paySubmitting">确认付款</el-button>
+      </template>
+    </el-drawer>
+
+    <!-- 开票弹窗 -->
     <el-dialog v-model="invoiceDialogVisible" title="开票" width="520px" @close="resetInvoiceForm">
       <el-form ref="invoiceFormRef" :model="invoiceForm" :rules="invoiceRules" label-width="90px">
         <el-form-item label="付款单id">
@@ -157,14 +203,89 @@
         <el-button type="primary" @click="handleInvoiceSubmit">确认开票</el-button>
       </template>
     </el-dialog>
+
+    <!-- 采购单详情抽屉 -->
+    <el-drawer v-model="orderDetailVisible" title="采购单详情" size="72%" direction="rtl">
+      <el-tabs v-model="orderDetailTab">
+        <el-tab-pane label="基础信息" name="basic">
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="采购单号">{{ emptyText(orderDetail.order_no) }}</el-descriptions-item>
+            <el-descriptions-item label="采购状态">
+              <el-tag :type="purchaseStatusTagType(orderDetail.status)" size="small">{{ purchaseStatusText(orderDetail.status) }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="供应商">{{ emptyText(orderDetail.supplier_name) }}</el-descriptions-item>
+            <el-descriptions-item label="入库仓库">{{ emptyText(orderDetail.warehouse_name) }}</el-descriptions-item>
+            <el-descriptions-item label="付款方式">{{ emptyText(orderDetail.payment_method) }}</el-descriptions-item>
+            <el-descriptions-item label="付款状态">{{ paymentStatusText(orderDetail.payment_status) }}</el-descriptions-item>
+            <el-descriptions-item label="联系人">{{ emptyText(orderDetail.contact) }}</el-descriptions-item>
+            <el-descriptions-item label="联系电话">{{ emptyText(orderDetail.phone) }}</el-descriptions-item>
+            <el-descriptions-item label="总价">¥{{ formatMoney(orderDetail.total_price ?? orderDetail.total_amount) }}</el-descriptions-item>
+            <el-descriptions-item label="最终总价">¥{{ formatMoney(orderFinalAmount) }}</el-descriptions-item>
+            <el-descriptions-item label="管理员备注信息">{{ emptyText(orderDetail.admin_remark) }}</el-descriptions-item>
+            <el-descriptions-item label="采购单备注信息">{{ emptyText(orderDetail.purchase_remark) }}</el-descriptions-item>
+            <el-descriptions-item label="提审时间">{{ formatDateTime(orderDetail.submit_time) }}</el-descriptions-item>
+            <el-descriptions-item label="审核时间">{{ formatDateTime(orderDetail.audit_time) }}</el-descriptions-item>
+            <el-descriptions-item label="采购开始时间">{{ formatDateTime(orderDetail.purchase_start_time) }}</el-descriptions-item>
+            <el-descriptions-item label="采购完成时间">{{ formatDateTime(orderDetail.purchase_completed_time) }}</el-descriptions-item>
+            <el-descriptions-item label="入库开始时间">{{ formatDateTime(orderDetail.inbound_start_time) }}</el-descriptions-item>
+            <el-descriptions-item label="完成时间">{{ formatDateTime(orderDetail.completed_time) }}</el-descriptions-item>
+            <el-descriptions-item label="取消时间">{{ formatDateTime(orderDetail.cancel_time) }}</el-descriptions-item>
+            <el-descriptions-item label="关闭时间">{{ formatDateTime(orderDetail.close_time) }}</el-descriptions-item>
+            <el-descriptions-item label="创建时间">{{ formatDateTime(orderDetail.created_at) }}</el-descriptions-item>
+            <el-descriptions-item label="更新时间">{{ formatDateTime(orderDetail.updated_at) }}</el-descriptions-item>
+          </el-descriptions>
+        </el-tab-pane>
+        <el-tab-pane label="产品列表" name="items">
+          <el-table :data="orderDetail.items" stripe>
+            <el-table-column prop="product_name" label="产品标题" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="code" label="产品编码" width="130" show-overflow-tooltip />
+            <el-table-column prop="spec" label="产品规格" width="120" show-overflow-tooltip />
+            <el-table-column label="计量单位" width="120">
+              <template #default="{ row }">{{ emptyText(row.unit_name) }}</template>
+            </el-table-column>
+            <el-table-column label="单位基准数" width="110" align="right">
+              <template #default="{ row }">{{ formatQuantity(row.base_quantity) }}</template>
+            </el-table-column>
+            <el-table-column label="采购数量" width="110" align="right">
+              <template #default="{ row }">{{ formatQuantity(row.quantity) }}</template>
+            </el-table-column>
+            <el-table-column label="采购单价" width="110" align="right">
+              <template #default="{ row }">¥{{ formatMoney(row.price) }}</template>
+            </el-table-column>
+            <el-table-column label="税金" width="100" align="right">
+              <template #default="{ row }">¥{{ formatMoney(row.tax) }}</template>
+            </el-table-column>
+            <el-table-column label="总价" width="110" align="right">
+              <template #default="{ row }">¥{{ formatMoney(row.amount) }}</template>
+            </el-table-column>
+            <el-table-column label="最终数量" width="110" align="right">
+              <template #default="{ row }">{{ formatQuantity(row.final_quantity ?? row.quantity) }}</template>
+            </el-table-column>
+            <el-table-column label="最终单价" width="110" align="right">
+              <template #default="{ row }">¥{{ formatMoney(row.final_price ?? row.price) }}</template>
+            </el-table-column>
+            <el-table-column label="最终税金" width="110" align="right">
+              <template #default="{ row }">¥{{ formatMoney(row.final_tax ?? row.tax) }}</template>
+            </el-table-column>
+            <el-table-column label="最终总价" width="120" align="right">
+              <template #default="{ row }">¥{{ formatMoney(row.final_amount ?? row.amount) }}</template>
+            </el-table-column>
+            <el-table-column prop="final_remark" label="备注" min-width="140" show-overflow-tooltip />
+          </el-table>
+        </el-tab-pane>
+      </el-tabs>
+    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
-import { ElMessage, type FormInstance } from 'element-plus'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ElMessage, type FormInstance, type UploadRequestOptions } from 'element-plus'
+import { Close, Plus } from '@element-plus/icons-vue'
 import { getPayments, invoicePayment, payPayment } from '@/api/finance'
+import { getPurchaseOrder } from '@/api/purchase'
 import { getSuppliers } from '@/api/supplier'
+import { uploadFile } from '@/api/upload'
 import SearchForm from '@/components/SearchForm.vue'
 import Pagination from '@/components/Pagination.vue'
 
@@ -172,17 +293,45 @@ const loading = ref(false)
 const tableData = ref<any[]>([])
 const total = ref(0)
 const suppliers = ref<any[]>([])
-const payDialogVisible = ref(false)
+const payDrawerVisible = ref(false)
 const invoiceDialogVisible = ref(false)
+const orderDetailVisible = ref(false)
+const orderDetailTab = ref('basic')
 const payFormRef = ref<FormInstance>()
 const invoiceFormRef = ref<FormInstance>()
+const paySubmitting = ref(false)
+const currentPaymentRow = ref<any>(null)
 const pagination = reactive({ page: 1, size: 20 })
 const searchForm = reactive({ keyword: '', supplier_id: null as any, status: null as any, dateRange: null as any })
-const payForm = reactive({ id: null as number | null, amount: 0, pay_method: '', remark: '' })
+const payForm = reactive({
+  id: null as number | null,
+  receivable_amount: 0,
+  unpaid_amount: 0,
+  paid_amount: 0,
+  pay_amount: 0,
+  payer: '',
+  pay_time: '',
+  pay_method: '',
+  remark: '',
+  vouchers: [] as { url: string; name: string }[]
+})
 const invoiceForm = reactive({ id: null as number | null, invoice_time: '', invoice_status: 1 })
+const orderDetail = reactive<any>({ items: [] })
+
+const orderFinalAmount = computed(() =>
+  (orderDetail.items || []).reduce((sum: number, item: any) => sum + Number(item.final_amount ?? item.amount ?? 0), 0)
+)
+
 const payRules = {
-  amount: [{ required: true, message: '请输入支付金额', trigger: 'blur' }]
+  pay_amount: [{ required: true, message: '请输入付款金额', trigger: 'blur' }],
+  payer: [
+    { required: true, message: '请输入付款人', trigger: 'blur' },
+    { max: 30, message: '付款人最多30个字符', trigger: 'blur' }
+  ],
+  pay_time: [{ required: true, message: '请选择付款时间', trigger: 'change' }],
+  pay_method: [{ required: true, message: '请选择付款方式', trigger: 'change' }]
 }
+
 const invoiceRules = {
   invoice_time: [{ required: true, message: '请选择开票时间', trigger: 'change' }]
 }
@@ -212,16 +361,28 @@ async function fetchData() {
 function handleSearch() { pagination.page = 1; fetchData() }
 function handleReset() { Object.assign(searchForm, { keyword: '', supplier_id: null, status: null, dateRange: null }); handleSearch() }
 
-function openPayDialog(row: any) {
+function openPayDrawer(row: any) {
+  currentPaymentRow.value = row
+  const receivable = Number(row.receivable_total_amount ?? 0)
   const paid = Number(row.paid_total_amount ?? row.amount ?? 0)
-  const should = Number(row.receivable_total_amount || row.purchase_total_amount || 0)
+  const unpaid = Math.max(receivable - paid, 0)
   Object.assign(payForm, {
     id: row.id,
-    amount: Number(Math.max(should - paid, 0).toFixed(2)) || 0,
+    receivable_amount: receivable,
+    unpaid_amount: unpaid,
+    paid_amount: paid,
+    pay_amount: Number(unpaid.toFixed(2)),
+    payer: '',
+    pay_time: formatInputDateTime(new Date()),
     pay_method: row.pay_method || '',
-    remark: row.remark || ''
+    remark: '',
+    vouchers: []
   })
-  payDialogVisible.value = true
+  payDrawerVisible.value = true
+}
+
+function fillAllAmount() {
+  payForm.pay_amount = payForm.unpaid_amount
 }
 
 function openInvoiceDialog(row: any) {
@@ -234,8 +395,12 @@ function openInvoiceDialog(row: any) {
 }
 
 function resetPayForm() {
-  Object.assign(payForm, { id: null, amount: 0, pay_method: '', remark: '' })
+  Object.assign(payForm, {
+    id: null, receivable_amount: 0, unpaid_amount: 0, paid_amount: 0,
+    pay_amount: 0, payer: '', pay_time: '', pay_method: '', remark: '', vouchers: []
+  })
   payFormRef.value?.clearValidate()
+  currentPaymentRow.value = null
 }
 
 function resetInvoiceForm() {
@@ -243,21 +408,63 @@ function resetInvoiceForm() {
   invoiceFormRef.value?.clearValidate()
 }
 
+async function handleVoucherUpload(options: UploadRequestOptions) {
+  const formData = new FormData()
+  formData.append('file', options.file)
+  try {
+    const res: any = await uploadFile(formData)
+    const url = res.data?.url || ''
+    payForm.vouchers.push({ url, name: res.data?.originalname || options.file.name })
+    ElMessage.success('上传成功')
+  } catch {
+    ElMessage.error('上传失败')
+  }
+}
+
+function removeVoucher(index: number) {
+  payForm.vouchers.splice(index, 1)
+}
+
+async function openOrderDetail() {
+  const row = currentPaymentRow.value
+  if (!row || !row.order_id) {
+    ElMessage.warning('未关联采购单')
+    return
+  }
+  try {
+    const res: any = await getPurchaseOrder(row.order_id)
+    const detail = res.data || {}
+    Object.keys(orderDetail).forEach(key => delete orderDetail[key])
+    Object.assign(orderDetail, detail, { items: detail.items || [] })
+    orderDetailTab.value = 'basic'
+    orderDetailVisible.value = true
+  } catch {
+    ElMessage.error('获取采购单详情失败')
+  }
+}
+
 async function handlePaySubmit() {
   const valid = await payFormRef.value?.validate().catch(() => false)
   if (!valid || !payForm.id) return
-  if (Number(payForm.amount || 0) <= 0) {
-    ElMessage.warning('支付金额必须大于0')
+  if (Number(payForm.pay_amount || 0) <= 0) {
+    ElMessage.warning('付款金额必须大于0')
     return
   }
-  await payPayment(payForm.id, {
-    amount: Number(payForm.amount || 0),
-    pay_method: payForm.pay_method,
-    remark: payForm.remark
-  })
-  ElMessage.success('支付成功')
-  payDialogVisible.value = false
-  fetchData()
+  paySubmitting.value = true
+  try {
+    await payPayment(payForm.id, {
+      amount: Number(payForm.pay_amount || 0),
+      pay_method: payForm.pay_method,
+      payer: payForm.payer,
+      pay_time: payForm.pay_time,
+      remark: payForm.remark
+    })
+    ElMessage.success('付款成功')
+    payDrawerVisible.value = false
+    fetchData()
+  } finally {
+    paySubmitting.value = false
+  }
 }
 
 async function handleInvoiceSubmit() {
@@ -282,21 +489,23 @@ function paymentStatusTagType(status: any) {
   return map[Number(status)] || 'info'
 }
 
-function invoiceStatusText(status: any) {
-  return Number(status) === 1 ? '已开票' : '未开票'
+function purchaseStatusText(status: any) {
+  const map: Record<number, string> = { 0: '待提交', 1: '采购中', 2: '待审核', 3: '已取消', 4: '已关闭', 5: '已审核', 6: '已采购', 7: '入库中', 8: '已入库', 9: '已拒绝' }
+  return map[Number(status)] || ''
 }
 
-function invoiceStatusTagType(status: any) {
-  return Number(status) === 1 ? 'success' : 'info'
+function purchaseStatusTagType(status: any) {
+  const map: Record<number, '' | 'success' | 'warning' | 'danger' | 'info'> = { 0: 'info', 1: 'warning', 2: '', 3: 'danger', 4: 'danger', 5: 'success', 6: '', 7: 'warning', 8: 'success', 9: 'danger' }
+  return map[Number(status)] || 'info'
 }
 
-function formatMoney(value: any) {
-  return Number(value || 0).toFixed(2)
-}
+function invoiceStatusText(status: any) { return Number(status) === 1 ? '已开票' : '未开票' }
+function invoiceStatusTagType(status: any) { return Number(status) === 1 ? 'success' : 'info' }
 
+function formatMoney(value: any) { return Number(value || 0).toFixed(2) }
 function formatQuantity(value: any) {
-  const quantity = Number(value || 0)
-  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(3)))
+  const q = Number(value || 0)
+  return Number.isInteger(q) ? String(q) : String(Number(q.toFixed(3)))
 }
 
 function formatDateTime(value: any) {
@@ -315,13 +524,9 @@ function formatInputDateTime(value: any) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 }
 
-function emptyText(value: any) {
-  return value === undefined || value === null || value === '' ? '-' : value
-}
+function emptyText(value: any) { return value === undefined || value === null || value === '' ? '-' : value }
 
-function listOf(res: any) {
-  return res.data?.list || res.data || []
-}
+function listOf(res: any) { return res.data?.list || res.data || [] }
 
 onMounted(async () => {
   fetchData()
@@ -331,12 +536,78 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-container {
-  height: 100%;
-}
-.el-input-number,
-.el-select,
-.el-date-editor {
+.page-container { height: 100%; }
+.el-input-number, .el-select, .el-date-editor { width: 100%; }
+
+.drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   width: 100%;
 }
+.drawer-title { font-size: 16px; font-weight: 600; }
+
+.pay-amount-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+.pay-amount-row .el-input-number { flex: 1; }
+
+.voucher-upload {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.voucher-item {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #dcdfe6;
+}
+.voucher-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.voucher-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #909399;
+  padding: 4px;
+  text-align: center;
+}
+.voucher-remove {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  background: #f56c6c;
+  color: #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.voucher-uploader {
+  width: 80px;
+  height: 80px;
+  border: 1px dashed #dcdfe6;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.voucher-uploader:hover { border-color: #409eff; }
+.voucher-add { font-size: 24px; color: #909399; }
 </style>

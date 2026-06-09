@@ -273,11 +273,20 @@ async function createTables() {
       id INT PRIMARY KEY AUTO_INCREMENT,
       order_no VARCHAR(50) NOT NULL UNIQUE,
       customer_id INT DEFAULT 0,
+      employee_id INT DEFAULT 0,
       warehouse_id INT DEFAULT 0,
+      payment_method VARCHAR(50) DEFAULT '',
       total_amount DOUBLE DEFAULT 0,
+      admin_remark TEXT DEFAULT NULL,
+      sale_remark TEXT DEFAULT NULL,
+      customer_contact VARCHAR(100) DEFAULT '',
+      customer_phone VARCHAR(50) DEFAULT '',
+      detail_address VARCHAR(255) DEFAULT '',
       status INT DEFAULT 0,
       auditor_id INT DEFAULT 0,
       audit_time DATETIME DEFAULT NULL,
+      submit_time DATETIME DEFAULT NULL,
+      completed_time DATETIME DEFAULT NULL,
       cancel_time DATETIME DEFAULT NULL,
       close_time DATETIME DEFAULT NULL,
       creator_id INT DEFAULT 0,
@@ -291,6 +300,7 @@ async function createTables() {
       product_id INT DEFAULT 0,
       quantity DOUBLE DEFAULT 0,
       price DOUBLE DEFAULT 0,
+      tax DOUBLE DEFAULT 0,
       amount DOUBLE DEFAULT 0
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
@@ -304,8 +314,10 @@ async function createTables() {
       status INT DEFAULT 0,
       logistics_company VARCHAR(100) DEFAULT '',
       logistics_no VARCHAR(100) DEFAULT '',
+      completed_time DATETIME DEFAULT NULL,
       creator_id INT DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS sale_delivery_item (
@@ -452,6 +464,11 @@ async function createTables() {
       status INT DEFAULT 0,
       invoice_time DATETIME DEFAULT NULL,
       invoice_status INT DEFAULT 0,
+      invoice_remark TEXT DEFAULT NULL,
+      invoice_attachment_urls JSON DEFAULT NULL,
+      payer VARCHAR(30) DEFAULT '',
+      pay_time DATETIME DEFAULT NULL,
+      voucher_urls JSON DEFAULT NULL,
       payment_start_time DATETIME DEFAULT NULL,
       payment_completed_time DATETIME DEFAULT NULL,
       close_time DATETIME DEFAULT NULL,
@@ -461,16 +478,40 @@ async function createTables() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
+    await conn.execute(`CREATE TABLE IF NOT EXISTS finance_payment_record (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      payment_id INT NOT NULL,
+      amount DOUBLE DEFAULT 0,
+      payer VARCHAR(30) DEFAULT '',
+      pay_time DATETIME DEFAULT NULL,
+      pay_method VARCHAR(50) DEFAULT '',
+      voucher_urls JSON DEFAULT NULL,
+      remark TEXT DEFAULT NULL,
+      creator_id INT DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_payment_id (payment_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
     await conn.execute(`CREATE TABLE IF NOT EXISTS finance_receipt (
       id INT PRIMARY KEY AUTO_INCREMENT,
       receipt_no VARCHAR(50) NOT NULL UNIQUE,
+      order_id INT DEFAULT 0,
       customer_id INT DEFAULT 0,
       delivery_id INT DEFAULT 0,
       amount DOUBLE DEFAULT 0,
+      should_amount DOUBLE DEFAULT 0,
       pay_method VARCHAR(50) DEFAULT '',
       status INT DEFAULT 0,
+      invoice_time DATETIME DEFAULT NULL,
+      invoice_status INT DEFAULT 0,
+      invoice_remark TEXT DEFAULT NULL,
+      payment_start_time DATETIME DEFAULT NULL,
+      payment_completed_time DATETIME DEFAULT NULL,
+      close_time DATETIME DEFAULT NULL,
+      remark TEXT DEFAULT NULL,
       creator_id INT DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS system_log (
@@ -544,6 +585,11 @@ async function createTables() {
   await ensureColumn('finance_payment', 'should_amount', 'DOUBLE DEFAULT 0');
   await ensureColumn('finance_payment', 'invoice_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('finance_payment', 'invoice_status', 'INT DEFAULT 0');
+  await ensureColumn('finance_payment', 'invoice_remark', 'TEXT DEFAULT NULL');
+  await ensureColumn('finance_payment', 'invoice_attachment_urls', 'JSON DEFAULT NULL');
+  await ensureColumn('finance_payment', 'payer', "VARCHAR(30) DEFAULT ''");
+  await ensureColumn('finance_payment', 'pay_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('finance_payment', 'voucher_urls', 'JSON DEFAULT NULL');
   await ensureColumn('finance_payment', 'payment_start_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('finance_payment', 'payment_completed_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('finance_payment', 'close_time', 'DATETIME DEFAULT NULL');
@@ -552,8 +598,30 @@ async function createTables() {
   await ensureColumn('finance_payment', 'pay_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('finance_payment', 'invoice_remark', 'TEXT DEFAULT NULL');
   await ensureColumn('finance_payment', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+  await ensureColumn('sale_order', 'employee_id', 'INT DEFAULT 0');
+  await ensureColumn('sale_order', 'payment_method', "VARCHAR(50) DEFAULT ''");
+  await ensureColumn('sale_order', 'admin_remark', 'TEXT DEFAULT NULL');
+  await ensureColumn('sale_order', 'sale_remark', 'TEXT DEFAULT NULL');
+  await ensureColumn('sale_order', 'customer_contact', "VARCHAR(100) DEFAULT ''");
+  await ensureColumn('sale_order', 'customer_phone', "VARCHAR(50) DEFAULT ''");
+  await ensureColumn('sale_order', 'detail_address', "VARCHAR(255) DEFAULT ''");
+  await ensureColumn('sale_order', 'submit_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('sale_order', 'completed_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('sale_order', 'cancel_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('sale_order', 'close_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('sale_order_item', 'tax', 'DOUBLE DEFAULT 0');
+  await ensureColumn('sale_delivery', 'completed_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('sale_delivery', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+  await ensureColumn('finance_receipt', 'order_id', 'INT DEFAULT 0');
+  await ensureColumn('finance_receipt', 'should_amount', 'DOUBLE DEFAULT 0');
+  await ensureColumn('finance_receipt', 'invoice_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('finance_receipt', 'invoice_status', 'INT DEFAULT 0');
+  await ensureColumn('finance_receipt', 'invoice_remark', 'TEXT DEFAULT NULL');
+  await ensureColumn('finance_receipt', 'payment_start_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('finance_receipt', 'payment_completed_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('finance_receipt', 'close_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('finance_receipt', 'remark', 'TEXT DEFAULT NULL');
+  await ensureColumn('finance_receipt', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
 }
 
 async function ensureColumn(table, column, definition) {

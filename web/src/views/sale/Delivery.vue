@@ -16,7 +16,7 @@
         <el-table-column prop="logistics_company" label="物流公司" width="120" />
         <el-table-column prop="logistics_no" label="物流单号" width="150" />
         <el-table-column label="状态" width="90">
-          <template #default="{ row }"><el-tag :type="row.status==='completed'?'success':'warning'" size="small">{{ row.status==='completed'?'已发货':'待发货' }}</el-tag></template>
+          <template #default="{ row }"><el-tag :type="isShipped(row.status)?'success':'warning'" size="small">{{ isShipped(row.status)?'已发货':'待发货' }}</el-tag></template>
         </el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="120" />
       </el-table>
@@ -49,6 +49,7 @@ async function fetchData() {
 }
 function handleSearch() { pagination.page = 1; fetchData() }
 function handleReset() { Object.assign(searchForm, { delivery_no: '', customer_id: null }); handleSearch() }
+function isShipped(status: any) { return status === 'completed' || Number(status) === 1 }
 
 onMounted(async () => {
   fetchData()

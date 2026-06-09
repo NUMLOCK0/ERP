@@ -24,7 +24,7 @@ import { Plus } from '@element-plus/icons-vue'
 const props = withDefaults(defineProps<{ accept?: string; limit?: number; fileList?: any[]; maxSize?: number }>(), { accept: 'image/*', limit: 5, fileList: () => [], maxSize: 10 })
 const emit = defineEmits<{ (e: 'success', url: string): void }>()
 
-const uploadUrl = 'http://localhost:3000/api/upload'
+const uploadUrl = '/api/upload/file'
 const headers = computed(() => ({ Authorization: `Bearer ${localStorage.getItem('token')}` }))
 
 function beforeUpload(file: File) { return file.size / 1024 / 1024 <= props.maxSize }

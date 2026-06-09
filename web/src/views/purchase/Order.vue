@@ -20,10 +20,7 @@
             <el-form-item label="付款方式">
               <el-select v-model="form.payment_method" placeholder="未确定" clearable>
                 <el-option label="未确定" value="" />
-                <el-option label="现金" value="现金" />
-                <el-option label="银行转账" value="银行转账" />
-                <el-option label="微信" value="微信" />
-                <el-option label="支付宝" value="支付宝" />
+                <el-option v-for="method in paymentMethodOptions" :key="method" :label="method" :value="method" />
               </el-select>
             </el-form-item>
             <el-form-item label="管理备注">
@@ -259,10 +256,7 @@
             <el-form-item label="付款方式">
               <el-select v-model="confirmForm.payment_method" placeholder="未确定" clearable>
                 <el-option label="未确定" value="" />
-                <el-option label="现金" value="现金" />
-                <el-option label="银行转账" value="银行转账" />
-                <el-option label="微信" value="微信" />
-                <el-option label="支付宝" value="支付宝" />
+                <el-option v-for="method in paymentMethodOptions" :key="method" :label="method" :value="method" />
               </el-select>
             </el-form-item>
             <el-form-item label="联系信息" class="contact-form-item">
@@ -870,6 +864,7 @@ const statusOptions = [
   { label: '已取消', value: 3 },
   { label: '已关闭', value: 4 }
 ]
+const paymentMethodOptions = ['账期结算', '预付款', '银行转账', '现金支付', '在线支付', '其他方式']
 const totalAmount = computed(() => form.items.reduce((sum, item) => sum + Number(item.amount || 0), 0))
 const detailFinalAmount = computed(() => (detailData.items || []).reduce((sum: number, item: any) => sum + Number(item.final_amount ?? item.amount ?? 0), 0))
 const inboundLineCount = computed(() => inboundForm.items.filter(item => Number(item.inbound_quantity || 0) > 0).length)
@@ -1495,7 +1490,7 @@ function firstProductImage(product: any) {
   const url = images[0] || ''
   if (!url) return ''
   if (/^https?:\/\//i.test(url)) return url
-  return `http://localhost:3000${url}`
+  return url
 }
 
 function normalizeImageUrls(value: any) {

@@ -612,7 +612,7 @@ const uploadHeaders = { Authorization: `Bearer ${localStorage.getItem('token') |
 function assetUrl(url: string) {
   if (!url) return ''
   if (/^https?:\/\//i.test(url)) return url
-  return `http://localhost:3000${url}`
+  return url
 }
 
 function normalizeImageUrls(value: any) {

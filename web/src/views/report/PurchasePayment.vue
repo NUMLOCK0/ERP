@@ -6,7 +6,9 @@
       </SearchForm>
       <div class="toolbar"><el-button type="primary" @click="ElMessage.info('导出Excel')">导出Excel</el-button></div>
       <el-table :data="tableData" stripe v-loading="loading">
-        <el-table-column prop="payment_no" label="付款单号" width="180" />
+        <el-table-column prop="payment_no" label="付款单号" width="190">
+          <template #default="{ row }"><CopyableNo :value="row.payment_no" /></template>
+        </el-table-column>
         <el-table-column prop="supplier_name" label="供应商" min-width="150" />
         <el-table-column prop="amount" label="金额" width="120"><template #default="{ row }">¥{{ row.amount?.toLocaleString() }}</template></el-table-column>
         <el-table-column prop="pay_method" label="付款方式" width="100" />

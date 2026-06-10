@@ -9,7 +9,9 @@
       </SearchForm>
 
       <el-table :data="tableData" stripe v-loading="loading">
-        <el-table-column prop="transfer_no" label="调拨单号" width="180" />
+        <el-table-column prop="transfer_no" label="调拨单号" width="190">
+          <template #default="{ row }"><CopyableNo :value="row.transfer_no" /></template>
+        </el-table-column>
         <el-table-column prop="from_warehouse_name" label="调出仓库" width="120" />
         <el-table-column prop="to_warehouse_name" label="调入仓库" width="120" />
         <el-table-column prop="total_amount" label="金额" width="120">

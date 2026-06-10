@@ -13,7 +13,9 @@
         <el-table-column prop="change_quantity" label="变动数量" width="100" />
         <el-table-column prop="before_quantity" label="变动前" width="80" />
         <el-table-column prop="after_quantity" label="变动后" width="80" />
-        <el-table-column prop="ref_no" label="关联单据" width="150" />
+        <el-table-column prop="ref_no" label="关联单据" width="190">
+          <template #default="{ row }"><CopyableNo :value="row.ref_no" /></template>
+        </el-table-column>
         <el-table-column prop="remark" label="备注" min-width="120" />
         <el-table-column prop="created_at" label="时间" width="160" />
       </el-table>

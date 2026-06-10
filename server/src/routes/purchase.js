@@ -3,6 +3,7 @@ const router = express.Router();
 const { getPool } = require('../database');
 const Response = require('../utils/response');
 const { isAuditEnabled } = require('../utils/auditConfig');
+const { resolveInlineProduct } = require('../utils/inlineProduct');
 
 const PURCHASE_STATUS = {
   PENDING_SUBMIT: 0,
@@ -223,9 +224,13 @@ router.post('/order', async (req, res) => {
       }
 
       for (const item of items) {
+        const productId = await resolveInlineProduct(conn, item, {
+          supplierId: supplier_id,
+          warehouseId: warehouse_id
+        });
         await conn.execute(
           'INSERT INTO purchase_order_item (order_id, product_id, quantity, price, tax, amount, remark) VALUES (?,?,?,?,?,?,?)',
-          [orderId, item.product_id, item.quantity, item.price, item.tax || 0, (item.quantity || 0) * (item.price || 0) + (item.tax || 0), item.remark || '']
+          [orderId, productId, item.quantity, item.price, item.tax || 0, (item.quantity || 0) * (item.price || 0) + (item.tax || 0), item.remark || '']
         );
       }
 
@@ -257,9 +262,13 @@ router.put('/order/:id', async (req, res) => {
       for (const item of (items || [])) {
         const amount = (item.quantity || 0) * (item.price || 0) + (item.tax || 0);
         totalAmount += amount;
+        const productId = await resolveInlineProduct(conn, item, {
+          supplierId: supplier_id,
+          warehouseId: warehouse_id
+        });
         await conn.execute(
           'INSERT INTO purchase_order_item (order_id, product_id, quantity, price, tax, amount, remark) VALUES (?,?,?,?,?,?,?)',
-          [req.params.id, item.product_id, item.quantity, item.price, item.tax || 0, amount, item.remark || '']
+          [req.params.id, productId, item.quantity, item.price, item.tax || 0, amount, item.remark || '']
         );
       }
 

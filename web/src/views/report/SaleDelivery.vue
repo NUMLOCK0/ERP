@@ -7,7 +7,9 @@
       </SearchForm>
       <div class="toolbar"><el-button type="primary" @click="ElMessage.info('导出Excel')">导出Excel</el-button></div>
       <el-table :data="tableData" stripe v-loading="loading">
-        <el-table-column prop="delivery_no" label="发货单号" width="180" />
+        <el-table-column prop="delivery_no" label="发货单号" width="190">
+          <template #default="{ row }"><CopyableNo :value="row.delivery_no" /></template>
+        </el-table-column>
         <el-table-column prop="customer_name" label="客户" min-width="150" />
         <el-table-column prop="product_name" label="产品" min-width="150" />
         <el-table-column prop="quantity" label="数量" width="100" />

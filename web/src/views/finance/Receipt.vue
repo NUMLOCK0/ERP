@@ -23,7 +23,7 @@
       <el-table :data="tableData" stripe v-loading="loading">
         <el-table-column prop="id" label="收款单id" width="100" />
         <el-table-column prop="order_no" label="销售单号" width="190" show-overflow-tooltip>
-          <template #default="{ row }">{{ emptyText(row.order_no) }}</template>
+          <template #default="{ row }"><CopyableNo :value="row.order_no" /></template>
         </el-table-column>
         <el-table-column prop="customer_name" label="客户" min-width="150" show-overflow-tooltip>
           <template #default="{ row }">{{ emptyText(row.customer_name) }}</template>

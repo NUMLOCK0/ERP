@@ -6,12 +6,14 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import { createPinia } from 'pinia'
 import router from './router'
 import App from './App.vue'
+import CopyableNo from './components/CopyableNo.vue'
 
 const app = createApp(App)
 
 app.use(ElementPlus, { locale: zhCn })
 app.use(createPinia())
 app.use(router)
+app.component('CopyableNo', CopyableNo)
 
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)

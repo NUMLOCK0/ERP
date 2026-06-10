@@ -52,7 +52,9 @@
         <el-card>
           <template #header><span>最近采购订单</span></template>
           <el-table :data="recentPurchase" size="small" style="width:100%">
-            <el-table-column prop="order_no" label="订单号" width="160" />
+            <el-table-column prop="order_no" label="订单号" width="180">
+              <template #default="{ row }"><CopyableNo :value="row.order_no" /></template>
+            </el-table-column>
             <el-table-column prop="supplier_name" label="供应商" />
             <el-table-column prop="total_amount" label="金额" width="100">
               <template #default="{ row }">¥{{ formatNumber(row.total_amount) }}</template>
@@ -70,7 +72,9 @@
         <el-card>
           <template #header><span>最近销售订单</span></template>
           <el-table :data="recentSale" size="small" style="width:100%">
-            <el-table-column prop="order_no" label="订单号" width="160" />
+            <el-table-column prop="order_no" label="订单号" width="180">
+              <template #default="{ row }"><CopyableNo :value="row.order_no" /></template>
+            </el-table-column>
             <el-table-column prop="customer_name" label="客户" />
             <el-table-column prop="total_amount" label="金额" width="100">
               <template #default="{ row }">¥{{ formatNumber(row.total_amount) }}</template>

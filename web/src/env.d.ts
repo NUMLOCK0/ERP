@@ -5,3 +5,11 @@ declare module '*.vue' {
   const component: DefineComponent<{}, {}, any>
   export default component
 }
+
+declare module 'vue' {
+  export interface GlobalComponents {
+    CopyableNo: typeof import('./components/CopyableNo.vue')['default']
+  }
+}
+
+export {}

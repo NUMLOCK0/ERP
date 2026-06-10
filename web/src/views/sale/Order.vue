@@ -10,7 +10,9 @@
         <el-form ref="formRef" :model="form" :rules="formRules" label-width="96px" :disabled="editorMode === 'view'" class="sale-form">
           <div class="sale-form-grid">
             <el-form-item label="销售单号" required>
-              <el-input v-model="form.order_no" placeholder="S{date}{time}{id}******" :disabled="true" />
+              <el-input v-model="form.order_no" placeholder="S{date}{time}{id}******" :disabled="true">
+                <template #append><CopyableNo :value="form.order_no" icon-only /></template>
+              </el-input>
             </el-form-item>
             <el-form-item label="职员">
               <el-select v-model="form.employee_id" placeholder="请选择..." clearable filterable>
@@ -270,7 +272,9 @@
 
       <el-table :data="tableData" stripe v-loading="loading">
         <el-table-column prop="id" label="销售单id" width="100" />
-        <el-table-column prop="order_no" label="销售单号" width="190" show-overflow-tooltip />
+        <el-table-column prop="order_no" label="销售单号" width="190" show-overflow-tooltip>
+          <template #default="{ row }"><CopyableNo :value="row.order_no" /></template>
+        </el-table-column>
         <el-table-column prop="customer_name" label="客户" min-width="150" show-overflow-tooltip>
           <template #default="{ row }">{{ emptyText(row.customer_name) }}</template>
         </el-table-column>
@@ -284,7 +288,7 @@
           <template #default="{ row }"><el-tag :type="paymentStatusTagType(row.payment_status)" size="small">{{ paymentStatusText(row.payment_status) }}</el-tag></template>
         </el-table-column>
         <el-table-column label="退货状态" width="100">
-          <template #default="{ row }"><el-tag :type="row.return_status ? 'danger' : 'info'" size="small">{{ row.return_status ? '已退货' : '无退货' }}</el-tag></template>
+          <template #default="{ row }"><el-tag :type="returnFlagTagType(row.return_status)" size="small">{{ returnFlagText(row.return_status) }}</el-tag></template>
         </el-table-column>
         <el-table-column prop="payment_method" label="付款方式" width="120" show-overflow-tooltip>
           <template #default="{ row }">{{ emptyText(row.payment_method) }}</template>
@@ -390,6 +394,7 @@ import { getUnits } from '@/api/unit'
 import { getWarehouses } from '@/api/warehouse'
 import SearchForm from '@/components/SearchForm.vue'
 import Pagination from '@/components/Pagination.vue'
+import { returnFlagTagType, returnFlagText } from '@/utils/status'
 
 interface SaleItem {
   id: number | null
@@ -558,7 +563,9 @@ async function loadOrder(id: number) {
     sale_remark: detail.sale_remark || '',
     customer_contact: detail.customer_contact || '',
     customer_phone: detail.customer_phone || '',
-    detail_address: detail.detail_address || ''
+    detail_address: detail.detail_address || '',
+    create_delivery: Boolean(Number(detail.create_delivery || 0)),
+    ship: Boolean(Number(detail.ship || 0))
   })
   if (!form.customer_contact && !form.customer_phone && !form.detail_address) handleCustomerChange(form.customer_id)
   form.items = normalizeOrderItems(detail.items || [])

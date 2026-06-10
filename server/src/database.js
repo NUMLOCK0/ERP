@@ -282,6 +282,8 @@ async function createTables() {
       customer_contact VARCHAR(100) DEFAULT '',
       customer_phone VARCHAR(50) DEFAULT '',
       detail_address VARCHAR(255) DEFAULT '',
+      create_delivery TINYINT DEFAULT 0,
+      ship TINYINT DEFAULT 0,
       status INT DEFAULT 0,
       auditor_id INT DEFAULT 0,
       audit_time DATETIME DEFAULT NULL,
@@ -314,7 +316,11 @@ async function createTables() {
       status INT DEFAULT 0,
       logistics_company VARCHAR(100) DEFAULT '',
       logistics_no VARCHAR(100) DEFAULT '',
+      delivery_remark TEXT DEFAULT NULL,
       completed_time DATETIME DEFAULT NULL,
+      shipped_time DATETIME DEFAULT NULL,
+      cancel_time DATETIME DEFAULT NULL,
+      close_time DATETIME DEFAULT NULL,
       creator_id INT DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -334,20 +340,32 @@ async function createTables() {
       return_no VARCHAR(50) NOT NULL UNIQUE,
       delivery_id INT DEFAULT 0,
       customer_id INT DEFAULT 0,
+      employee_id INT DEFAULT 0,
       total_amount DOUBLE DEFAULT 0,
       status INT DEFAULT 0,
+      express_name VARCHAR(100) DEFAULT '',
+      express_no VARCHAR(100) DEFAULT '',
+      contact VARCHAR(100) DEFAULT '',
+      phone VARCHAR(50) DEFAULT '',
+      address VARCHAR(255) DEFAULT '',
       reason TEXT DEFAULT NULL,
+      completed_time DATETIME DEFAULT NULL,
+      cancel_time DATETIME DEFAULT NULL,
       creator_id INT DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS sale_return_item (
       id INT PRIMARY KEY AUTO_INCREMENT,
       return_id INT DEFAULT 0,
+      delivery_item_id INT DEFAULT 0,
       product_id INT DEFAULT 0,
       quantity DOUBLE DEFAULT 0,
       price DOUBLE DEFAULT 0,
-      amount DOUBLE DEFAULT 0
+      tax DOUBLE DEFAULT 0,
+      amount DOUBLE DEFAULT 0,
+      remark VARCHAR(255) DEFAULT ''
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS inventory_stock (
@@ -413,13 +431,23 @@ async function createTables() {
     await conn.execute(`CREATE TABLE IF NOT EXISTS other_inbound (
       id INT PRIMARY KEY AUTO_INCREMENT,
       inbound_no VARCHAR(50) NOT NULL UNIQUE,
+      supplier_id INT DEFAULT 0,
       warehouse_id INT DEFAULT 0,
       type VARCHAR(50) DEFAULT '',
       total_amount DOUBLE DEFAULT 0,
+      total_quantity DOUBLE DEFAULT 0,
       status INT DEFAULT 0,
+      admin_remark TEXT DEFAULT NULL,
+      inbound_remark TEXT DEFAULT NULL,
       remark TEXT DEFAULT NULL,
       creator_id INT DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      completed_time DATETIME DEFAULT NULL,
+      audit_time DATETIME DEFAULT NULL,
+      submit_time DATETIME DEFAULT NULL,
+      cancel_time DATETIME DEFAULT NULL,
+      close_time DATETIME DEFAULT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS other_inbound_item (
@@ -434,13 +462,29 @@ async function createTables() {
     await conn.execute(`CREATE TABLE IF NOT EXISTS other_outbound (
       id INT PRIMARY KEY AUTO_INCREMENT,
       outbound_no VARCHAR(50) NOT NULL UNIQUE,
+      customer_id INT DEFAULT 0,
       warehouse_id INT DEFAULT 0,
       type VARCHAR(50) DEFAULT '',
       total_amount DOUBLE DEFAULT 0,
+      total_quantity DOUBLE DEFAULT 0,
+      tax_amount DOUBLE DEFAULT 0,
       status INT DEFAULT 0,
+      contact VARCHAR(100) DEFAULT '',
+      phone VARCHAR(50) DEFAULT '',
+      address VARCHAR(255) DEFAULT '',
+      express_name VARCHAR(100) DEFAULT '',
+      express_no VARCHAR(100) DEFAULT '',
+      admin_remark TEXT DEFAULT NULL,
+      outbound_remark TEXT DEFAULT NULL,
       remark TEXT DEFAULT NULL,
       creator_id INT DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      completed_time DATETIME DEFAULT NULL,
+      audit_time DATETIME DEFAULT NULL,
+      submit_time DATETIME DEFAULT NULL,
+      cancel_time DATETIME DEFAULT NULL,
+      close_time DATETIME DEFAULT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS other_outbound_item (
@@ -449,6 +493,8 @@ async function createTables() {
       product_id INT DEFAULT 0,
       quantity DOUBLE DEFAULT 0,
       price DOUBLE DEFAULT 0,
+      tax DOUBLE DEFAULT 0,
+      location VARCHAR(100) DEFAULT '',
       amount DOUBLE DEFAULT 0
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
@@ -581,6 +627,34 @@ async function createTables() {
   await ensureColumn('purchase_return', 'cancel_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('purchase_return', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
   await ensureColumn('purchase_return_item', 'remark', "VARCHAR(255) DEFAULT ''");
+  await ensureColumn('other_inbound', 'supplier_id', 'INT DEFAULT 0');
+  await ensureColumn('other_inbound', 'total_quantity', 'DOUBLE DEFAULT 0');
+  await ensureColumn('other_inbound', 'admin_remark', 'TEXT DEFAULT NULL');
+  await ensureColumn('other_inbound', 'inbound_remark', 'TEXT DEFAULT NULL');
+  await ensureColumn('other_inbound', 'completed_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('other_inbound', 'audit_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('other_inbound', 'submit_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('other_inbound', 'cancel_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('other_inbound', 'close_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('other_inbound', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+  await ensureColumn('other_outbound', 'customer_id', 'INT DEFAULT 0');
+  await ensureColumn('other_outbound', 'total_quantity', 'DOUBLE DEFAULT 0');
+  await ensureColumn('other_outbound', 'tax_amount', 'DOUBLE DEFAULT 0');
+  await ensureColumn('other_outbound', 'contact', "VARCHAR(100) DEFAULT ''");
+  await ensureColumn('other_outbound', 'phone', "VARCHAR(50) DEFAULT ''");
+  await ensureColumn('other_outbound', 'address', "VARCHAR(255) DEFAULT ''");
+  await ensureColumn('other_outbound', 'express_name', "VARCHAR(100) DEFAULT ''");
+  await ensureColumn('other_outbound', 'express_no', "VARCHAR(100) DEFAULT ''");
+  await ensureColumn('other_outbound', 'admin_remark', 'TEXT DEFAULT NULL');
+  await ensureColumn('other_outbound', 'outbound_remark', 'TEXT DEFAULT NULL');
+  await ensureColumn('other_outbound', 'completed_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('other_outbound', 'audit_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('other_outbound', 'submit_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('other_outbound', 'cancel_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('other_outbound', 'close_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('other_outbound', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+  await ensureColumn('other_outbound_item', 'tax', 'DOUBLE DEFAULT 0');
+  await ensureColumn('other_outbound_item', 'location', "VARCHAR(100) DEFAULT ''");
   await ensureColumn('finance_payment', 'order_id', 'INT DEFAULT 0');
   await ensureColumn('finance_payment', 'should_amount', 'DOUBLE DEFAULT 0');
   await ensureColumn('finance_payment', 'invoice_time', 'DATETIME DEFAULT NULL');
@@ -605,13 +679,36 @@ async function createTables() {
   await ensureColumn('sale_order', 'customer_contact', "VARCHAR(100) DEFAULT ''");
   await ensureColumn('sale_order', 'customer_phone', "VARCHAR(50) DEFAULT ''");
   await ensureColumn('sale_order', 'detail_address', "VARCHAR(255) DEFAULT ''");
+  await ensureColumn('sale_order', 'create_delivery', 'TINYINT DEFAULT 0');
+  await ensureColumn('sale_order', 'ship', 'TINYINT DEFAULT 0');
   await ensureColumn('sale_order', 'submit_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('sale_order', 'completed_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('sale_order', 'cancel_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('sale_order', 'close_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('sale_order_item', 'tax', 'DOUBLE DEFAULT 0');
+  await ensureColumn('sale_delivery', 'delivery_remark', 'TEXT DEFAULT NULL');
   await ensureColumn('sale_delivery', 'completed_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('sale_delivery', 'shipped_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('sale_delivery', 'cancel_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('sale_delivery', 'close_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('sale_delivery', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+  await ensureColumn('sale_return', 'employee_id', 'INT DEFAULT 0');
+  await ensureColumn('sale_return', 'express_name', "VARCHAR(100) DEFAULT ''");
+  await ensureColumn('sale_return', 'express_no', "VARCHAR(100) DEFAULT ''");
+  await ensureColumn('sale_return', 'contact', "VARCHAR(100) DEFAULT ''");
+  await ensureColumn('sale_return', 'phone', "VARCHAR(50) DEFAULT ''");
+  await ensureColumn('sale_return', 'address', "VARCHAR(255) DEFAULT ''");
+  await ensureColumn('sale_return', 'completed_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('sale_return', 'cancel_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('sale_return', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+  await ensureColumn('sale_return_item', 'delivery_item_id', 'INT DEFAULT 0');
+  await ensureColumn('sale_return_item', 'tax', 'DOUBLE DEFAULT 0');
+  await ensureColumn('sale_return_item', 'remark', "VARCHAR(255) DEFAULT ''");
+  await pool.execute(
+    `UPDATE sale_delivery
+     SET shipped_time = completed_time, completed_time = NULL
+     WHERE status = 1 AND shipped_time IS NULL AND completed_time IS NOT NULL`
+  );
   await ensureColumn('finance_receipt', 'order_id', 'INT DEFAULT 0');
   await ensureColumn('finance_receipt', 'should_amount', 'DOUBLE DEFAULT 0');
   await ensureColumn('finance_receipt', 'invoice_time', 'DATETIME DEFAULT NULL');

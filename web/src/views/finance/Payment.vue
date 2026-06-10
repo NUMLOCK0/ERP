@@ -26,7 +26,7 @@
       <el-table :data="tableData" stripe v-loading="loading">
         <el-table-column prop="id" label="付款单id" width="100" />
         <el-table-column prop="order_no" label="采购单号" width="190" show-overflow-tooltip>
-          <template #default="{ row }">{{ emptyText(row.order_no) }}</template>
+          <template #default="{ row }"><CopyableNo :value="row.order_no" /></template>
         </el-table-column>
         <el-table-column prop="supplier_name" label="供应商" min-width="150" show-overflow-tooltip>
           <template #default="{ row }">{{ emptyText(row.supplier_name) }}</template>
@@ -255,8 +255,8 @@
         <el-tab-pane label="基本信息" name="basic">
           <el-descriptions :column="2" border>
             <el-descriptions-item label="付款单id">{{ emptyText(detailData.id) }}</el-descriptions-item>
-            <el-descriptions-item label="付款单号">{{ emptyText(detailData.payment_no) }}</el-descriptions-item>
-            <el-descriptions-item label="采购单号">{{ emptyText(detailData.order_no) }}</el-descriptions-item>
+            <el-descriptions-item label="付款单号"><CopyableNo :value="detailData.payment_no" /></el-descriptions-item>
+            <el-descriptions-item label="采购单号"><CopyableNo :value="detailData.order_no" /></el-descriptions-item>
             <el-descriptions-item label="供应商">{{ emptyText(detailData.supplier_name) }}</el-descriptions-item>
             <el-descriptions-item label="付款状态">
               <el-tag :type="paymentStatusTagType(detailData.status)" size="small">{{ paymentStatusText(detailData.status) }}</el-tag>
@@ -338,7 +338,7 @@
       <el-tabs v-model="orderActiveTab">
         <el-tab-pane label="基础信息" name="basic">
           <el-descriptions :column="2" border>
-            <el-descriptions-item label="采购单号">{{ emptyText(orderDetail.order_no) }}</el-descriptions-item>
+            <el-descriptions-item label="采购单号"><CopyableNo :value="orderDetail.order_no" /></el-descriptions-item>
             <el-descriptions-item label="采购状态">
               <el-tag :type="purchaseStatusTagType(orderDetail.status)" size="small">{{ purchaseStatusText(orderDetail.status) }}</el-tag>
             </el-descriptions-item>

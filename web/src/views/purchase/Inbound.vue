@@ -16,8 +16,12 @@
       </SearchForm>
 
       <el-table :data="tableData" stripe v-loading="loading">
-        <el-table-column prop="inbound_no" label="入库单单号" width="190" show-overflow-tooltip />
-        <el-table-column prop="order_no" label="采购单号" width="190" show-overflow-tooltip />
+        <el-table-column prop="inbound_no" label="入库单单号" width="190" show-overflow-tooltip>
+          <template #default="{ row }"><CopyableNo :value="row.inbound_no" /></template>
+        </el-table-column>
+        <el-table-column prop="order_no" label="采购单号" width="190" show-overflow-tooltip>
+          <template #default="{ row }"><CopyableNo :value="row.order_no" /></template>
+        </el-table-column>
         <el-table-column label="状态" width="110">
           <template #default="{ row }"><el-tag :type="statusTagType(row.status)" size="small">{{ statusText(row.status) }}</el-tag></template>
         </el-table-column>
@@ -78,8 +82,8 @@
       <el-tabs v-model="activeTab">
         <el-tab-pane label="基本信息" name="basic">
           <el-descriptions :column="2" border>
-            <el-descriptions-item label="入库单号">{{ emptyText(detail.inbound_no) }}</el-descriptions-item>
-            <el-descriptions-item label="采购单号">{{ emptyText(detail.order_no) }}</el-descriptions-item>
+            <el-descriptions-item label="入库单号"><CopyableNo :value="detail.inbound_no" /></el-descriptions-item>
+            <el-descriptions-item label="采购单号"><CopyableNo :value="detail.order_no" /></el-descriptions-item>
             <el-descriptions-item label="状态">
               <el-tag :type="statusTagType(detail.status)" size="small">{{ statusText(detail.status) }}</el-tag>
             </el-descriptions-item>

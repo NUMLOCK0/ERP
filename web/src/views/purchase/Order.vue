@@ -10,7 +10,9 @@
         <el-form ref="formRef" :model="form" :rules="formRules" label-width="96px" :disabled="editorMode === 'view'" class="purchase-form">
           <div class="purchase-form-grid">
             <el-form-item label="采购单号" required>
-              <el-input v-model="form.order_no" placeholder="P{date}{time}{id}******" :disabled="editorMode !== 'add'" />
+              <el-input v-model="form.order_no" placeholder="P{date}{time}{id}******" :disabled="editorMode !== 'add'">
+                <template v-if="editorMode !== 'add'" #append><CopyableNo :value="form.order_no" icon-only /></template>
+              </el-input>
             </el-form-item>
             <el-form-item label="供应商" prop="supplier_id" required>
               <el-select v-model="form.supplier_id" placeholder="请选择..." clearable filterable @change="handleSupplierChange">
@@ -246,7 +248,9 @@
         <el-form label-width="96px" class="purchase-form">
           <div class="purchase-form-grid confirm-form-grid">
             <el-form-item label="采购单号">
-              <el-input v-model="confirmForm.order_no" disabled />
+              <el-input v-model="confirmForm.order_no" disabled>
+                <template #append><CopyableNo :value="confirmForm.order_no" icon-only /></template>
+              </el-input>
             </el-form-item>
             <el-form-item label="供应商">
               <el-select v-model="confirmForm.supplier_id" disabled>
@@ -334,7 +338,9 @@
         <el-form label-width="96px" class="purchase-form">
           <div class="purchase-form-grid confirm-form-grid">
             <el-form-item label="入库单号" required>
-              <el-input v-model="inboundForm.inbound_no" disabled />
+              <el-input v-model="inboundForm.inbound_no" disabled>
+                <template #append><CopyableNo :value="inboundForm.inbound_no" icon-only /></template>
+              </el-input>
             </el-form-item>
             <el-form-item label="仓库" required>
               <el-select v-model="inboundForm.warehouse_id" placeholder="请选择..." clearable filterable>
@@ -415,7 +421,9 @@
         <el-form label-width="96px" class="purchase-form">
           <div class="purchase-form-grid confirm-form-grid">
             <el-form-item label="退货单号" required>
-              <el-input v-model="returnForm.return_no" disabled />
+              <el-input v-model="returnForm.return_no" disabled>
+                <template #append><CopyableNo :value="returnForm.return_no" icon-only /></template>
+              </el-input>
             </el-form-item>
             <el-form-item label="退货状态" required>
               <el-select v-model="returnForm.return_status" placeholder="请选择..." clearable>
@@ -519,7 +527,9 @@
         </div>
 
         <el-table :data="tableData" stripe v-loading="loading">
-          <el-table-column prop="order_no" label="采购单号" width="180" />
+          <el-table-column prop="order_no" label="采购单号" width="190">
+            <template #default="{ row }"><CopyableNo :value="row.order_no" /></template>
+          </el-table-column>
           <el-table-column prop="supplier_name" label="供应商" min-width="150" show-overflow-tooltip />
           <el-table-column label="采购状态" width="110">
             <template #default="{ row }">
@@ -533,7 +543,7 @@
           </el-table-column>
           <el-table-column label="退货状态" width="100">
             <template #default="{ row }">
-              <el-tag :type="row.return_status ? 'danger' : 'info'" size="small">{{ row.return_status ? '已退货' : '无退货' }}</el-tag>
+              <el-tag :type="returnFlagTagType(row.return_status)" size="small">{{ returnFlagText(row.return_status) }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="payment_method" label="付款方式" width="120" show-overflow-tooltip>
@@ -650,7 +660,7 @@
       <el-tabs v-model="detailActiveTab">
         <el-tab-pane label="基础信息" name="basic">
           <el-descriptions :column="2" border>
-            <el-descriptions-item label="采购单号">{{ emptyText(detailData.order_no) }}</el-descriptions-item>
+            <el-descriptions-item label="采购单号"><CopyableNo :value="detailData.order_no" /></el-descriptions-item>
             <el-descriptions-item label="采购状态">
               <el-tag :type="statusTagType(detailData.status)" size="small">{{ statusText(detailData.status) }}</el-tag>
             </el-descriptions-item>
@@ -748,6 +758,7 @@ import { getUnits } from '@/api/unit'
 import { getWarehouses } from '@/api/warehouse'
 import SearchForm from '@/components/SearchForm.vue'
 import Pagination from '@/components/Pagination.vue'
+import { returnFlagTagType, returnFlagText } from '@/utils/status'
 
 interface PurchaseItem {
   id: number | null
@@ -1139,7 +1150,9 @@ function removeItem(index: number) {
 async function handleSave() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
-  const items = form.items.filter(item => item.product_id && Number(item.quantity) > 0)
+  const items = form.items.filter(item => (
+    (item.product_id || item.product_name.trim()) && Number(item.quantity) > 0
+  ))
   if (!items.length) {
     ElMessage.warning('请至少添加一条产品明细')
     return
@@ -1152,6 +1165,11 @@ async function handleSave() {
     purchase_remark: form.purchase_remark,
     items: items.map(item => ({
       product_id: item.product_id,
+      product_name: item.product_name.trim(),
+      code: item.code.trim(),
+      spec: item.spec.trim(),
+      unit_name: item.unit_name,
+      base_quantity: Number(item.base_quantity || 1),
       quantity: Number(item.quantity || 0),
       price: Number(item.price || 0),
       tax: Number(item.tax || 0),

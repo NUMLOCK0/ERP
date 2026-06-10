@@ -17,10 +17,12 @@ export function confirmTransfer(id: number) { return post(`/inventory/transfer/$
 
 // 其他入库
 export function getOtherInbounds(params?: any) { return get('/inventory/other-inbound', params) }
+export function getOtherInbound(id: number) { return get(`/inventory/other-inbound/${id}`) }
 export function createOtherInbound(data: any) { return post('/inventory/other-inbound', data) }
 
 // 其他出库
 export function getOtherOutbounds(params?: any) { return get('/inventory/other-outbound', params) }
+export function getOtherOutbound(id: number) { return get(`/inventory/other-outbound/${id}`) }
 export function createOtherOutbound(data: any) { return post('/inventory/other-outbound', data) }
 
 // 库存日志

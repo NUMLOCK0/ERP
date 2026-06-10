@@ -20,12 +20,14 @@
       </SearchForm>
 
       <el-table :data="tableData" stripe v-loading="loading">
-        <el-table-column prop="return_no" label="退货单号" width="190" show-overflow-tooltip />
+        <el-table-column prop="return_no" label="退货单号" width="190" show-overflow-tooltip>
+          <template #default="{ row }"><CopyableNo :value="row.return_no" /></template>
+        </el-table-column>
         <el-table-column prop="order_no" label="采购单号" width="190" show-overflow-tooltip>
-          <template #default="{ row }">{{ emptyText(row.order_no) }}</template>
+          <template #default="{ row }"><CopyableNo :value="row.order_no" /></template>
         </el-table-column>
         <el-table-column label="状态" width="110">
-          <template #default="{ row }"><el-tag :type="statusTagType(row.status)" size="small">{{ statusText(row.status) }}</el-tag></template>
+          <template #default="{ row }"><el-tag :type="returnOrderStatusTagType(row.status)" size="small">{{ returnOrderStatusText(row.status) }}</el-tag></template>
         </el-table-column>
         <el-table-column prop="supplier_name" label="供应商" min-width="150" show-overflow-tooltip>
           <template #default="{ row }">{{ emptyText(row.supplier_name) }}</template>
@@ -90,7 +92,9 @@
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="90px" :disabled="dialogMode === 'view'">
         <div class="return-summary">
           <el-form-item label="退货单号">
-            <el-input v-model="form.return_no" placeholder="保存后自动生成" disabled />
+            <el-input v-model="form.return_no" placeholder="保存后自动生成" disabled>
+              <template #append><CopyableNo :value="form.return_no" icon-only /></template>
+            </el-input>
           </el-form-item>
           <el-form-item label="入库单">
             <el-select v-model="form.inbound_id" placeholder="选择入库单带出明细" clearable filterable @change="handleInboundChange">
@@ -160,10 +164,10 @@
       <el-tabs v-model="activeTab">
         <el-tab-pane label="基本信息" name="basic">
           <el-descriptions :column="2" border>
-            <el-descriptions-item label="退货单号">{{ emptyText(detail.return_no) }}</el-descriptions-item>
-            <el-descriptions-item label="采购单号">{{ emptyText(detail.order_no) }}</el-descriptions-item>
+            <el-descriptions-item label="退货单号"><CopyableNo :value="detail.return_no" /></el-descriptions-item>
+            <el-descriptions-item label="采购单号"><CopyableNo :value="detail.order_no" /></el-descriptions-item>
             <el-descriptions-item label="状态">
-              <el-tag :type="statusTagType(detail.status)" size="small">{{ statusText(detail.status) }}</el-tag>
+              <el-tag :type="returnOrderStatusTagType(detail.status)" size="small">{{ returnOrderStatusText(detail.status) }}</el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="供应商">{{ emptyText(detail.supplier_name) }}</el-descriptions-item>
             <el-descriptions-item label="退款总额">¥{{ formatMoney(detail.refund_total_amount ?? detail.total_amount) }}</el-descriptions-item>
@@ -232,6 +236,7 @@ import { getProducts } from '@/api/product'
 import { getSuppliers } from '@/api/supplier'
 import SearchForm from '@/components/SearchForm.vue'
 import Pagination from '@/components/Pagination.vue'
+import { returnOrderStatusTagType, returnOrderStatusText } from '@/utils/status'
 
 interface ReturnItem {
   product_id: number | null
@@ -432,14 +437,6 @@ async function handleSave() {
   ElMessage.success('创建成功')
   dialogVisible.value = false
   fetchData()
-}
-
-function statusText(_status: any) {
-  return Number(_status) === 1 ? '已退货' : '待退货'
-}
-
-function statusTagType(status: any) {
-  return Number(status) === 1 ? 'success' : 'warning'
 }
 
 function formatMoney(value: any) {

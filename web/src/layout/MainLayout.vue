@@ -50,7 +50,7 @@
           </template>
           <el-menu-item index="/sale/order">销售订单</el-menu-item>
           <el-menu-item index="/sale/delivery">销售发货单</el-menu-item>
-          <el-menu-item index="/sale/return">销售退货单</el-menu-item>
+          <el-menu-item index="/sale/return">发货退货单</el-menu-item>
         </el-sub-menu>
 
         <el-sub-menu index="inventory">
@@ -165,7 +165,7 @@ const router = useRouter()
 const appStore = useAppStore()
 const userStore = useUserStore()
 
-const activeMenu = computed(() => route.path)
+const activeMenu = computed(() => String(route.meta.activeMenu || route.path))
 const activeMeta = computed(() => route.meta as any)
 
 function handleLogout() {

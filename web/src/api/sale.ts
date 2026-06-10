@@ -15,8 +15,15 @@ export function closeSaleOrder(id: number) { return post(`/sale/order/${id}/clos
 export function getSaleDeliveries(params?: any) { return get('/sale/delivery', params) }
 export function getSaleDelivery(id: number) { return get(`/sale/delivery/${id}`) }
 export function createSaleDelivery(data: any) { return post('/sale/delivery', data) }
+export function shipSaleDelivery(id: number, data?: any) { return post(`/sale/delivery/${id}/ship`, data) }
+export function cancelSaleDelivery(id: number) { return post(`/sale/delivery/${id}/cancel`) }
+export function receiveSaleDelivery(id: number) { return post(`/sale/delivery/${id}/receive`) }
+export function batchReceiveSaleDeliveries(ids: number[]) { return post('/sale/delivery/batch-receive', { ids }) }
 
-// 销售退货单
+// 发货退货单
 export function getSaleReturns(params?: any) { return get('/sale/return', params) }
 export function getSaleReturn(id: number) { return get(`/sale/return/${id}`) }
 export function createSaleReturn(data: any) { return post('/sale/return', data) }
+export function completeSaleReturn(id: number, data?: any) { return post(`/sale/return/${id}/complete`, data) }
+export function cancelSaleReturn(id: number) { return post(`/sale/return/${id}/cancel`) }
+export function deleteSaleReturn(id: number) { return del(`/sale/return/${id}`) }

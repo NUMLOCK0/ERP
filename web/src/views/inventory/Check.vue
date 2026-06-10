@@ -10,7 +10,9 @@
       </SearchForm>
 
       <el-table :data="tableData" stripe v-loading="loading">
-        <el-table-column prop="check_no" label="盘点单号" width="180" />
+        <el-table-column prop="check_no" label="盘点单号" width="190">
+          <template #default="{ row }"><CopyableNo :value="row.check_no" /></template>
+        </el-table-column>
         <el-table-column prop="warehouse_name" label="仓库" width="120" />
         <el-table-column label="状态" width="100">
           <template #default="{ row }"><el-tag :type="statusTagType(row.status)" size="small">{{ statusText(row.status) }}</el-tag></template>

@@ -3,6 +3,7 @@ const router = express.Router();
 const { getPool } = require('../database');
 const Response = require('../utils/response');
 const { isAuditEnabled } = require('../utils/auditConfig');
+const { resolveInlineProduct } = require('../utils/inlineProduct');
 
 // ==================== 库存查询 ====================
 
@@ -309,22 +310,48 @@ router.post('/transfer/:id/confirm', async (req, res) => {
 router.get('/other-inbound', async (req, res) => {
   try {
     const pool = getPool();
-    const { page = 1, pageSize = 20, keyword = '', start_date = '', end_date = '' } = req.query;
+    const {
+      page = 1,
+      pageSize = 20,
+      keyword = '',
+      supplier_id = '',
+      warehouse_id = '',
+      status = '',
+      start_date = '',
+      end_date = ''
+    } = req.query;
     let where = '1=1';
     const params = [];
-    if (keyword) { where += ' AND oi.inbound_no LIKE ?'; params.push(`%${keyword}%`); }
+    if (keyword) {
+      where += ' AND (oi.inbound_no LIKE ? OR sc.name LIKE ?)';
+      params.push(`%${keyword}%`, `%${keyword}%`);
+    }
+    if (supplier_id) { where += ' AND oi.supplier_id = ?'; params.push(Number(supplier_id)); }
+    if (warehouse_id) { where += ' AND oi.warehouse_id = ?'; params.push(Number(warehouse_id)); }
+    if (status !== '') { where += ' AND oi.status = ?'; params.push(Number(status)); }
     if (start_date) { where += ' AND oi.created_at >= ?'; params.push(start_date); }
     if (end_date) { where += ' AND oi.created_at <= ?'; params.push(end_date + ' 23:59:59'); }
     const offset = (Number(page) - 1) * Number(pageSize);
     const [totalRows] = await pool.execute(
-      `SELECT COUNT(*) AS cnt FROM other_inbound oi LEFT JOIN warehouse w ON oi.warehouse_id = w.id WHERE ${where}`, params
+      `SELECT COUNT(*) AS cnt
+       FROM other_inbound oi
+       LEFT JOIN supplier_customer sc ON oi.supplier_id = sc.id
+       WHERE ${where}`,
+      params
     );
     const total = Number(totalRows[0].cnt);
     const [list] = await pool.execute(
-      `SELECT oi.*, w.name AS warehouse_name, u.real_name AS creator_name
+      `SELECT oi.*, sc.name AS supplier_name, w.name AS warehouse_name, u.real_name AS creator_name,
+              COALESCE(NULLIF(oi.total_quantity, 0), item_stats.total_quantity, 0) AS product_total_quantity
        FROM other_inbound oi
+       LEFT JOIN supplier_customer sc ON oi.supplier_id = sc.id
        LEFT JOIN warehouse w ON oi.warehouse_id = w.id
        LEFT JOIN sys_user u ON oi.creator_id = u.id
+       LEFT JOIN (
+         SELECT inbound_id, SUM(quantity) AS total_quantity
+         FROM other_inbound_item
+         GROUP BY inbound_id
+       ) item_stats ON oi.id = item_stats.inbound_id
        WHERE ${where} ORDER BY oi.id DESC LIMIT ?, ?`,
       [...params, offset, Number(pageSize)]
     );
@@ -337,13 +364,27 @@ router.get('/other-inbound', async (req, res) => {
 router.get('/other-inbound/:id', async (req, res) => {
   try {
     const pool = getPool();
-    const [rows] = await pool.execute('SELECT * FROM other_inbound WHERE id = ?', [req.params.id]);
+    const [rows] = await pool.execute(
+      `SELECT oi.*, sc.name AS supplier_name, w.name AS warehouse_name
+       FROM other_inbound oi
+       LEFT JOIN supplier_customer sc ON oi.supplier_id = sc.id
+       LEFT JOIN warehouse w ON oi.warehouse_id = w.id
+       WHERE oi.id = ?`,
+      [req.params.id]
+    );
     if (!rows.length) return res.json(Response.error('入库单不存在'));
     const inbound = rows[0];
     const [items] = await pool.execute(
-      `SELECT oii.*, p.name AS product_name, p.code, p.spec
+      `SELECT oii.*, p.name AS product_name, p.code, p.spec, u.name AS unit_name,
+              COALESCE(pu.base_quantity, 1) AS base_quantity
        FROM other_inbound_item oii
        LEFT JOIN product p ON oii.product_id = p.id
+       LEFT JOIN unit u ON p.unit_id = u.id
+       LEFT JOIN (
+         SELECT product_id, MAX(CASE WHEN is_base = 1 THEN base_quantity ELSE NULL END) AS base_quantity
+         FROM product_unit
+         GROUP BY product_id
+       ) pu ON p.id = pu.product_id
        WHERE oii.inbound_id = ?`, [inbound.id]
     );
     inbound.items = items;
@@ -356,14 +397,28 @@ router.get('/other-inbound/:id', async (req, res) => {
 router.post('/other-inbound', async (req, res) => {
   try {
     const pool = getPool();
-    const { warehouse_id, type = '', items, remark = '' } = req.body;
+    const {
+      supplier_id,
+      warehouse_id,
+      items,
+      admin_remark = '',
+      inbound_remark = ''
+    } = req.body;
+    if (!supplier_id) return res.json(Response.error('供应商不能为空'));
     if (!warehouse_id) return res.json(Response.error('仓库不能为空'));
-    if (!items || !items.length) return res.json(Response.error('明细不能为空'));
+    if (!Array.isArray(items) || !items.length) return res.json(Response.error('入库明细不能为空'));
 
     const inboundNo = await generateNo(pool, 'QT');
     let totalAmount = 0;
+    let totalQuantity = 0;
     for (const item of items) {
-      totalAmount += (item.quantity || 0) * (item.price || 0);
+      const quantity = Number(item.quantity || 0);
+      const price = Number(item.price || 0);
+      if ((!item.product_id && !String(item.product_name || '').trim()) || quantity <= 0) {
+        return res.json(Response.error('入库产品和数量必须填写完整'));
+      }
+      totalQuantity += quantity;
+      totalAmount += quantity * price;
     }
 
     const conn = await pool.getConnection();
@@ -371,17 +426,36 @@ router.post('/other-inbound', async (req, res) => {
       await conn.beginTransaction();
 
       const [result] = await conn.execute(
-        'INSERT INTO other_inbound (inbound_no, warehouse_id, type, total_amount, status, remark, creator_id) VALUES (?,?,?,?,1,?,?)',
-        [inboundNo, warehouse_id, type, totalAmount, remark, req.user.id]
+        `INSERT INTO other_inbound
+         (inbound_no, supplier_id, warehouse_id, total_amount, total_quantity, status,
+          admin_remark, inbound_remark, remark, creator_id, completed_time)
+         VALUES (?,?,?,?,?,1,?,?,?,?,NOW())`,
+        [
+          inboundNo,
+          supplier_id,
+          warehouse_id,
+          totalAmount,
+          totalQuantity,
+          admin_remark,
+          inbound_remark,
+          inbound_remark,
+          req.user.id
+        ]
       );
       const inboundId = result.insertId;
 
       for (const item of items) {
+        const quantity = Number(item.quantity || 0);
+        const price = Number(item.price || 0);
+        const productId = await resolveInlineProduct(conn, item, {
+          supplierId: supplier_id,
+          warehouseId: warehouse_id
+        });
         await conn.execute(
           'INSERT INTO other_inbound_item (inbound_id, product_id, quantity, price, amount) VALUES (?,?,?,?,?)',
-          [inboundId, item.product_id, item.quantity, item.price, (item.quantity || 0) * (item.price || 0)]
+          [inboundId, productId, quantity, price, quantity * price]
         );
-        await updateStock(conn, item.product_id, warehouse_id, item.quantity, 'other_inbound', inboundNo);
+        await updateStock(conn, productId, warehouse_id, quantity, 'other_inbound', inboundNo);
       }
 
       await conn.commit();
@@ -403,22 +477,51 @@ router.post('/other-inbound', async (req, res) => {
 router.get('/other-outbound', async (req, res) => {
   try {
     const pool = getPool();
-    const { page = 1, pageSize = 20, keyword = '', start_date = '', end_date = '' } = req.query;
+    const {
+      page = 1,
+      pageSize = 20,
+      keyword = '',
+      customer_id = '',
+      warehouse_id = '',
+      status = '',
+      start_date = '',
+      end_date = ''
+    } = req.query;
     let where = '1=1';
     const params = [];
-    if (keyword) { where += ' AND oo.outbound_no LIKE ?'; params.push(`%${keyword}%`); }
+    if (keyword) {
+      where += ' AND (oo.outbound_no LIKE ? OR sc.name LIKE ?)';
+      params.push(`%${keyword}%`, `%${keyword}%`);
+    }
+    if (customer_id) { where += ' AND oo.customer_id = ?'; params.push(Number(customer_id)); }
+    if (warehouse_id) { where += ' AND oo.warehouse_id = ?'; params.push(Number(warehouse_id)); }
+    if (status !== '') { where += ' AND oo.status = ?'; params.push(Number(status)); }
     if (start_date) { where += ' AND oo.created_at >= ?'; params.push(start_date); }
     if (end_date) { where += ' AND oo.created_at <= ?'; params.push(end_date + ' 23:59:59'); }
     const offset = (Number(page) - 1) * Number(pageSize);
     const [totalRows] = await pool.execute(
-      `SELECT COUNT(*) AS cnt FROM other_outbound oo LEFT JOIN warehouse w ON oo.warehouse_id = w.id WHERE ${where}`, params
+      `SELECT COUNT(*) AS cnt
+       FROM other_outbound oo
+       LEFT JOIN supplier_customer sc ON oo.customer_id = sc.id
+       WHERE ${where}`,
+      params
     );
     const total = Number(totalRows[0].cnt);
     const [list] = await pool.execute(
-      `SELECT oo.*, w.name AS warehouse_name, u.real_name AS creator_name
+      `SELECT oo.*, sc.name AS customer_name, w.name AS warehouse_name, u.real_name AS creator_name,
+              COALESCE(NULLIF(oo.total_quantity, 0), item_stats.total_quantity, 0) AS product_total_quantity,
+              COALESCE(item_stats.unit_price, 0) AS unit_price,
+              COALESCE(NULLIF(oo.tax_amount, 0), item_stats.tax_amount, 0) AS tax_amount
        FROM other_outbound oo
+       LEFT JOIN supplier_customer sc ON oo.customer_id = sc.id
        LEFT JOIN warehouse w ON oo.warehouse_id = w.id
        LEFT JOIN sys_user u ON oo.creator_id = u.id
+       LEFT JOIN (
+         SELECT outbound_id, SUM(quantity) AS total_quantity, AVG(price) AS unit_price,
+                SUM(COALESCE(tax, 0)) AS tax_amount
+         FROM other_outbound_item
+         GROUP BY outbound_id
+       ) item_stats ON oo.id = item_stats.outbound_id
        WHERE ${where} ORDER BY oo.id DESC LIMIT ?, ?`,
       [...params, offset, Number(pageSize)]
     );
@@ -431,13 +534,27 @@ router.get('/other-outbound', async (req, res) => {
 router.get('/other-outbound/:id', async (req, res) => {
   try {
     const pool = getPool();
-    const [rows] = await pool.execute('SELECT * FROM other_outbound WHERE id = ?', [req.params.id]);
+    const [rows] = await pool.execute(
+      `SELECT oo.*, sc.name AS customer_name, w.name AS warehouse_name
+       FROM other_outbound oo
+       LEFT JOIN supplier_customer sc ON oo.customer_id = sc.id
+       LEFT JOIN warehouse w ON oo.warehouse_id = w.id
+       WHERE oo.id = ?`,
+      [req.params.id]
+    );
     if (!rows.length) return res.json(Response.error('出库单不存在'));
     const outbound = rows[0];
     const [items] = await pool.execute(
-      `SELECT ooi.*, p.name AS product_name, p.code, p.spec
+      `SELECT ooi.*, p.name AS product_name, p.code, p.spec, u.name AS unit_name,
+              COALESCE(pu.base_quantity, 1) AS base_quantity
        FROM other_outbound_item ooi
        LEFT JOIN product p ON ooi.product_id = p.id
+       LEFT JOIN unit u ON p.unit_id = u.id
+       LEFT JOIN (
+         SELECT product_id, MAX(CASE WHEN is_base = 1 THEN base_quantity ELSE NULL END) AS base_quantity
+         FROM product_unit
+         GROUP BY product_id
+       ) pu ON p.id = pu.product_id
        WHERE ooi.outbound_id = ?`, [outbound.id]
     );
     outbound.items = items;
@@ -450,45 +567,105 @@ router.get('/other-outbound/:id', async (req, res) => {
 router.post('/other-outbound', async (req, res) => {
   try {
     const pool = getPool();
-    const { warehouse_id, type = '', items, remark = '' } = req.body;
+    const {
+      customer_id,
+      warehouse_id,
+      contact = '',
+      phone = '',
+      address = '',
+      express_name = '',
+      express_no = '',
+      admin_remark = '',
+      outbound_remark = '',
+      status = 0,
+      items
+    } = req.body;
+    if (!customer_id) return res.json(Response.error('客户不能为空'));
     if (!warehouse_id) return res.json(Response.error('仓库不能为空'));
-    if (!items || !items.length) return res.json(Response.error('明细不能为空'));
+    if (!Array.isArray(items) || !items.length) return res.json(Response.error('出库明细不能为空'));
+    if (![0, 1, 2].includes(Number(status))) return res.json(Response.error('出库状态不正确'));
 
     const outboundNo = await generateNo(pool, 'QC');
     let totalAmount = 0;
+    let totalQuantity = 0;
+    let taxAmount = 0;
     for (const item of items) {
-      totalAmount += (item.quantity || 0) * (item.price || 0);
+      const quantity = Number(item.quantity || 0);
+      const price = Number(item.price || 0);
+      const tax = Number(item.tax || 0);
+      if ((!item.product_id && !String(item.product_name || '').trim()) || quantity <= 0) {
+        return res.json(Response.error('出库产品和数量必须填写完整'));
+      }
+      totalQuantity += quantity;
+      taxAmount += tax;
+      totalAmount += quantity * price + tax;
     }
 
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
 
-      // 检查库存
+      const resolvedItems = [];
       for (const item of items) {
-        const [stockRows] = await conn.execute(
-          'SELECT quantity FROM inventory_stock WHERE product_id = ? AND warehouse_id = ?',
-          [item.product_id, warehouse_id]
-        );
-        const stockQty = stockRows.length ? stockRows[0].quantity : 0;
-        if (stockQty < item.quantity) {
-          await conn.rollback(); conn.release();
-          return res.json(Response.error(`库存不足：产品ID ${item.product_id}，当前库存 ${stockQty}，需要 ${item.quantity}`));
+        const productId = await resolveInlineProduct(conn, item, {
+          warehouseId: warehouse_id
+        });
+        resolvedItems.push({ ...item, product_id: productId });
+      }
+
+      if (Number(status) === 1) {
+        for (const item of resolvedItems) {
+          const [stockRows] = await conn.execute(
+            'SELECT quantity FROM inventory_stock WHERE product_id = ? AND warehouse_id = ?',
+            [item.product_id, warehouse_id]
+          );
+          const stockQty = stockRows.length ? Number(stockRows[0].quantity || 0) : 0;
+          if (stockQty < Number(item.quantity || 0)) {
+            throw new Error(`库存不足：产品ID ${item.product_id}，当前库存 ${stockQty}，需要 ${item.quantity}`);
+          }
         }
       }
 
       const [result] = await conn.execute(
-        'INSERT INTO other_outbound (outbound_no, warehouse_id, type, total_amount, status, remark, creator_id) VALUES (?,?,?,?,1,?,?)',
-        [outboundNo, warehouse_id, type, totalAmount, remark, req.user.id]
+        `INSERT INTO other_outbound
+         (outbound_no, customer_id, warehouse_id, total_amount, total_quantity, tax_amount, status,
+          contact, phone, address, express_name, express_no, admin_remark, outbound_remark,
+          remark, creator_id, completed_time, cancel_time)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [
+          outboundNo,
+          customer_id,
+          warehouse_id,
+          totalAmount,
+          totalQuantity,
+          taxAmount,
+          Number(status),
+          contact,
+          phone,
+          address,
+          express_name,
+          express_no,
+          admin_remark,
+          outbound_remark,
+          outbound_remark,
+          req.user.id,
+          Number(status) === 1 ? new Date() : null,
+          Number(status) === 2 ? new Date() : null
+        ]
       );
       const outboundId = result.insertId;
 
-      for (const item of items) {
+      for (const item of resolvedItems) {
+        const quantity = Number(item.quantity || 0);
+        const price = Number(item.price || 0);
+        const tax = Number(item.tax || 0);
         await conn.execute(
-          'INSERT INTO other_outbound_item (outbound_id, product_id, quantity, price, amount) VALUES (?,?,?,?,?)',
-          [outboundId, item.product_id, item.quantity, item.price, (item.quantity || 0) * (item.price || 0)]
+          'INSERT INTO other_outbound_item (outbound_id, product_id, quantity, price, tax, location, amount) VALUES (?,?,?,?,?,?,?)',
+          [outboundId, item.product_id, quantity, price, tax, item.location || '', quantity * price + tax]
         );
-        await updateStock(conn, item.product_id, warehouse_id, -item.quantity, 'other_outbound', outboundNo);
+        if (Number(status) === 1) {
+          await updateStock(conn, item.product_id, warehouse_id, -quantity, 'other_outbound', outboundNo);
+        }
       }
 
       await conn.commit();

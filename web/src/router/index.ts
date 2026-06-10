@@ -88,10 +88,16 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '销售发货单' }
       },
       {
+        path: 'sale/delivery/:id/return',
+        name: 'SaleDeliveryReturn',
+        component: () => import('@/views/sale/DeliveryReturn.vue'),
+        meta: { title: '发货退货', activeMenu: '/sale/return' }
+      },
+      {
         path: 'sale/return',
         name: 'SaleReturn',
         component: () => import('@/views/sale/Return.vue'),
-        meta: { title: '销售退货单' }
+        meta: { title: '发货退货单' }
       },
       // 库存管理
       {

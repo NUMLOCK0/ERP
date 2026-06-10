@@ -49,7 +49,7 @@ const permTree = [
   { id: 1, label: '仪表盘', children: [] },
   { id: 2, label: '基础数据', children: [{ id: 21, label: '产品管理' },{ id: 22, label: '产品分类' },{ id: 23, label: '品牌管理' },{ id: 24, label: '计量单位' },{ id: 25, label: '职员管理' },{ id: 26, label: '仓库管理' }] },
   { id: 3, label: '采购管理', children: [{ id: 31, label: '采购订单' },{ id: 32, label: '采购入库' },{ id: 33, label: '采购退货' }] },
-  { id: 4, label: '销售管理', children: [{ id: 41, label: '销售订单' },{ id: 42, label: '销售发货' },{ id: 43, label: '销售退货' }] },
+  { id: 4, label: '销售管理', children: [{ id: 41, label: '销售订单' },{ id: 42, label: '销售发货' },{ id: 43, label: '发货退货' }] },
   { id: 5, label: '库存管理', children: [{ id: 51, label: '库存查询' },{ id: 52, label: '其他入库' },{ id: 53, label: '其他出库' },{ id: 54, label: '库存盘点' },{ id: 55, label: '库存调拨' },{ id: 56, label: '库存日志' }] },
   { id: 6, label: '资金账单', children: [{ id: 61, label: '采购付款' },{ id: 62, label: '销售收款' }] },
   { id: 7, label: '数据报表', children: [{ id: 71, label: '产品库存' },{ id: 72, label: '销售发货' },{ id: 73, label: '采购入库' },{ id: 74, label: '采购订单' },{ id: 75, label: '销售订单' },{ id: 76, label: '销售收款' },{ id: 77, label: '采购付款' }] },

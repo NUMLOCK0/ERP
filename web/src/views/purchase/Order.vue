@@ -759,6 +759,7 @@ import { getWarehouses } from '@/api/warehouse'
 import SearchForm from '@/components/SearchForm.vue'
 import Pagination from '@/components/Pagination.vue'
 import { returnFlagTagType, returnFlagText } from '@/utils/status'
+import { getDefaultUnitName, getPreferredProductUnit } from '@/utils/unit'
 
 interface PurchaseItem {
   id: number | null
@@ -1044,7 +1045,7 @@ function createItem(partial: Partial<PurchaseItem> = {}): PurchaseItem {
     product_name: partial.product_name ?? '',
     code: partial.code ?? '',
     spec: partial.spec ?? '',
-    unit_name: partial.unit_name ?? '',
+    unit_name: partial.unit_name ?? getDefaultUnitName(units.value, ''),
     base_quantity: partial.base_quantity ?? 1,
     quantity: partial.quantity ?? 1,
     price: partial.price ?? 0,
@@ -1482,11 +1483,11 @@ function productPrice(product: any) {
 }
 
 function productUnitName(product: any) {
-  return product?.unit_name || productUnits(product)[0]?.unit_name || '个'
+  return getPreferredProductUnit(product, units.value)?.unit_name || getDefaultUnitName(units.value)
 }
 
 function productBaseQuantity(product: any) {
-  return Number(product?.base_quantity || productUnits(product)[0]?.base_quantity || 1)
+  return Number(getPreferredProductUnit(product, units.value)?.base_quantity || 1)
 }
 
 function productUnits(product: any) {

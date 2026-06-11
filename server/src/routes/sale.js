@@ -232,7 +232,7 @@ router.put('/order/:id', async (req, res) => {
       customer_contact = '',
       customer_phone = '',
       detail_address = '',
-      create_delivery = false,
+      create_delivery = true,
       ship = false,
       items
     } = req.body;

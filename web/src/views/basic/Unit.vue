@@ -6,6 +6,12 @@
       </div>
       <el-table :data="tableData" stripe v-loading="loading">
         <el-table-column prop="name" label="单位名称" min-width="200" />
+        <el-table-column label="默认单位" width="100">
+          <template #default="{ row }">
+            <el-tag v-if="Number(row.is_default) === 1" type="success">默认</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="创建时间" width="180">
           <template #default="{ row }">{{ $formatDateTime(row.created_at) }}</template>
         </el-table-column>
@@ -21,6 +27,9 @@
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="400px" @close="resetForm">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
         <el-form-item label="名称" prop="name"><el-input v-model="form.name" /></el-form-item>
+        <el-form-item label="默认单位">
+          <el-switch v-model="form.is_default" :active-value="1" :inactive-value="0" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -42,7 +51,7 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('新增单位')
 const formRef = ref<FormInstance>()
 const editId = ref<number | null>(null)
-const form = reactive({ name: '' })
+const form = reactive({ name: '', is_default: 0 })
 const rules = { name: [{ required: true, message: '请输入单位名称', trigger: 'blur' }] }
 
 async function fetchData() {
@@ -50,7 +59,12 @@ async function fetchData() {
   try { const res: any = await getUnits(); tableData.value = res.data || [] } finally { loading.value = false }
 }
 function handleAdd() { editId.value = null; dialogTitle.value = '新增单位'; resetForm(); dialogVisible.value = true }
-function handleEdit(row: any) { editId.value = row.id; dialogTitle.value = '编辑单位'; form.name = row.name; dialogVisible.value = true }
+function handleEdit(row: any) {
+  editId.value = row.id
+  dialogTitle.value = '编辑单位'
+  Object.assign(form, { name: row.name, is_default: Number(row.is_default || 0) })
+  dialogVisible.value = true
+}
 async function handleDelete(row: any) {
   await ElMessageBox.confirm('确认删除？', '提示', { type: 'warning' })
   await deleteUnit(row.id); ElMessage.success('删除成功'); fetchData()
@@ -61,7 +75,10 @@ async function handleSubmit() {
   if (editId.value) { await updateUnit(editId.value, { ...form }) } else { await createUnit({ ...form }) }
   ElMessage.success(editId.value ? '更新成功' : '创建成功'); dialogVisible.value = false; fetchData()
 }
-function resetForm() { form.name = ''; formRef.value?.clearValidate() }
+function resetForm() {
+  Object.assign(form, { name: '', is_default: 0 })
+  formRef.value?.clearValidate()
+}
 
 onMounted(fetchData)
 </script>

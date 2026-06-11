@@ -93,6 +93,7 @@ async function createTables() {
     await conn.execute(`CREATE TABLE IF NOT EXISTS unit (
       id INT PRIMARY KEY AUTO_INCREMENT,
       name VARCHAR(100) NOT NULL,
+      is_default TINYINT(1) DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
@@ -606,6 +607,7 @@ async function createTables() {
 
   await ensureColumn('product', 'default_supplier_id', 'INT DEFAULT 0');
   await ensureColumn('employee', 'user_id', 'INT DEFAULT 0');
+  await ensureColumn('unit', 'is_default', 'TINYINT(1) DEFAULT 0');
   await ensureColumn('product_unit', 'warehouse_id', 'INT DEFAULT 0');
   await ensureColumn('purchase_order', 'submit_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('purchase_order', 'payment_method', "VARCHAR(50) DEFAULT ''");

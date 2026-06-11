@@ -276,6 +276,7 @@ import { getProducts, getProduct, createProduct, updateProduct, deleteProduct } 
 import { getCategories } from '@/api/category'
 import { getBrands } from '@/api/brand'
 import { getUnits } from '@/api/unit'
+import { getDefaultUnit } from '@/utils/unit'
 import { getWarehouses } from '@/api/warehouse'
 import { getEnabledMemberLevels, getSuppliers } from '@/api/supplier'
 import SearchForm from '@/components/SearchForm.vue'
@@ -435,7 +436,10 @@ function handleAdd() {
   editId.value = null
   dialogTitle.value = '新增产品'
   resetForm()
-  unitRows.value = [createUnitRow({ unit_id: form.unit_id || units.value[0]?.id || null, is_base: true })]
+  unitRows.value = [createUnitRow({
+    unit_id: form.unit_id || getDefaultUnit(units.value)?.id || units.value[0]?.id || null,
+    is_base: true
+  })]
   activeTab.value = 'basic'
   dialogVisible.value = true
 }

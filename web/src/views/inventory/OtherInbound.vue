@@ -353,6 +353,7 @@ import { getUnits } from '@/api/unit'
 import { getWarehouses } from '@/api/warehouse'
 import SearchForm from '@/components/SearchForm.vue'
 import Pagination from '@/components/Pagination.vue'
+import { getDefaultUnitName, getPreferredProductUnit } from '@/utils/unit'
 
 interface InboundItem {
   product_id: number | null
@@ -507,7 +508,7 @@ function createItem(): InboundItem {
     product_name: '',
     code: '',
     spec: '',
-    unit_name: '',
+    unit_name: getDefaultUnitName(units.value, ''),
     base_quantity: 1,
     quantity: 1,
     price: 0,
@@ -636,11 +637,11 @@ function productPrice(product: any) {
 }
 
 function productUnitName(product: any) {
-  return product?.unit_name || productUnits(product)[0]?.unit_name || '个'
+  return getPreferredProductUnit(product, units.value)?.unit_name || getDefaultUnitName(units.value)
 }
 
 function productBaseQuantity(product: any) {
-  return Number(product?.base_quantity || productUnits(product)[0]?.base_quantity || 1)
+  return Number(getPreferredProductUnit(product, units.value)?.base_quantity || 1)
 }
 
 function productUnits(product: any) {

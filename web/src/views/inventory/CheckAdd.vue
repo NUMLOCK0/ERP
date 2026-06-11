@@ -187,8 +187,10 @@ import { getBrands } from '@/api/brand'
 import { getCategories } from '@/api/category'
 import { createCheck, getStocks } from '@/api/inventory'
 import { getProducts } from '@/api/product'
+import { getUnits } from '@/api/unit'
 import { getWarehouses } from '@/api/warehouse'
 import { useUserStore } from '@/stores/user'
+import { getDefaultUnitName, getPreferredProductUnit } from '@/utils/unit'
 
 interface CheckItem {
   product_id: number
@@ -212,6 +214,7 @@ const warehouses = ref<any[]>([])
 const products = ref<any[]>([])
 const categories = ref<any[]>([])
 const brands = ref<any[]>([])
+const units = ref<any[]>([])
 const stocks = ref<any[]>([])
 const selectorStates = reactive<Record<number, { quantity: number; unit_name: string; base_quantity: number }>>({})
 const drawerFilters = reactive({
@@ -320,8 +323,8 @@ function createCheckItem(product: any): CheckItem {
     product_name: product.name || '',
     code: product.code || '',
     spec: product.spec || '',
-    unit_name: product.unit_name || '',
-    base_quantity: Number(product.base_quantity || 1),
+    unit_name: productUnitName(product),
+    base_quantity: productBaseQuantity(product),
     book_quantity: quantity,
     actual_quantity: quantity,
     remark: ''
@@ -385,11 +388,11 @@ function selectorState(product: any) {
 }
 
 function productUnitName(product: any) {
-  return product?.unit_name || productUnits(product)[0]?.unit_name || '个'
+  return getPreferredProductUnit(product, units.value)?.unit_name || getDefaultUnitName(units.value)
 }
 
 function productBaseQuantity(product: any) {
-  return Number(product?.base_quantity || productUnits(product)[0]?.base_quantity || 1)
+  return Number(getPreferredProductUnit(product, units.value)?.base_quantity || 1)
 }
 
 function productUnits(product: any) {
@@ -470,16 +473,18 @@ function listOf(res: any) {
 }
 
 onMounted(async () => {
-  const [warehouseRes, productRes, categoryRes, brandRes]: any[] = await Promise.all([
+  const [warehouseRes, productRes, categoryRes, brandRes, unitRes]: any[] = await Promise.all([
     getWarehouses({ page: 1, pageSize: 1000, status: 1 }),
     getProducts({ page: 1, pageSize: 1000, status: 1 }),
     getCategories(),
-    getBrands()
+    getBrands(),
+    getUnits()
   ])
   warehouses.value = listOf(warehouseRes)
   products.value = listOf(productRes)
   categories.value = listOf(categoryRes)
   brands.value = listOf(brandRes)
+  units.value = listOf(unitRes)
 })
 </script>
 

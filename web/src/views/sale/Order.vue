@@ -386,7 +386,7 @@ import {
 } from '@/api/sale'
 import { getBrands } from '@/api/brand'
 import { getCategories } from '@/api/category'
-import { getEmployees } from '@/api/employee'
+import { getAllEmployees } from '@/api/employee'
 import { getProducts } from '@/api/product'
 import { getSuppliers } from '@/api/supplier'
 import { getSystemConfig } from '@/api/system'
@@ -395,6 +395,7 @@ import { getWarehouses } from '@/api/warehouse'
 import SearchForm from '@/components/SearchForm.vue'
 import Pagination from '@/components/Pagination.vue'
 import { returnFlagTagType, returnFlagText } from '@/utils/status'
+import { getDefaultUnitName, getPreferredProductUnit } from '@/utils/unit'
 
 interface SaleItem {
   id: number | null
@@ -450,7 +451,7 @@ const form = reactive({
   customer_contact: '',
   customer_phone: '',
   detail_address: '',
-  create_delivery: false,
+  create_delivery: true,
   ship: false,
   items: [] as SaleItem[]
 })
@@ -493,7 +494,7 @@ function resetForm() {
     customer_contact: '',
     customer_phone: '',
     detail_address: '',
-    create_delivery: false,
+    create_delivery: true,
     ship: false,
     items: []
   })
@@ -595,7 +596,7 @@ function createItem(partial: Partial<SaleItem> = {}): SaleItem {
     product_name: partial.product_name ?? '',
     code: partial.code ?? '',
     spec: partial.spec ?? '',
-    unit_name: partial.unit_name ?? '',
+    unit_name: partial.unit_name ?? getDefaultUnitName(units.value, ''),
     base_quantity: partial.base_quantity ?? 1,
     quantity: partial.quantity ?? 1,
     price: partial.price ?? 0,
@@ -814,11 +815,11 @@ function productPrice(product: any) {
 }
 
 function productUnitName(product: any) {
-  return product?.unit_name || productUnits(product)[0]?.unit_name || units.value[0]?.name || '个'
+  return getPreferredProductUnit(product, units.value)?.unit_name || getDefaultUnitName(units.value)
 }
 
 function productBaseQuantity(product: any) {
-  return Number(product?.base_quantity || productUnits(product)[0]?.base_quantity || 1)
+  return Number(getPreferredProductUnit(product, units.value)?.base_quantity || 1)
 }
 
 function productUnits(product: any) {
@@ -928,7 +929,7 @@ onMounted(async () => {
   fetchData()
   const [customerRes, employeeRes, warehouseRes, productRes, categoryRes, brandRes, unitRes, configRes]: any[] = await Promise.all([
     getSuppliers({ page: 1, pageSize: 1000, status: 1 }),
-    getEmployees({ page: 1, pageSize: 1000, status: 1 }),
+    getAllEmployees(),
     getWarehouses({ page: 1, pageSize: 1000, status: 1 }),
     getProducts({ page: 1, pageSize: 1000, status: 1 }),
     getCategories(),

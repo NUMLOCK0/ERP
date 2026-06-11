@@ -1,47 +1,352 @@
 <template>
-  <div class="page-container">
+  <div class="report-page">
     <el-card>
       <SearchForm :model="searchForm" @search="handleSearch" @reset="handleReset">
-        <el-form-item label="日期范围"><el-date-picker v-model="searchForm.dateRange" type="daterange" range-separator="至" start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD" /></el-form-item>
+        <el-form-item label="关键词">
+          <el-input v-model="searchForm.keyword" placeholder="销售单号/收款单号/客户" clearable />
+        </el-form-item>
+        <el-form-item label="日期范围">
+          <el-date-picker
+            v-model="searchForm.dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+          />
+        </el-form-item>
+        <el-form-item label="销售客户">
+          <el-select v-model="searchForm.customer_id" placeholder="请选择" clearable filterable>
+            <el-option v-for="customer in customers" :key="customer.id" :label="customer.name" :value="customer.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="仓库">
+          <el-select v-model="searchForm.warehouse_id" placeholder="请选择" clearable>
+            <el-option v-for="warehouse in warehouses" :key="warehouse.id" :label="warehouse.name" :value="warehouse.id" />
+          </el-select>
+        </el-form-item>
       </SearchForm>
-      <div class="toolbar"><el-button type="primary" @click="ElMessage.info('导出Excel')">导出Excel</el-button></div>
+
       <el-table :data="tableData" stripe v-loading="loading">
-        <el-table-column prop="receipt_no" label="收款单号" width="190">
-          <template #default="{ row }"><CopyableNo :value="row.receipt_no" /></template>
+        <el-table-column prop="id" label="数据ID" width="90" />
+        <el-table-column prop="order_no" label="销售单号" width="190" show-overflow-tooltip>
+          <template #default="{ row }"><CopyableNo :value="row.order_no" /></template>
         </el-table-column>
-        <el-table-column prop="customer_name" label="客户" min-width="150" />
-        <el-table-column prop="amount" label="金额" width="120"><template #default="{ row }">¥{{ row.amount?.toLocaleString() }}</template></el-table-column>
-        <el-table-column prop="pay_method" label="收款方式" width="100" />
-        <el-table-column label="日期" width="180">
+        <el-table-column prop="customer_name" label="销售客户" min-width="150" show-overflow-tooltip>
+          <template #default="{ row }">{{ emptyText(row.customer_name) }}</template>
+        </el-table-column>
+        <el-table-column prop="pay_method" label="收款方式" width="120" show-overflow-tooltip>
+          <template #default="{ row }">{{ emptyText(row.pay_method) }}</template>
+        </el-table-column>
+        <el-table-column label="收款金额" width="130" align="right">
+          <template #default="{ row }">¥{{ formatMoney(row.receipt_amount) }}</template>
+        </el-table-column>
+        <el-table-column prop="receiver_name" label="收款人" width="120" show-overflow-tooltip>
+          <template #default="{ row }">{{ emptyText(row.receiver_name) }}</template>
+        </el-table-column>
+        <el-table-column label="收款时间" width="180">
+          <template #default="{ row }">{{ $formatDateTime(row.receipt_time) }}</template>
+        </el-table-column>
+        <el-table-column prop="remark" label="备注" min-width="180" show-overflow-tooltip>
+          <template #default="{ row }">{{ emptyText(row.remark) }}</template>
+        </el-table-column>
+        <el-table-column label="新增时间" width="180">
           <template #default="{ row }">{{ $formatDateTime(row.created_at) }}</template>
         </el-table-column>
+        <el-table-column label="更新时间" width="180">
+          <template #default="{ row }">{{ $formatDateTime(row.updated_at) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="100" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" link :icon="View" @click="handleDetail(row)">查看详情</el-button>
+          </template>
+        </el-table-column>
       </el-table>
+
       <Pagination v-model:page="pagination.page" v-model:size="pagination.size" :total="total" @change="fetchData" />
+
+      <div class="warehouse-section">
+        <button class="carousel-arrow" type="button" :disabled="warehouseOffset === 0" @click="moveWarehouses(-1)">
+          <el-icon><ArrowLeft /></el-icon>
+        </button>
+        <div class="warehouse-cards">
+          <div v-for="warehouse in visibleWarehouses" :key="warehouse.id" class="warehouse-card">
+            <div class="warehouse-title">{{ warehouse.warehouse_name }}</div>
+            <div class="warehouse-stat-grid">
+              <span>应收总额 ¥{{ formatMoney(warehouse.receivable_total) }}</span>
+              <span>未收总额 ¥{{ formatMoney(warehouse.unreceived_total) }}</span>
+              <span>已收总额 ¥{{ formatMoney(warehouse.received_total) }}</span>
+            </div>
+          </div>
+          <div v-if="!warehouseSummaries.length" class="warehouse-empty">暂无仓库数据</div>
+        </div>
+        <button
+          class="carousel-arrow"
+          type="button"
+          :disabled="warehouseOffset + warehousePageSize >= warehouseSummaries.length"
+          @click="moveWarehouses(1)"
+        >
+          <el-icon><ArrowRight /></el-icon>
+        </button>
+        <button class="warehouse-more" type="button" @click="warehouseDialogVisible = true">
+          <span>更多</span>
+          <el-icon><ArrowDown /></el-icon>
+        </button>
+      </div>
     </el-card>
+
+    <el-drawer v-model="detailVisible" title="销售收款详情" size="62%">
+      <div v-loading="detailLoading" class="detail-content">
+        <el-descriptions v-if="detail" :column="2" border>
+          <el-descriptions-item label="数据ID">{{ detail.id }}</el-descriptions-item>
+          <el-descriptions-item label="收款单号"><CopyableNo :value="detail.receipt_no" /></el-descriptions-item>
+          <el-descriptions-item label="销售单号"><CopyableNo :value="detail.order_no" /></el-descriptions-item>
+          <el-descriptions-item label="销售客户">{{ emptyText(detail.customer_name) }}</el-descriptions-item>
+          <el-descriptions-item label="仓库">{{ emptyText(detail.warehouse_name) }}</el-descriptions-item>
+          <el-descriptions-item label="收款方式">{{ emptyText(detail.receipt_method || detail.pay_method) }}</el-descriptions-item>
+          <el-descriptions-item label="应收金额">¥{{ formatMoney(detail.receivable_amount) }}</el-descriptions-item>
+          <el-descriptions-item label="已收金额">¥{{ formatMoney(detail.amount) }}</el-descriptions-item>
+          <el-descriptions-item label="未收金额">¥{{ formatMoney(detail.unreceived_amount) }}</el-descriptions-item>
+          <el-descriptions-item label="收款人">{{ emptyText(detail.receiver_name) }}</el-descriptions-item>
+          <el-descriptions-item label="收款时间">{{ $formatDateTime(detail.receipt_time) }}</el-descriptions-item>
+          <el-descriptions-item label="新增时间">{{ $formatDateTime(detail.created_at) }}</el-descriptions-item>
+          <el-descriptions-item label="更新时间">{{ $formatDateTime(detail.updated_at) }}</el-descriptions-item>
+          <el-descriptions-item label="收款开始时间">{{ $formatDateTime(detail.payment_start_time) }}</el-descriptions-item>
+          <el-descriptions-item label="收款完成时间">{{ $formatDateTime(detail.payment_completed_time) }}</el-descriptions-item>
+          <el-descriptions-item label="关闭时间">{{ $formatDateTime(detail.close_time) }}</el-descriptions-item>
+          <el-descriptions-item label="备注" :span="2">{{ emptyText(detail.detail_remark || detail.remark) }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+    </el-drawer>
+
+    <el-dialog v-model="warehouseDialogVisible" title="全部仓库销售收款数据" width="760px">
+      <el-table :data="warehouseSummaries" stripe max-height="520">
+        <el-table-column prop="warehouse_name" label="仓库名称" min-width="180" />
+        <el-table-column label="应收总额" width="160" align="right">
+          <template #default="{ row }">¥{{ formatMoney(row.receivable_total) }}</template>
+        </el-table-column>
+        <el-table-column label="未收总额" width="160" align="right">
+          <template #default="{ row }">¥{{ formatMoney(row.unreceived_total) }}</template>
+        </el-table-column>
+        <el-table-column label="已收总额" width="160" align="right">
+          <template #default="{ row }">¥{{ formatMoney(row.received_total) }}</template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { getSaleReceiptReport } from '@/api/report'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ArrowDown, ArrowLeft, ArrowRight, View } from '@element-plus/icons-vue'
+import { getSaleReceiptReport, getSaleReceiptWarehouseSummary } from '@/api/report'
+import { getReceipt } from '@/api/finance'
+import { getSuppliers } from '@/api/supplier'
+import { getWarehouses } from '@/api/warehouse'
 import SearchForm from '@/components/SearchForm.vue'
 import Pagination from '@/components/Pagination.vue'
 
-const loading = ref(false); const tableData = ref<any[]>([]); const total = ref(0)
-const pagination = reactive({ page: 1, size: 20 }); const searchForm = reactive({ dateRange: null as any })
+const loading = ref(false)
+const tableData = ref<any[]>([])
+const total = ref(0)
+const customers = ref<any[]>([])
+const warehouses = ref<any[]>([])
+const warehouseSummaries = ref<any[]>([])
+const warehouseOffset = ref(0)
+const warehousePageSize = 4
+const warehouseDialogVisible = ref(false)
+const detailVisible = ref(false)
+const detailLoading = ref(false)
+const detail = ref<any | null>(null)
+const pagination = reactive({ page: 1, size: 20 })
+const searchForm = reactive({
+  keyword: '',
+  dateRange: null as string[] | null,
+  customer_id: null as number | null,
+  warehouse_id: null as number | null
+})
+
+const visibleWarehouses = computed(() => (
+  warehouseSummaries.value.slice(warehouseOffset.value, warehouseOffset.value + warehousePageSize)
+))
+
+function reportParams(includePagination = true) {
+  const params: any = {
+    keyword: searchForm.keyword,
+    customer_id: searchForm.customer_id,
+    warehouse_id: searchForm.warehouse_id
+  }
+  if (includePagination) {
+    params.page = pagination.page
+    params.pageSize = pagination.size
+  }
+  if (searchForm.dateRange?.length === 2) {
+    params.start_date = searchForm.dateRange[0]
+    params.end_date = searchForm.dateRange[1]
+  }
+  return params
+}
 
 async function fetchData() {
   loading.value = true
   try {
-    const p: any = { page: pagination.page, pageSize: pagination.size }
-    if (searchForm.dateRange) { p.start_date = searchForm.dateRange[0]; p.end_date = searchForm.dateRange[1] }
-    const res: any = await getSaleReceiptReport(p)
-    tableData.value = res.data?.list || []; total.value = res.data?.total || 0
-  } finally { loading.value = false }
+    const res: any = await getSaleReceiptReport(reportParams())
+    tableData.value = res.data?.list || []
+    total.value = res.data?.total || 0
+  } finally {
+    loading.value = false
+  }
 }
-function handleSearch() { pagination.page = 1; fetchData() }
-function handleReset() { Object.assign(searchForm, { dateRange: null }); handleSearch() }
-onMounted(fetchData)
+
+async function fetchWarehouseSummaries() {
+  const res: any = await getSaleReceiptWarehouseSummary(reportParams(false))
+  warehouseSummaries.value = res.data || []
+  if (warehouseOffset.value >= warehouseSummaries.value.length) warehouseOffset.value = 0
+}
+
+async function handleSearch() {
+  pagination.page = 1
+  warehouseOffset.value = 0
+  await Promise.all([fetchData(), fetchWarehouseSummaries()])
+}
+
+function handleReset() {
+  Object.assign(searchForm, { keyword: '', dateRange: null, customer_id: null, warehouse_id: null })
+  handleSearch()
+}
+
+function moveWarehouses(direction: number) {
+  const next = warehouseOffset.value + direction
+  const maxOffset = Math.max(0, warehouseSummaries.value.length - warehousePageSize)
+  warehouseOffset.value = Math.min(Math.max(0, next), maxOffset)
+}
+
+async function handleDetail(row: any) {
+  detailVisible.value = true
+  detailLoading.value = true
+  detail.value = { ...row }
+  try {
+    const res: any = await getReceipt(row.id)
+    detail.value = { ...row, ...(res.data || {}) }
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+function emptyText(value: any) {
+  return value === undefined || value === null || value === '' ? '-' : value
+}
+
+function formatMoney(value: any) {
+  return Number(value || 0).toFixed(2)
+}
+
+onMounted(async () => {
+  const [, , customerRes, warehouseRes]: any[] = await Promise.all([
+    fetchData(),
+    fetchWarehouseSummaries(),
+    getSuppliers({ page: 1, pageSize: 1000, type: 'customer', status: 1 }),
+    getWarehouses()
+  ])
+  customers.value = customerRes.data?.list || customerRes.data || []
+  warehouses.value = warehouseRes.data?.list || warehouseRes.data || []
+})
 </script>
-<style scoped>.page-container{height:100%}.toolbar{margin-bottom:16px}</style>
+
+<style scoped>
+.report-page {
+  height: 100%;
+}
+
+.warehouse-section {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.warehouse-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.warehouse-card,
+.warehouse-empty {
+  min-height: 108px;
+  padding: 12px 10px;
+  border: 1px dashed #dcdfe6;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.warehouse-title {
+  overflow: hidden;
+  margin-bottom: 8px;
+  color: #303133;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.warehouse-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 8px;
+  color: #909399;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.warehouse-stat-grid span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.carousel-arrow,
+.warehouse-more {
+  border: 1px dashed #dcdfe6;
+  border-radius: 6px;
+  background: #fff;
+  color: #606266;
+  cursor: pointer;
+}
+
+.carousel-arrow {
+  width: 34px;
+}
+
+.carousel-arrow:disabled {
+  cursor: not-allowed;
+  color: #c0c4cc;
+}
+
+.warehouse-more {
+  width: 42px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+.warehouse-more span {
+  writing-mode: vertical-rl;
+  letter-spacing: 2px;
+}
+
+.detail-content {
+  min-height: 240px;
+}
+
+@media (max-width: 1200px) {
+  .warehouse-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+</style>

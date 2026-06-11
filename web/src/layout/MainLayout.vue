@@ -58,7 +58,6 @@
             <el-icon><Coin /></el-icon>
             <span>库存管理</span>
           </template>
-          <el-menu-item index="/inventory/stock">库存查询</el-menu-item>
           <el-menu-item index="/inventory/other-inbound">其他入库</el-menu-item>
           <el-menu-item index="/inventory/other-outbound">其他出库</el-menu-item>
           <el-menu-item index="/inventory/check">库存盘点</el-menu-item>
@@ -81,6 +80,8 @@
           </template>
           <el-menu-item index="/report/product-stock">产品库存</el-menu-item>
           <el-menu-item index="/report/sale-delivery">销售发货</el-menu-item>
+          <el-menu-item index="/report/other-outbound">其他出库</el-menu-item>
+          <el-menu-item index="/report/other-inbound">其他入库</el-menu-item>
           <el-menu-item index="/report/purchase-inbound">采购入库</el-menu-item>
           <el-menu-item index="/report/purchase-order">采购订单</el-menu-item>
           <el-menu-item index="/report/sale-order">销售订单</el-menu-item>

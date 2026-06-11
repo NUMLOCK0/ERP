@@ -12,9 +12,10 @@
     "build:mp-weixin": "uni build -p mp-weixin"
   },
   "dependencies": {
+    "@dcloudio/uni-ui": "^1.5.12",
+    "dayjs": "^1.11.10",
     "pinia": "^2.1.7",
-    "uview-plus": "^3.4.6",
-    "dayjs": "^1.11.10"
+    "uview-plus": "^3.4.6"
   },
   "devDependencies": {
     "@dcloudio/types": "^3.4.4",

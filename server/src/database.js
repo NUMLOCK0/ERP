@@ -376,6 +376,7 @@ async function createTables() {
       product_id INT DEFAULT 0,
       warehouse_id INT DEFAULT 0,
       quantity DOUBLE DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       UNIQUE KEY uk_product_warehouse (product_id, warehouse_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
@@ -449,6 +450,7 @@ async function createTables() {
       type VARCHAR(50) DEFAULT '',
       total_amount DOUBLE DEFAULT 0,
       total_quantity DOUBLE DEFAULT 0,
+      tax_amount DOUBLE DEFAULT 0,
       status INT DEFAULT 0,
       admin_remark TEXT DEFAULT NULL,
       inbound_remark TEXT DEFAULT NULL,
@@ -469,6 +471,7 @@ async function createTables() {
       product_id INT DEFAULT 0,
       quantity DOUBLE DEFAULT 0,
       price DOUBLE DEFAULT 0,
+      tax DOUBLE DEFAULT 0,
       amount DOUBLE DEFAULT 0
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
@@ -608,6 +611,7 @@ async function createTables() {
   await ensureColumn('product', 'default_supplier_id', 'INT DEFAULT 0');
   await ensureColumn('employee', 'user_id', 'INT DEFAULT 0');
   await ensureColumn('unit', 'is_default', 'TINYINT(1) DEFAULT 0');
+  await ensureColumn('inventory_stock', 'created_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP');
   await ensureColumn('product_unit', 'warehouse_id', 'INT DEFAULT 0');
   await ensureColumn('purchase_order', 'submit_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('purchase_order', 'payment_method', "VARCHAR(50) DEFAULT ''");
@@ -654,6 +658,7 @@ async function createTables() {
   await ensureColumn('inventory_check_item', 'remark', "VARCHAR(255) DEFAULT ''");
   await ensureColumn('other_inbound', 'supplier_id', 'INT DEFAULT 0');
   await ensureColumn('other_inbound', 'total_quantity', 'DOUBLE DEFAULT 0');
+  await ensureColumn('other_inbound', 'tax_amount', 'DOUBLE DEFAULT 0');
   await ensureColumn('other_inbound', 'admin_remark', 'TEXT DEFAULT NULL');
   await ensureColumn('other_inbound', 'inbound_remark', 'TEXT DEFAULT NULL');
   await ensureColumn('other_inbound', 'completed_time', 'DATETIME DEFAULT NULL');
@@ -662,6 +667,7 @@ async function createTables() {
   await ensureColumn('other_inbound', 'cancel_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('other_inbound', 'close_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('other_inbound', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+  await ensureColumn('other_inbound_item', 'tax', 'DOUBLE DEFAULT 0');
   await ensureColumn('other_outbound', 'customer_id', 'INT DEFAULT 0');
   await ensureColumn('other_outbound', 'total_quantity', 'DOUBLE DEFAULT 0');
   await ensureColumn('other_outbound', 'tax_amount', 'DOUBLE DEFAULT 0');

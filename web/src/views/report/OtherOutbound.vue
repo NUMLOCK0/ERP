@@ -3,7 +3,7 @@
     <el-card>
       <SearchForm :model="searchForm" @search="handleSearch" @reset="handleReset">
         <el-form-item label="关键词">
-          <el-input v-model="searchForm.keyword" placeholder="采购单号/付款单号/供应商" clearable />
+          <el-input v-model="searchForm.keyword" placeholder="出库单号/产品名称/编码" clearable />
         </el-form-item>
         <el-form-item label="日期范围">
           <el-date-picker
@@ -15,9 +15,9 @@
             value-format="YYYY-MM-DD"
           />
         </el-form-item>
-        <el-form-item label="供应商">
-          <el-select v-model="searchForm.supplier_id" placeholder="请选择" clearable filterable>
-            <el-option v-for="supplier in suppliers" :key="supplier.id" :label="supplier.name" :value="supplier.id" />
+        <el-form-item label="销售客户">
+          <el-select v-model="searchForm.customer_id" placeholder="请选择" clearable filterable>
+            <el-option v-for="customer in customers" :key="customer.id" :label="customer.name" :value="customer.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="仓库">
@@ -29,24 +29,50 @@
 
       <el-table :data="tableData" stripe v-loading="loading">
         <el-table-column prop="id" label="数据ID" width="90" />
-        <el-table-column prop="order_no" label="采购单号" width="190" show-overflow-tooltip>
-          <template #default="{ row }"><CopyableNo :value="row.order_no" /></template>
+        <el-table-column prop="outbound_no" label="其他出库单号" width="190" show-overflow-tooltip>
+          <template #default="{ row }"><CopyableNo :value="row.outbound_no" /></template>
         </el-table-column>
-        <el-table-column prop="supplier_name" label="供应商" min-width="150" show-overflow-tooltip>
-          <template #default="{ row }">{{ emptyText(row.supplier_name) }}</template>
+        <el-table-column prop="product_id" label="产品ID" width="90" />
+        <el-table-column label="产品图片" width="90">
+          <template #default="{ row }">
+            <el-image
+              v-if="firstProductImage(row)"
+              class="product-image"
+              :src="firstProductImage(row)"
+              :preview-src-list="[firstProductImage(row)]"
+              fit="cover"
+              preview-teleported
+            />
+            <span v-else>-</span>
+          </template>
         </el-table-column>
-        <el-table-column prop="pay_method" label="付款方式" width="120" show-overflow-tooltip>
-          <template #default="{ row }">{{ emptyText(row.pay_method) }}</template>
+        <el-table-column prop="product_name" label="产品名称" min-width="160" show-overflow-tooltip />
+        <el-table-column label="产品规格" min-width="130" show-overflow-tooltip>
+          <template #default="{ row }">{{ emptyText(row.product_spec) }}</template>
         </el-table-column>
-        <el-table-column label="付款金额" width="130" align="right">
-          <template #default="{ row }">¥{{ formatMoney(row.payment_amount) }}</template>
+        <el-table-column label="出库价" width="110" align="right">
+          <template #default="{ row }">¥{{ formatMoney(row.outbound_price) }}</template>
         </el-table-column>
-        <el-table-column prop="payer" label="付款人" width="120" show-overflow-tooltip>
-          <template #default="{ row }">{{ emptyText(row.payer) }}</template>
+        <el-table-column label="出库总额" width="120" align="right">
+          <template #default="{ row }">¥{{ formatMoney(row.outbound_total_amount) }}</template>
         </el-table-column>
-        <el-table-column label="付款时间" width="180">
-          <template #default="{ row }">{{ $formatDateTime(row.payment_time) }}</template>
+        <el-table-column label="出库数量" width="110" align="right">
+          <template #default="{ row }">{{ formatQuantity(row.outbound_quantity) }}</template>
         </el-table-column>
+        <el-table-column label="税金" width="110" align="right">
+          <template #default="{ row }">¥{{ formatMoney(row.tax) }}</template>
+        </el-table-column>
+        <el-table-column label="税金总额" width="120" align="right">
+          <template #default="{ row }">¥{{ formatMoney(row.tax_total) }}</template>
+        </el-table-column>
+        <el-table-column label="单位" width="90">
+          <template #default="{ row }">{{ emptyText(row.unit_name) }}</template>
+        </el-table-column>
+        <el-table-column label="单位基准数" width="120" align="right">
+          <template #default="{ row }">{{ formatQuantity(row.base_quantity) }}</template>
+        </el-table-column>
+        <el-table-column prop="customer_name" label="销售客户" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="warehouse_name" label="仓库" min-width="130" show-overflow-tooltip />
         <el-table-column label="新增时间" width="180">
           <template #default="{ row }">{{ $formatDateTime(row.created_at) }}</template>
         </el-table-column>
@@ -70,9 +96,10 @@
           <div v-for="warehouse in visibleWarehouses" :key="warehouse.id" class="warehouse-card">
             <div class="warehouse-title">{{ warehouse.warehouse_name }}</div>
             <div class="warehouse-stat-grid">
-              <span>应付总额 ¥{{ formatMoney(warehouse.payable_total) }}</span>
-              <span>未付总额 ¥{{ formatMoney(warehouse.unpaid_total) }}</span>
-              <span>已付总额 ¥{{ formatMoney(warehouse.paid_total) }}</span>
+              <span>产品总数 {{ formatQuantity(warehouse.product_total) }}</span>
+              <span>出库总数 {{ formatQuantity(warehouse.outbound_total) }}</span>
+              <span>出库总额 ¥{{ formatMoney(warehouse.outbound_amount) }}</span>
+              <span>税金总额 ¥{{ formatMoney(warehouse.tax_total) }}</span>
             </div>
           </div>
           <div v-if="!warehouseSummaries.length" class="warehouse-empty">暂无仓库数据</div>
@@ -92,66 +119,66 @@
       </div>
     </el-card>
 
-    <el-drawer v-model="detailVisible" title="采购付款详情" size="68%">
+    <el-drawer v-model="detailVisible" title="其他出库详情" size="72%">
       <div v-loading="detailLoading" class="detail-content">
         <template v-if="detail">
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="数据ID">{{ detail.id }}</el-descriptions-item>
-            <el-descriptions-item label="付款单号"><CopyableNo :value="detail.payment_no" /></el-descriptions-item>
-            <el-descriptions-item label="采购单号"><CopyableNo :value="detail.order_no" /></el-descriptions-item>
-            <el-descriptions-item label="供应商">{{ emptyText(detail.supplier_name) }}</el-descriptions-item>
+          <el-descriptions :column="3" border>
+            <el-descriptions-item label="数据ID">{{ detail.report_item_id }}</el-descriptions-item>
+            <el-descriptions-item label="其他出库单号"><CopyableNo :value="detail.outbound_no" /></el-descriptions-item>
+            <el-descriptions-item label="销售客户">{{ emptyText(detail.customer_name) }}</el-descriptions-item>
             <el-descriptions-item label="仓库">{{ emptyText(detail.warehouse_name) }}</el-descriptions-item>
-            <el-descriptions-item label="付款方式">{{ emptyText(detail.payment_method || detail.pay_method) }}</el-descriptions-item>
-            <el-descriptions-item label="应付金额">¥{{ formatMoney(detail.receivable_total_amount) }}</el-descriptions-item>
-            <el-descriptions-item label="已付金额">¥{{ formatMoney(detail.paid_total_amount) }}</el-descriptions-item>
-            <el-descriptions-item label="未付金额">¥{{ formatMoney(detail.unpaid_total_amount) }}</el-descriptions-item>
-            <el-descriptions-item label="最近付款人">{{ emptyText(detail.payer) }}</el-descriptions-item>
-            <el-descriptions-item label="最近付款时间">{{ $formatDateTime(detail.payment_time) }}</el-descriptions-item>
+            <el-descriptions-item label="出库总数">{{ formatQuantity(detail.total_quantity) }}</el-descriptions-item>
+            <el-descriptions-item label="出库总额">¥{{ formatMoney(detail.total_amount) }}</el-descriptions-item>
+            <el-descriptions-item label="税金总额">¥{{ formatMoney(detail.tax_amount) }}</el-descriptions-item>
+            <el-descriptions-item label="联系人">{{ emptyText(detail.contact) }}</el-descriptions-item>
+            <el-descriptions-item label="联系电话">{{ emptyText(detail.phone) }}</el-descriptions-item>
             <el-descriptions-item label="新增时间">{{ $formatDateTime(detail.created_at) }}</el-descriptions-item>
             <el-descriptions-item label="更新时间">{{ $formatDateTime(detail.updated_at) }}</el-descriptions-item>
-            <el-descriptions-item label="付款开始时间">{{ $formatDateTime(detail.payment_start_time) }}</el-descriptions-item>
-            <el-descriptions-item label="付款完成时间">{{ $formatDateTime(detail.payment_completed_time) }}</el-descriptions-item>
-            <el-descriptions-item label="关闭时间">{{ $formatDateTime(detail.close_time) }}</el-descriptions-item>
-            <el-descriptions-item label="备注" :span="2">{{ emptyText(detail.detail_remark || detail.remark) }}</el-descriptions-item>
+            <el-descriptions-item label="完成时间">{{ $formatDateTime(detail.completed_time) }}</el-descriptions-item>
+            <el-descriptions-item label="收货地址" :span="3">{{ emptyText(detail.address) }}</el-descriptions-item>
+            <el-descriptions-item label="出库备注" :span="3">{{ emptyText(detail.outbound_remark || detail.remark) }}</el-descriptions-item>
           </el-descriptions>
 
-          <div class="detail-section-title">付款记录</div>
-          <el-table :data="detail.payment_records || []" border stripe>
-            <el-table-column prop="id" label="记录ID" width="90" />
-            <el-table-column label="付款金额" width="130" align="right">
+          <div class="detail-section-title">出库产品</div>
+          <el-table :data="detail.items || []" border stripe>
+            <el-table-column prop="product_name" label="产品名称" min-width="160" />
+            <el-table-column prop="code" label="产品编码" width="130" />
+            <el-table-column prop="spec" label="产品规格" width="130" />
+            <el-table-column prop="unit_name" label="单位" width="90" />
+            <el-table-column label="单位基准数" width="110" align="right">
+              <template #default="{ row }">{{ formatQuantity(row.base_quantity) }}</template>
+            </el-table-column>
+            <el-table-column label="出库价" width="110" align="right">
+              <template #default="{ row }">¥{{ formatMoney(row.price) }}</template>
+            </el-table-column>
+            <el-table-column label="出库数量" width="110" align="right">
+              <template #default="{ row }">{{ formatQuantity(row.quantity) }}</template>
+            </el-table-column>
+            <el-table-column label="税金总额" width="120" align="right">
+              <template #default="{ row }">¥{{ formatMoney(row.tax) }}</template>
+            </el-table-column>
+            <el-table-column label="出库总额" width="120" align="right">
               <template #default="{ row }">¥{{ formatMoney(row.amount) }}</template>
-            </el-table-column>
-            <el-table-column prop="payer" label="付款人" width="120">
-              <template #default="{ row }">{{ emptyText(row.payer) }}</template>
-            </el-table-column>
-            <el-table-column prop="pay_method" label="付款方式" width="120">
-              <template #default="{ row }">{{ emptyText(row.pay_method) }}</template>
-            </el-table-column>
-            <el-table-column label="付款时间" width="180">
-              <template #default="{ row }">{{ $formatDateTime(row.pay_time) }}</template>
-            </el-table-column>
-            <el-table-column prop="creator_name" label="操作人" width="120">
-              <template #default="{ row }">{{ emptyText(row.creator_name) }}</template>
-            </el-table-column>
-            <el-table-column prop="remark" label="备注" min-width="180" show-overflow-tooltip>
-              <template #default="{ row }">{{ emptyText(row.remark) }}</template>
             </el-table-column>
           </el-table>
         </template>
       </div>
     </el-drawer>
 
-    <el-dialog v-model="warehouseDialogVisible" title="全部仓库采购付款数据" width="760px">
+    <el-dialog v-model="warehouseDialogVisible" title="全部仓库出库数据" width="850px">
       <el-table :data="warehouseSummaries" stripe max-height="520">
         <el-table-column prop="warehouse_name" label="仓库名称" min-width="180" />
-        <el-table-column label="应付总额" width="160" align="right">
-          <template #default="{ row }">¥{{ formatMoney(row.payable_total) }}</template>
+        <el-table-column label="产品总数" width="120" align="right">
+          <template #default="{ row }">{{ formatQuantity(row.product_total) }}</template>
         </el-table-column>
-        <el-table-column label="未付总额" width="160" align="right">
-          <template #default="{ row }">¥{{ formatMoney(row.unpaid_total) }}</template>
+        <el-table-column label="出库总数" width="120" align="right">
+          <template #default="{ row }">{{ formatQuantity(row.outbound_total) }}</template>
         </el-table-column>
-        <el-table-column label="已付总额" width="160" align="right">
-          <template #default="{ row }">¥{{ formatMoney(row.paid_total) }}</template>
+        <el-table-column label="出库总额" width="140" align="right">
+          <template #default="{ row }">¥{{ formatMoney(row.outbound_amount) }}</template>
+        </el-table-column>
+        <el-table-column label="税金总额" width="140" align="right">
+          <template #default="{ row }">¥{{ formatMoney(row.tax_total) }}</template>
         </el-table-column>
       </el-table>
     </el-dialog>
@@ -161,8 +188,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ArrowDown, ArrowLeft, ArrowRight, View } from '@element-plus/icons-vue'
-import { getPurchasePaymentReport, getPurchasePaymentWarehouseSummary } from '@/api/report'
-import { getPayment } from '@/api/finance'
+import { getOtherOutboundReport, getOtherOutboundWarehouseSummary } from '@/api/report'
+import { getOtherOutbound } from '@/api/inventory'
 import { getSuppliers } from '@/api/supplier'
 import { getWarehouses } from '@/api/warehouse'
 import SearchForm from '@/components/SearchForm.vue'
@@ -171,7 +198,7 @@ import Pagination from '@/components/Pagination.vue'
 const loading = ref(false)
 const tableData = ref<any[]>([])
 const total = ref(0)
-const suppliers = ref<any[]>([])
+const customers = ref<any[]>([])
 const warehouses = ref<any[]>([])
 const warehouseSummaries = ref<any[]>([])
 const warehouseOffset = ref(0)
@@ -184,7 +211,7 @@ const pagination = reactive({ page: 1, size: 20 })
 const searchForm = reactive({
   keyword: '',
   dateRange: null as string[] | null,
-  supplier_id: null as number | null,
+  customer_id: null as number | null,
   warehouse_id: null as number | null
 })
 
@@ -195,7 +222,7 @@ const visibleWarehouses = computed(() => (
 function reportParams(includePagination = true) {
   const params: any = {
     keyword: searchForm.keyword,
-    supplier_id: searchForm.supplier_id,
+    customer_id: searchForm.customer_id,
     warehouse_id: searchForm.warehouse_id
   }
   if (includePagination) {
@@ -212,7 +239,7 @@ function reportParams(includePagination = true) {
 async function fetchData() {
   loading.value = true
   try {
-    const res: any = await getPurchasePaymentReport(reportParams())
+    const res: any = await getOtherOutboundReport(reportParams())
     tableData.value = res.data?.list || []
     total.value = res.data?.total || 0
   } finally {
@@ -221,7 +248,7 @@ async function fetchData() {
 }
 
 async function fetchWarehouseSummaries() {
-  const res: any = await getPurchasePaymentWarehouseSummary(reportParams(false))
+  const res: any = await getOtherOutboundWarehouseSummary(reportParams(false))
   warehouseSummaries.value = res.data || []
   if (warehouseOffset.value >= warehouseSummaries.value.length) warehouseOffset.value = 0
 }
@@ -233,7 +260,7 @@ async function handleSearch() {
 }
 
 function handleReset() {
-  Object.assign(searchForm, { keyword: '', dateRange: null, supplier_id: null, warehouse_id: null })
+  Object.assign(searchForm, { keyword: '', dateRange: null, customer_id: null, warehouse_id: null })
   handleSearch()
 }
 
@@ -246,21 +273,45 @@ function moveWarehouses(direction: number) {
 async function handleDetail(row: any) {
   detailVisible.value = true
   detailLoading.value = true
-  detail.value = { ...row, payment_records: [] }
+  detail.value = { ...row, report_item_id: row.id, items: [] }
   try {
-    const res: any = await getPayment(row.id)
+    const res: any = await getOtherOutbound(row.outbound_id)
     detail.value = {
       ...row,
       ...(res.data || {}),
-      payment_records: res.data?.payment_records || []
+      report_item_id: row.id,
+      items: res.data?.items || []
     }
   } finally {
     detailLoading.value = false
   }
 }
 
+function normalizeImageUrls(value: any) {
+  if (Array.isArray(value)) return value
+  if (!value) return []
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      return Array.isArray(parsed) ? parsed : [value]
+    } catch {
+      return [value]
+    }
+  }
+  return []
+}
+
+function firstProductImage(row: any) {
+  return normalizeImageUrls(row.product_image_urls)[0] || ''
+}
+
 function emptyText(value: any) {
   return value === undefined || value === null || value === '' ? '-' : value
+}
+
+function formatQuantity(value: any) {
+  const quantity = Number(value || 0)
+  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(3)))
 }
 
 function formatMoney(value: any) {
@@ -268,13 +319,13 @@ function formatMoney(value: any) {
 }
 
 onMounted(async () => {
-  const [, , supplierRes, warehouseRes]: any[] = await Promise.all([
+  const [, , customerRes, warehouseRes]: any[] = await Promise.all([
     fetchData(),
     fetchWarehouseSummaries(),
-    getSuppliers({ page: 1, pageSize: 1000, type: 'supplier', status: 1 }),
+    getSuppliers({ page: 1, pageSize: 1000, type: 'customer', status: 1 }),
     getWarehouses()
   ])
-  suppliers.value = supplierRes.data?.list || supplierRes.data || []
+  customers.value = customerRes.data?.list || customerRes.data || []
   warehouses.value = warehouseRes.data?.list || warehouseRes.data || []
 })
 </script>
@@ -282,6 +333,12 @@ onMounted(async () => {
 <style scoped>
 .report-page {
   height: 100%;
+}
+
+.product-image {
+  width: 50px;
+  height: 50px;
+  border-radius: 4px;
 }
 
 .warehouse-section {
@@ -301,7 +358,7 @@ onMounted(async () => {
 
 .warehouse-card,
 .warehouse-empty {
-  min-height: 108px;
+  min-height: 112px;
   padding: 12px 10px;
   border: 1px dashed #dcdfe6;
   border-radius: 6px;
@@ -367,7 +424,7 @@ onMounted(async () => {
 }
 
 .detail-content {
-  min-height: 240px;
+  min-height: 260px;
 }
 
 .detail-section-title {

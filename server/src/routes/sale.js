@@ -104,11 +104,28 @@ router.get('/order', async (req, res) => {
 router.get('/order/:id', async (req, res) => {
   try {
     const pool = getPool();
-    const [rows] = await pool.execute('SELECT * FROM sale_order WHERE id = ?', [req.params.id]);
+    const [rows] = await pool.execute(
+      `SELECT so.*,
+              sc.name AS customer_name,
+              e.name AS employee_name,
+              w.name AS warehouse_name,
+              COALESCE(NULLIF(so.customer_contact, ''), sc.contact) AS contact,
+              COALESCE(NULLIF(so.customer_phone, ''), sc.phone) AS phone,
+              COALESCE(NULLIF(so.detail_address, ''), sc.address) AS detail_address
+       FROM sale_order so
+       LEFT JOIN supplier_customer sc ON so.customer_id = sc.id
+       LEFT JOIN employee e ON so.employee_id = e.id
+       LEFT JOIN warehouse w ON so.warehouse_id = w.id
+       WHERE so.id = ?`,
+      [req.params.id]
+    );
     if (!rows.length) return res.json(Response.error('订单不存在'));
     const order = rows[0];
     const [items] = await pool.execute(
-      `SELECT soi.*, p.name AS product_name, p.code, p.spec, u.name AS unit_name, COALESCE(pu.base_quantity, 1) AS base_quantity
+      `SELECT soi.*, p.name AS product_name, p.code, p.spec, p.image_urls, u.name AS unit_name,
+              COALESCE(pu.base_quantity, 1) AS base_quantity,
+              COALESCE(return_stats.return_quantity, 0) AS return_quantity,
+              COALESCE(return_stats.refund_amount, 0) AS refund_amount
        FROM sale_order_item soi
        LEFT JOIN product p ON soi.product_id = p.id
        LEFT JOIN unit u ON p.unit_id = u.id
@@ -117,6 +134,18 @@ router.get('/order/:id', async (req, res) => {
          FROM product_unit
          GROUP BY product_id
        ) pu ON p.id = pu.product_id
+       LEFT JOIN (
+         SELECT sd.order_id,
+                sri.product_id,
+                SUM(sri.quantity) AS return_quantity,
+                SUM(sri.amount) AS refund_amount
+         FROM sale_return_item sri
+         INNER JOIN sale_return sr ON sri.return_id = sr.id
+         INNER JOIN sale_delivery sd ON sr.delivery_id = sd.id
+         WHERE sr.status = 1
+         GROUP BY sd.order_id, sri.product_id
+       ) return_stats ON return_stats.order_id = soi.order_id
+         AND return_stats.product_id = soi.product_id
        WHERE soi.order_id = ?`, [order.id]
     );
     order.items = items;

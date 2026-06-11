@@ -9,20 +9,20 @@ export const useUserStore = defineStore('user', () => {
   const isLoggedIn = computed(() => !!token.value)
   const userName = computed(() => userInfo.value?.real_name || userInfo.value?.username || '管理员')
 
-  const login = async (username, password) => {
+  const login = async (data) => {
     try {
-      const res = await authApi.login({ username, password })
+      const res = await authApi.login(data)
       if (res.code === 0) {
         token.value = res.data.token
-        userInfo.value = res.data.user || { username }
+        userInfo.value = res.data.user || { username: data.username }
         uni.setStorageSync('token', token.value)
         uni.setStorageSync('userInfo', JSON.stringify(userInfo.value))
-        return true
+        return { success: true }
       }
-      return false
+      return { success: false, message: res.message || '登录失败' }
     } catch (error) {
       console.error('登录失败:', error)
-      return false
+      return { success: false, message: error.message || '网络异常，请重试' }
     }
   }
 

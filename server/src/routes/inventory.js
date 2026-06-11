@@ -10,11 +10,19 @@ const { resolveInlineProduct } = require('../utils/inlineProduct');
 router.get('/stock', async (req, res) => {
   try {
     const pool = getPool();
-    const { page = 1, pageSize = 20, keyword = '', warehouse_id = '', category_id = '' } = req.query;
+    const {
+      page = 1,
+      pageSize = 20,
+      keyword = '',
+      product_name = '',
+      warehouse_id = '',
+      category_id = ''
+    } = req.query;
     let where = '1=1';
     const params = [];
     if (warehouse_id) { where += ' AND ist.warehouse_id = ?'; params.push(Number(warehouse_id)); }
     if (keyword) { where += ' AND (p.name LIKE ? OR p.code LIKE ?)'; params.push(`%${keyword}%`, `%${keyword}%`); }
+    if (product_name) { where += ' AND p.name LIKE ?'; params.push(`%${product_name}%`); }
     if (category_id) { where += ' AND p.category_id = ?'; params.push(Number(category_id)); }
     const offset = (Number(page) - 1) * Number(pageSize);
     const [totalRows] = await pool.execute(
@@ -22,8 +30,33 @@ router.get('/stock', async (req, res) => {
     );
     const total = Number(totalRows[0].cnt);
     const [list] = await pool.execute(
-      `SELECT ist.*, p.name AS product_name, p.code, p.spec, p.cost_price, p.sale_price, p.unit_id,
-              u.name AS unit_name, w.name AS warehouse_name
+      `SELECT ist.id,
+              ist.product_id,
+              ist.warehouse_id,
+              ist.quantity,
+              ist.created_at,
+              ist.updated_at,
+              p.image_urls AS product_image_urls,
+              p.name AS product_name,
+              p.code AS product_code,
+              p.spec AS product_spec,
+              p.description AS product_description,
+              p.cost_price,
+              p.sale_price,
+              p.unit_id,
+              u.name AS unit_name,
+              COALESCE(
+                (
+                  SELECT pu.base_quantity
+                  FROM product_unit pu
+                  WHERE pu.product_id = p.id
+                    AND (pu.is_base = 1 OR pu.unit_id = p.unit_id)
+                  ORDER BY pu.is_base DESC, pu.sort_order ASC, pu.id ASC
+                  LIMIT 1
+                ),
+                1
+              ) AS base_quantity,
+              w.name AS warehouse_name
        FROM inventory_stock ist
        LEFT JOIN product p ON ist.product_id = p.id
        LEFT JOIN warehouse w ON ist.warehouse_id = w.id
@@ -440,6 +473,25 @@ router.post('/transfer', async (req, res) => {
   }
 });
 
+router.get('/stock/warehouse-summary', async (req, res) => {
+  try {
+    const pool = getPool();
+    const [list] = await pool.execute(
+      `SELECT w.id,
+              w.name AS title,
+              COUNT(DISTINCT ist.product_id) AS product_total,
+              COALESCE(SUM(ist.quantity), 0) AS stock_total
+       FROM warehouse w
+       LEFT JOIN inventory_stock ist ON ist.warehouse_id = w.id
+       GROUP BY w.id, w.name
+       ORDER BY w.id ASC`
+    );
+    res.json(Response.success(list));
+  } catch (err) {
+    res.json(Response.error(err.message));
+  }
+});
+
 router.post('/transfer/:id/confirm', async (req, res) => {
   const conn = await getPool().getConnection();
   try {
@@ -562,14 +614,17 @@ router.post('/other-inbound', async (req, res) => {
     const inboundNo = await generateNo(pool, 'QT');
     let totalAmount = 0;
     let totalQuantity = 0;
+    let taxAmount = 0;
     for (const item of items) {
       const quantity = Number(item.quantity || 0);
       const price = Number(item.price || 0);
+      const tax = Number(item.tax || 0);
       if ((!item.product_id && !String(item.product_name || '').trim()) || quantity <= 0) {
         return res.json(Response.error('入库产品和数量必须填写完整'));
       }
       totalQuantity += quantity;
-      totalAmount += quantity * price;
+      taxAmount += tax;
+      totalAmount += quantity * price + tax;
     }
 
     const conn = await pool.getConnection();
@@ -578,15 +633,16 @@ router.post('/other-inbound', async (req, res) => {
 
       const [result] = await conn.execute(
         `INSERT INTO other_inbound
-         (inbound_no, supplier_id, warehouse_id, total_amount, total_quantity, status,
+         (inbound_no, supplier_id, warehouse_id, total_amount, total_quantity, tax_amount, status,
           admin_remark, inbound_remark, remark, creator_id, completed_time)
-         VALUES (?,?,?,?,?,1,?,?,?,?,NOW())`,
+         VALUES (?,?,?,?,?,?,1,?,?,?,?,NOW())`,
         [
           inboundNo,
           supplier_id,
           warehouse_id,
           totalAmount,
           totalQuantity,
+          taxAmount,
           admin_remark,
           inbound_remark,
           inbound_remark,
@@ -598,13 +654,14 @@ router.post('/other-inbound', async (req, res) => {
       for (const item of items) {
         const quantity = Number(item.quantity || 0);
         const price = Number(item.price || 0);
+        const tax = Number(item.tax || 0);
         const productId = await resolveInlineProduct(conn, item, {
           supplierId: supplier_id,
           warehouseId: warehouse_id
         });
         await conn.execute(
-          'INSERT INTO other_inbound_item (inbound_id, product_id, quantity, price, amount) VALUES (?,?,?,?,?)',
-          [inboundId, productId, quantity, price, quantity * price]
+          'INSERT INTO other_inbound_item (inbound_id, product_id, quantity, price, tax, amount) VALUES (?,?,?,?,?,?)',
+          [inboundId, productId, quantity, price, tax, quantity * price + tax]
         );
         await updateStock(conn, productId, warehouse_id, quantity, 'other_inbound', inboundNo);
       }

@@ -2,6 +2,7 @@ import { get, post, put, del } from './request'
 
 // 库存查询
 export function getStocks(params?: any) { return get('/inventory/stock', params) }
+export function getStockWarehouseSummary() { return get('/inventory/stock/warehouse-summary') }
 
 // 库存盘点
 export function getChecks(params?: any) { return get('/inventory/check', params) }

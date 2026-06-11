@@ -141,10 +141,19 @@ router.get('/order/:id', async (req, res) => {
     if (!rows.length) return res.json(Response.error('订单不存在'));
     const order = rows[0];
     const [items] = await pool.execute(
-      `SELECT poi.*, p.name AS product_name, p.code, p.spec, u.name AS unit_name,
+      `SELECT poi.*, p.name AS product_name, p.code, p.spec, p.image_urls, u.name AS unit_name,
               COALESCE(pu.base_quantity, 1) AS base_quantity,
               COALESCE(inbound_item_stats.inbound_quantity, 0) AS inbounded_quantity,
+              COALESCE(formal_inbound_stats.inbound_quantity, 0) AS formal_inbound_quantity,
+              COALESCE(formal_inbound_stats.inbound_amount, 0) AS inbounded_amount,
+              CASE
+                WHEN COALESCE(formal_inbound_stats.inbound_quantity, 0) > 0
+                  THEN COALESCE(formal_inbound_stats.inbound_amount, 0) / formal_inbound_stats.inbound_quantity
+                ELSE 0
+              END AS inbound_price,
               COALESCE(return_item_stats.return_quantity, 0) AS returned_quantity,
+              COALESCE(completed_return_stats.return_quantity, 0) AS completed_return_quantity,
+              COALESCE(completed_return_stats.refund_amount, 0) AS refund_amount,
               GREATEST(
                 COALESCE(poi.final_quantity, poi.quantity)
                 - COALESCE(inbound_item_stats.inbound_quantity, 0)
@@ -166,12 +175,33 @@ router.get('/order/:id', async (req, res) => {
          GROUP BY pi.order_id, pii.product_id
        ) inbound_item_stats ON poi.order_id = inbound_item_stats.order_id AND poi.product_id = inbound_item_stats.product_id
        LEFT JOIN (
+         SELECT pi.order_id,
+                pii.product_id,
+                SUM(pii.quantity) AS inbound_quantity,
+                SUM(pii.amount) AS inbound_amount
+         FROM purchase_inbound_item pii
+         INNER JOIN purchase_inbound pi ON pii.inbound_id = pi.id
+         WHERE pi.status = 1
+         GROUP BY pi.order_id, pii.product_id
+       ) formal_inbound_stats ON poi.order_id = formal_inbound_stats.order_id AND poi.product_id = formal_inbound_stats.product_id
+       LEFT JOIN (
          SELECT COALESCE(NULLIF(pr.order_id, 0), pi.order_id) AS order_id, pri.product_id, SUM(pri.quantity) AS return_quantity
          FROM purchase_return_item pri
          LEFT JOIN purchase_return pr ON pri.return_id = pr.id
          LEFT JOIN purchase_inbound pi ON pr.inbound_id = pi.id
          GROUP BY COALESCE(NULLIF(pr.order_id, 0), pi.order_id), pri.product_id
        ) return_item_stats ON poi.order_id = return_item_stats.order_id AND poi.product_id = return_item_stats.product_id
+       LEFT JOIN (
+         SELECT COALESCE(NULLIF(pr.order_id, 0), pi.order_id) AS order_id,
+                pri.product_id,
+                SUM(pri.quantity) AS return_quantity,
+                SUM(pri.amount) AS refund_amount
+         FROM purchase_return_item pri
+         INNER JOIN purchase_return pr ON pri.return_id = pr.id
+         LEFT JOIN purchase_inbound pi ON pr.inbound_id = pi.id
+         WHERE pr.status = 1
+         GROUP BY COALESCE(NULLIF(pr.order_id, 0), pi.order_id), pri.product_id
+       ) completed_return_stats ON poi.order_id = completed_return_stats.order_id AND poi.product_id = completed_return_stats.product_id
        WHERE poi.order_id = ?`, [order.id]
     );
     order.items = items;
@@ -717,10 +747,43 @@ router.get('/inbound/:id', async (req, res) => {
     if (!rows.length) return res.json(Response.error('入库单不存在'));
     const inbound = rows[0];
     const [items] = await pool.execute(
-      `SELECT pii.*, p.name AS product_name, p.code, p.spec
+      `SELECT pii.*, p.name AS product_name, p.code, p.spec, u.name AS unit_name,
+              COALESCE(
+                (
+                  SELECT pu.base_quantity
+                  FROM product_unit pu
+                  WHERE pu.product_id = p.id
+                    AND (pu.is_base = 1 OR pu.unit_id = p.unit_id)
+                  ORDER BY pu.is_base DESC, pu.sort_order ASC, pu.id ASC
+                  LIMIT 1
+                ),
+                1
+              ) AS base_quantity,
+              COALESCE(order_item_stats.purchase_quantity, pii.quantity) AS purchase_quantity,
+              CASE
+                WHEN COALESCE(order_item_stats.purchase_quantity, 0) > 0
+                THEN COALESCE(order_item_stats.total_tax, 0) / order_item_stats.purchase_quantity
+                ELSE 0
+              END AS tax,
+              CASE
+                WHEN COALESCE(order_item_stats.purchase_quantity, 0) > 0
+                THEN COALESCE(order_item_stats.total_tax, 0) * pii.quantity / order_item_stats.purchase_quantity
+                ELSE 0
+              END AS tax_total
        FROM purchase_inbound_item pii
        LEFT JOIN product p ON pii.product_id = p.id
-       WHERE pii.inbound_id = ?`, [inbound.id]
+       LEFT JOIN unit u ON p.unit_id = u.id
+       LEFT JOIN (
+         SELECT order_id,
+                product_id,
+                SUM(COALESCE(final_quantity, quantity)) AS purchase_quantity,
+                SUM(CASE WHEN final_quantity IS NOT NULL THEN COALESCE(final_tax, 0) ELSE COALESCE(tax, 0) END) AS total_tax
+         FROM purchase_order_item
+         GROUP BY order_id, product_id
+       ) order_item_stats
+         ON order_item_stats.order_id = ?
+        AND order_item_stats.product_id = pii.product_id
+       WHERE pii.inbound_id = ?`, [inbound.order_id, inbound.id]
     );
     inbound.items = items;
     res.json(Response.success(inbound));

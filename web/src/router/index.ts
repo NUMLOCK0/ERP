@@ -104,8 +104,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'inventory/stock',
         name: 'InventoryStock',
-        component: () => import('@/views/inventory/Stock.vue'),
-        meta: { title: '库存查询' }
+        redirect: '/report/product-stock'
       },
       {
         path: 'inventory/other-inbound',
@@ -160,14 +159,26 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'report/product-stock',
         name: 'ProductStockReport',
-        component: () => import('@/views/report/ProductStock.vue'),
-        meta: { title: '产品库存报表' }
+        component: () => import('@/views/inventory/Stock.vue'),
+        meta: { title: '产品库存' }
       },
       {
         path: 'report/sale-delivery',
         name: 'SaleDeliveryReport',
         component: () => import('@/views/report/SaleDelivery.vue'),
         meta: { title: '销售发货报表' }
+      },
+      {
+        path: 'report/other-outbound',
+        name: 'OtherOutboundReport',
+        component: () => import('@/views/report/OtherOutbound.vue'),
+        meta: { title: '其他出库报表' }
+      },
+      {
+        path: 'report/other-inbound',
+        name: 'OtherInboundReport',
+        component: () => import('@/views/report/OtherInbound.vue'),
+        meta: { title: '其他入库报表' }
       },
       {
         path: 'report/purchase-inbound',

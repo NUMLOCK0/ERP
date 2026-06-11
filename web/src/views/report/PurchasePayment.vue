@@ -12,7 +12,9 @@
         <el-table-column prop="supplier_name" label="供应商" min-width="150" />
         <el-table-column prop="amount" label="金额" width="120"><template #default="{ row }">¥{{ row.amount?.toLocaleString() }}</template></el-table-column>
         <el-table-column prop="pay_method" label="付款方式" width="100" />
-        <el-table-column prop="created_at" label="日期" width="120" />
+        <el-table-column label="日期" width="180">
+          <template #default="{ row }">{{ $formatDateTime(row.created_at) }}</template>
+        </el-table-column>
       </el-table>
       <Pagination v-model:page="pagination.page" v-model:size="pagination.size" :total="total" @change="fetchData" />
     </el-card>

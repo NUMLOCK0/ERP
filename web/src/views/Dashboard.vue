@@ -64,7 +64,9 @@
                 <el-tag size="small" :type="statusType(row.status)">{{ row.status }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="created_at" label="时间" width="100" />
+            <el-table-column label="时间" width="180">
+              <template #default="{ row }">{{ $formatDateTime(row.created_at) }}</template>
+            </el-table-column>
           </el-table>
         </el-card>
       </el-col>
@@ -84,7 +86,9 @@
                 <el-tag size="small" :type="statusType(row.status)">{{ row.status }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="created_at" label="时间" width="100" />
+            <el-table-column label="时间" width="180">
+              <template #default="{ row }">{{ $formatDateTime(row.created_at) }}</template>
+            </el-table-column>
           </el-table>
         </el-card>
       </el-col>

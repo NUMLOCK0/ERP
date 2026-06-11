@@ -27,6 +27,7 @@ async function initDatabase() {
 
   await createTables();
   await initData();
+  await ensureEmployeeRole();
 
   return pool;
 }
@@ -107,6 +108,7 @@ async function createTables() {
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS employee (
       id INT PRIMARY KEY AUTO_INCREMENT,
+      user_id INT DEFAULT 0,
       name VARCHAR(100) NOT NULL,
       phone VARCHAR(50) DEFAULT '',
       position VARCHAR(100) DEFAULT '',
@@ -382,9 +384,18 @@ async function createTables() {
       check_no VARCHAR(50) NOT NULL UNIQUE,
       warehouse_id INT DEFAULT 0,
       status INT DEFAULT 0,
+      checker_name VARCHAR(100) DEFAULT '',
+      check_time DATETIME DEFAULT NULL,
+      remark TEXT DEFAULT NULL,
       creator_id INT DEFAULT 0,
       checked_at DATETIME DEFAULT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      completed_time DATETIME DEFAULT NULL,
+      audit_time DATETIME DEFAULT NULL,
+      submit_time DATETIME DEFAULT NULL,
+      cancel_time DATETIME DEFAULT NULL,
+      close_time DATETIME DEFAULT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS inventory_check_item (
@@ -393,7 +404,8 @@ async function createTables() {
       product_id INT DEFAULT 0,
       book_quantity DOUBLE DEFAULT 0,
       actual_quantity DOUBLE DEFAULT 0,
-      difference DOUBLE DEFAULT 0
+      difference DOUBLE DEFAULT 0,
+      remark VARCHAR(255) DEFAULT ''
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS inventory_transfer (
@@ -593,6 +605,7 @@ async function createTables() {
   }
 
   await ensureColumn('product', 'default_supplier_id', 'INT DEFAULT 0');
+  await ensureColumn('employee', 'user_id', 'INT DEFAULT 0');
   await ensureColumn('product_unit', 'warehouse_id', 'INT DEFAULT 0');
   await ensureColumn('purchase_order', 'submit_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('purchase_order', 'payment_method', "VARCHAR(50) DEFAULT ''");
@@ -627,6 +640,16 @@ async function createTables() {
   await ensureColumn('purchase_return', 'cancel_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('purchase_return', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
   await ensureColumn('purchase_return_item', 'remark', "VARCHAR(255) DEFAULT ''");
+  await ensureColumn('inventory_check', 'checker_name', "VARCHAR(100) DEFAULT ''");
+  await ensureColumn('inventory_check', 'check_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('inventory_check', 'remark', 'TEXT DEFAULT NULL');
+  await ensureColumn('inventory_check', 'completed_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('inventory_check', 'audit_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('inventory_check', 'submit_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('inventory_check', 'cancel_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('inventory_check', 'close_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('inventory_check', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+  await ensureColumn('inventory_check_item', 'remark', "VARCHAR(255) DEFAULT ''");
   await ensureColumn('other_inbound', 'supplier_id', 'INT DEFAULT 0');
   await ensureColumn('other_inbound', 'total_quantity', 'DOUBLE DEFAULT 0');
   await ensureColumn('other_inbound', 'admin_remark', 'TEXT DEFAULT NULL');
@@ -804,6 +827,18 @@ async function initData() {
 
 function getPool() {
   return pool;
+}
+
+async function ensureEmployeeRole() {
+  const [rows] = await pool.execute(
+    "SELECT id FROM sys_role WHERE LOWER(name) = 'employee' LIMIT 1"
+  );
+  if (rows.length) return;
+
+  await pool.execute(
+    'INSERT INTO sys_role (name, permissions, description) VALUES (?, ?, ?)',
+    ['employee', JSON.stringify({}), '普通员工']
+  );
 }
 
 module.exports = { initDatabase, getPool };

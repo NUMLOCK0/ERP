@@ -20,4 +20,5 @@ defineEmits<{ (e: 'search'): void; (e: 'reset'): void }>()
 <style scoped>
 .search-card{margin-bottom:16px}
 .search-form .el-form-item{margin-bottom:0}
+.search-form :deep(.el-select){min-width:220px}
 </style>

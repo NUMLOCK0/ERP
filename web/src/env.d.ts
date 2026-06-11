@@ -7,6 +7,10 @@ declare module '*.vue' {
 }
 
 declare module 'vue' {
+  interface ComponentCustomProperties {
+    $formatDateTime: typeof import('./utils/dateTime')['formatDateTime']
+  }
+
   export interface GlobalComponents {
     CopyableNo: typeof import('./components/CopyableNo.vue')['default']
   }

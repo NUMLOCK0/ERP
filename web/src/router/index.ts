@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { isSystemAdmin, type RoleUser } from '@/utils/systemAdmin'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -47,7 +48,7 @@ const routes: RouteRecordRaw[] = [
         path: 'basic/employee',
         name: 'Employee',
         component: () => import('@/views/basic/Employee.vue'),
-        meta: { title: '职员管理' }
+        meta: { title: '职员管理', requiresSystemAdmin: true }
       },
       {
         path: 'basic/warehouse',
@@ -123,6 +124,12 @@ const routes: RouteRecordRaw[] = [
         name: 'InventoryCheck',
         component: () => import('@/views/inventory/Check.vue'),
         meta: { title: '库存盘点' }
+      },
+      {
+        path: 'inventory/check/add',
+        name: 'InventoryCheckAdd',
+        component: () => import('@/views/inventory/CheckAdd.vue'),
+        meta: { title: '库存盘点添加', activeMenu: '/inventory/check' }
       },
       {
         path: 'inventory/transfer',
@@ -262,10 +269,21 @@ router.beforeEach((to, from, next) => {
   } else {
     if (!token) {
       next('/login')
+    } else if (to.meta.requiresSystemAdmin && !isSystemAdmin(getStoredUserInfo())) {
+      next('/dashboard')
     } else {
       next()
     }
   }
 })
+
+function getStoredUserInfo(): RoleUser | null {
+  try {
+    const raw = localStorage.getItem('userInfo')
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
 
 export default router

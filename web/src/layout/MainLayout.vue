@@ -29,7 +29,7 @@
           <el-menu-item index="/basic/category">产品分类</el-menu-item>
           <el-menu-item index="/basic/brand">品牌管理</el-menu-item>
           <el-menu-item index="/basic/unit">计量单位</el-menu-item>
-          <el-menu-item index="/basic/employee">职员管理</el-menu-item>
+          <el-menu-item v-if="canManageEmployees" index="/basic/employee">职员管理</el-menu-item>
           <el-menu-item index="/basic/warehouse">仓库管理</el-menu-item>
         </el-sub-menu>
 
@@ -62,7 +62,6 @@
           <el-menu-item index="/inventory/other-inbound">其他入库</el-menu-item>
           <el-menu-item index="/inventory/other-outbound">其他出库</el-menu-item>
           <el-menu-item index="/inventory/check">库存盘点</el-menu-item>
-          <el-menu-item index="/inventory/transfer">库存调拨</el-menu-item>
           <el-menu-item index="/inventory/log">库存日志</el-menu-item>
         </el-sub-menu>
 
@@ -159,6 +158,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useAppStore } from '@/stores/app'
 import { useUserStore } from '@/stores/user'
+import { isSystemAdmin } from '@/utils/systemAdmin'
 
 const route = useRoute()
 const router = useRouter()
@@ -167,6 +167,7 @@ const userStore = useUserStore()
 
 const activeMenu = computed(() => String(route.meta.activeMenu || route.path))
 const activeMeta = computed(() => route.meta as any)
+const canManageEmployees = computed(() => isSystemAdmin(userStore.userInfo))
 
 function handleLogout() {
   userStore.logout()

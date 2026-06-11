@@ -10,7 +10,12 @@ module.exports = (req, res, next) => {
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, config.jwtSecret);
-    req.user = { id: decoded.id, username: decoded.username };
+    req.user = {
+      id: decoded.id,
+      username: decoded.username,
+      role_id: decoded.role_id,
+      role_name: decoded.role_name
+    };
     next();
   } catch (err) {
     return res.json({ code: 401, message: '未登录或Token已过期' });

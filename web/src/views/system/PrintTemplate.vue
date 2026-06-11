@@ -6,7 +6,9 @@
         <el-table-column prop="name" label="模板名称" min-width="180" />
         <el-table-column label="类型" width="120"><template #default="{ row }"><el-tag size="small">{{ row.type }}</el-tag></template></el-table-column>
         <el-table-column label="默认" width="80"><template #default="{ row }"><el-tag v-if="row.is_default" type="success" size="small">默认</el-tag></template></el-table-column>
-        <el-table-column prop="created_at" label="创建时间" width="120" />
+        <el-table-column label="创建时间" width="180">
+          <template #default="{ row }">{{ $formatDateTime(row.created_at) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>

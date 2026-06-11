@@ -11,7 +11,9 @@
         <el-table-column prop="product_code" label="产品编码" width="120" />
         <el-table-column prop="warehouse_name" label="仓库" width="120" />
         <el-table-column prop="quantity" label="库存数量" width="110" />
-        <el-table-column prop="updated_at" label="更新时间" width="160" />
+        <el-table-column label="更新时间" width="180">
+          <template #default="{ row }">{{ $formatDateTime(row.updated_at) }}</template>
+        </el-table-column>
       </el-table>
 
       <Pagination v-model:page="pagination.page" v-model:size="pagination.size" :total="total" @change="fetchData" />

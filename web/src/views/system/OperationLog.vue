@@ -14,7 +14,9 @@
         <el-table-column prop="target" label="目标" width="150" />
         <el-table-column prop="content" label="内容" min-width="180" />
         <el-table-column prop="ip" label="IP" width="130" />
-        <el-table-column prop="created_at" label="时间" width="160" />
+        <el-table-column label="时间" width="180">
+          <template #default="{ row }">{{ $formatDateTime(row.created_at) }}</template>
+        </el-table-column>
       </el-table>
 
       <Pagination v-model:page="pagination.page" v-model:size="pagination.size" :total="total" @change="fetchData" />

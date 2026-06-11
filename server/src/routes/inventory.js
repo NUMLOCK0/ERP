@@ -42,22 +42,94 @@ router.get('/stock', async (req, res) => {
 router.get('/log', async (req, res) => {
   try {
     const pool = getPool();
-    const { page = 1, pageSize = 20, product_id = '', warehouse_id = '', change_type = '' } = req.query;
+    const {
+      page = 1,
+      pageSize = 20,
+      keyword = '',
+      product_id = '',
+      warehouse_id = '',
+      change_type = '',
+      operation_type = '',
+      start_date = '',
+      end_date = ''
+    } = req.query;
     let where = '1=1';
     const params = [];
+    if (keyword) {
+      where += ' AND (p.name LIKE ? OR p.code LIKE ? OR CAST(p.id AS CHAR) LIKE ?)';
+      params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
+    }
     if (product_id) { where += ' AND il.product_id = ?'; params.push(Number(product_id)); }
     if (warehouse_id) { where += ' AND il.warehouse_id = ?'; params.push(Number(warehouse_id)); }
     if (change_type) { where += ' AND il.change_type = ?'; params.push(change_type); }
+    if (operation_type === 'increase') where += ' AND il.change_quantity > 0';
+    if (operation_type === 'decrease') where += ' AND il.change_quantity < 0';
+    if (operation_type === 'unchanged') where += ' AND il.change_quantity = 0';
+    if (start_date) { where += ' AND il.created_at >= ?'; params.push(start_date); }
+    if (end_date) { where += ' AND il.created_at <= ?'; params.push(end_date + ' 23:59:59'); }
     const offset = (Number(page) - 1) * Number(pageSize);
     const [totalRows] = await pool.execute(
       `SELECT COUNT(*) AS cnt FROM inventory_log il LEFT JOIN product p ON il.product_id = p.id WHERE ${where}`, params
     );
     const total = Number(totalRows[0].cnt);
     const [list] = await pool.execute(
-      `SELECT il.*, p.name AS product_name, p.code, w.name AS warehouse_name
+      `SELECT il.id,
+              il.product_id,
+              p.image_urls AS product_image_urls,
+              p.name AS product_name,
+              p.spec AS product_spec,
+              p.code AS product_code,
+              CASE
+                WHEN il.change_quantity > 0 THEN 'increase'
+                WHEN il.change_quantity < 0 THEN 'decrease'
+                ELSE 'unchanged'
+              END AS operation_type,
+              il.change_quantity AS operation_quantity,
+              u.name AS unit_name,
+              w.name AS warehouse_name,
+              il.change_type AS business_type,
+              COALESCE(
+                pi.id, pr.id, sd.id, sr.id, ic.id, itr.id, oi.id, oo.id, auto_so.id
+              ) AS business_order_id,
+              il.ref_no AS business_order_no,
+              COALESCE(operator.real_name, operator.username, '') AS operator_name,
+              il.created_at AS operation_time
        FROM inventory_log il
        LEFT JOIN product p ON il.product_id = p.id
+       LEFT JOIN unit u ON p.unit_id = u.id
        LEFT JOIN warehouse w ON il.warehouse_id = w.id
+       LEFT JOIN purchase_inbound pi
+         ON il.change_type = 'purchase_inbound' AND il.ref_no = pi.inbound_no
+       LEFT JOIN purchase_return pr
+         ON il.change_type = 'purchase_return' AND il.ref_no = pr.return_no
+       LEFT JOIN sale_delivery sd
+         ON il.change_type = 'sale_delivery' AND il.ref_no = sd.delivery_no
+       LEFT JOIN sale_return sr
+         ON il.change_type = 'sale_return' AND il.ref_no = sr.return_no
+       LEFT JOIN inventory_check ic
+         ON il.change_type IN ('inventory_check', 'check') AND il.ref_no = ic.check_no
+       LEFT JOIN inventory_transfer itr
+         ON il.change_type IN ('inventory_transfer_in', 'inventory_transfer_out', 'transfer_in', 'transfer_out')
+        AND il.ref_no = itr.transfer_no
+       LEFT JOIN other_inbound oi
+         ON il.change_type = 'other_inbound' AND il.ref_no = oi.inbound_no
+       LEFT JOIN other_outbound oo
+         ON il.change_type = 'other_outbound' AND il.ref_no = oo.outbound_no
+       LEFT JOIN sale_order auto_so
+         ON il.change_type = 'other_inbound'
+        AND il.ref_no = CONCAT(auto_so.order_no, '-自动补库')
+       LEFT JOIN sys_user operator
+         ON operator.id = COALESCE(
+           pi.creator_id,
+           pr.creator_id,
+           sd.creator_id,
+           sr.creator_id,
+           ic.creator_id,
+           itr.creator_id,
+           oi.creator_id,
+           oo.creator_id,
+           auto_so.creator_id
+         )
        WHERE ${where} ORDER BY il.id DESC LIMIT ?, ?`,
       [...params, offset, Number(pageSize)]
     );
@@ -72,22 +144,46 @@ router.get('/log', async (req, res) => {
 router.get('/check', async (req, res) => {
   try {
     const pool = getPool();
-    const { page = 1, pageSize = 20, keyword = '', start_date = '', end_date = '' } = req.query;
+    const {
+      page = 1,
+      pageSize = 20,
+      keyword = '',
+      warehouse_id = '',
+      status = '',
+      start_date = '',
+      end_date = ''
+    } = req.query;
     let where = '1=1';
     const params = [];
-    if (keyword) { where += ' AND ic.check_no LIKE ?'; params.push(`%${keyword}%`); }
+    if (keyword) {
+      where += ' AND (ic.check_no LIKE ? OR ic.checker_name LIKE ? OR u.real_name LIKE ?)';
+      params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
+    }
+    if (warehouse_id) { where += ' AND ic.warehouse_id = ?'; params.push(Number(warehouse_id)); }
+    if (status !== '') { where += ' AND ic.status = ?'; params.push(Number(status)); }
     if (start_date) { where += ' AND ic.created_at >= ?'; params.push(start_date); }
     if (end_date) { where += ' AND ic.created_at <= ?'; params.push(end_date + ' 23:59:59'); }
     const offset = (Number(page) - 1) * Number(pageSize);
     const [totalRows] = await pool.execute(
-      `SELECT COUNT(*) AS cnt FROM inventory_check ic LEFT JOIN warehouse w ON ic.warehouse_id = w.id WHERE ${where}`, params
-    );
-    const total = Number(totalRows[0].cnt);
-    const [list] = await pool.execute(
-      `SELECT ic.*, w.name AS warehouse_name, u.real_name AS creator_name
+      `SELECT COUNT(*) AS cnt
        FROM inventory_check ic
        LEFT JOIN warehouse w ON ic.warehouse_id = w.id
        LEFT JOIN sys_user u ON ic.creator_id = u.id
+       WHERE ${where}`,
+      params
+    );
+    const total = Number(totalRows[0].cnt);
+    const [list] = await pool.execute(
+      `SELECT ic.*, w.name AS warehouse_name, u.real_name AS creator_name,
+              COALESCE(item_stats.total_quantity, 0) AS product_total_quantity
+       FROM inventory_check ic
+       LEFT JOIN warehouse w ON ic.warehouse_id = w.id
+       LEFT JOIN sys_user u ON ic.creator_id = u.id
+       LEFT JOIN (
+         SELECT check_id, SUM(actual_quantity) AS total_quantity
+         FROM inventory_check_item
+         GROUP BY check_id
+       ) item_stats ON ic.id = item_stats.check_id
        WHERE ${where} ORDER BY ic.id DESC LIMIT ?, ?`,
       [...params, offset, Number(pageSize)]
     );
@@ -100,13 +196,27 @@ router.get('/check', async (req, res) => {
 router.get('/check/:id', async (req, res) => {
   try {
     const pool = getPool();
-    const [rows] = await pool.execute('SELECT * FROM inventory_check WHERE id = ?', [req.params.id]);
+    const [rows] = await pool.execute(
+      `SELECT ic.*, w.name AS warehouse_name, u.real_name AS creator_name
+       FROM inventory_check ic
+       LEFT JOIN warehouse w ON ic.warehouse_id = w.id
+       LEFT JOIN sys_user u ON ic.creator_id = u.id
+       WHERE ic.id = ?`,
+      [req.params.id]
+    );
     if (!rows.length) return res.json(Response.error('盘点单不存在'));
     const check = rows[0];
     const [items] = await pool.execute(
-      `SELECT ici.*, p.name AS product_name, p.code, p.spec
+      `SELECT ici.*, p.name AS product_name, p.code, p.spec, u.name AS unit_name,
+              COALESCE(pu.base_quantity, 1) AS base_quantity
        FROM inventory_check_item ici
        LEFT JOIN product p ON ici.product_id = p.id
+       LEFT JOIN unit u ON p.unit_id = u.id
+       LEFT JOIN (
+         SELECT product_id, MAX(CASE WHEN is_base = 1 THEN base_quantity ELSE NULL END) AS base_quantity
+         FROM product_unit
+         GROUP BY product_id
+       ) pu ON p.id = pu.product_id
        WHERE ici.check_id = ?`, [check.id]
     );
     check.items = items;
@@ -119,29 +229,70 @@ router.get('/check/:id', async (req, res) => {
 router.post('/check', async (req, res) => {
   try {
     const pool = getPool();
-    const { warehouse_id, items } = req.body;
+    const {
+      warehouse_id,
+      checker_name = '',
+      check_time = null,
+      remark = '',
+      submit = false,
+      items
+    } = req.body;
     if (!warehouse_id) return res.json(Response.error('仓库不能为空'));
-    if (!items || !items.length) return res.json(Response.error('明细不能为空'));
+    if (!Array.isArray(items) || !items.length) return res.json(Response.error('明细不能为空'));
+
+    const productIds = new Set();
+    for (const item of items) {
+      const productId = Number(item.product_id || 0);
+      const bookQuantity = Number(item.book_quantity || 0);
+      const actualQuantity = Number(item.actual_quantity || 0);
+      if (!productId || bookQuantity < 0 || actualQuantity < 0) {
+        return res.json(Response.error('盘点产品和库存数量必须填写完整'));
+      }
+      if (productIds.has(productId)) return res.json(Response.error('盘点产品不能重复'));
+      productIds.add(productId);
+    }
 
     const checkNo = await generateNo(pool, 'PD');
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
 
+      const auditEnabled = await isAuditEnabled(conn, 'inventory_check');
+      const initialStatus = submit && auditEnabled ? 4 : 0;
       const [result] = await conn.execute(
-        'INSERT INTO inventory_check (check_no, warehouse_id, status, creator_id) VALUES (?,?,0,?)',
-        [checkNo, warehouse_id, req.user.id]
+        `INSERT INTO inventory_check
+         (check_no, warehouse_id, status, checker_name, check_time, remark, creator_id, submit_time)
+         VALUES (?,?,?,?,?,?,?,?)`,
+        [
+          checkNo,
+          warehouse_id,
+          initialStatus,
+          checker_name,
+          check_time || null,
+          remark,
+          req.user.id,
+          submit ? new Date() : null
+        ]
       );
       const checkId = result.insertId;
 
       for (const item of items) {
         await conn.execute(
-          'INSERT INTO inventory_check_item (check_id, product_id, book_quantity, actual_quantity, difference) VALUES (?,?,?,?,?)',
-          [checkId, item.product_id, item.book_quantity, item.actual_quantity, item.actual_quantity - item.book_quantity]
+          `INSERT INTO inventory_check_item
+           (check_id, product_id, book_quantity, actual_quantity, difference, remark)
+           VALUES (?,?,?,?,?,?)`,
+          [
+            checkId,
+            item.product_id,
+            Number(item.book_quantity || 0),
+            Number(item.actual_quantity || 0),
+            Number(item.actual_quantity || 0) - Number(item.book_quantity || 0),
+            item.remark || ''
+          ]
         );
       }
 
-      if (!(await isAuditEnabled(conn, 'inventory_check'))) {
+      if (submit && !auditEnabled) {
         await confirmInventoryCheck(conn, checkId);
       }
 
@@ -715,7 +866,7 @@ async function confirmInventoryCheck(conn, checkId) {
   const [checkRows] = await conn.execute('SELECT * FROM inventory_check WHERE id = ?', [checkId]);
   const check = checkRows[0];
   if (!check) throw new Error('盘点单不存在');
-  if (Number(check.status) !== 0) throw new Error('盘点单状态不允许确认');
+  if (![0, 4].includes(Number(check.status))) throw new Error('盘点单状态不允许确认');
 
   const [items] = await conn.execute('SELECT * FROM inventory_check_item WHERE check_id = ?', [check.id]);
   for (const item of items) {
@@ -724,7 +875,16 @@ async function confirmInventoryCheck(conn, checkId) {
     }
   }
 
-  await conn.execute('UPDATE inventory_check SET status = 1, checked_at = NOW() WHERE id = ?', [check.id]);
+  await conn.execute(
+    `UPDATE inventory_check
+     SET status = 1,
+         checked_at = COALESCE(check_time, NOW()),
+         check_time = COALESCE(check_time, NOW()),
+         completed_time = NOW(),
+         audit_time = NOW()
+     WHERE id = ?`,
+    [check.id]
+  );
   return check;
 }
 

@@ -61,8 +61,12 @@
           </template>
         </el-table-column>
         <el-table-column prop="sort_order" label="排序" width="100" sortable />
-        <el-table-column prop="created_at" label="创建时间" width="180" sortable />
-        <el-table-column prop="updated_at" label="更新时间" width="180" sortable />
+        <el-table-column prop="created_at" label="创建时间" width="180" sortable>
+          <template #default="{ row }">{{ $formatDateTime(row.created_at) }}</template>
+        </el-table-column>
+        <el-table-column prop="updated_at" label="更新时间" width="180" sortable>
+          <template #default="{ row }">{{ $formatDateTime(row.updated_at) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleDetail(row)">详情</el-button>
@@ -369,10 +373,13 @@ onMounted(fetchData)
 }
 .filters {
   display: grid;
-  grid-template-columns: 120px 70px 180px 260px 140px 220px 200px 200px;
+  grid-template-columns: 120px 70px 180px 260px 220px 220px 200px 200px;
   gap: 10px;
   align-items: center;
   margin-bottom: 12px;
+}
+.filters :deep(.el-select) {
+  width: 220px;
 }
 .filters.secondary {
   margin-top: -8px;

@@ -147,18 +147,23 @@ router.put('/:id', async (req, res) => {
   try {
     const pool = getPool();
     const { name, code, barcode, spec, unit_id, category_id, brand_id, default_supplier_id, cost_price, sale_price, description, image_urls, status, units } = req.body;
+    const unitRows = units !== undefined ? normalizeUnits(units) : null;
+    const baseUnit = unitRows?.find(item => item.is_base === 1) || unitRows?.[0];
+    const productUnitId = baseUnit ? baseUnit.unit_id : unit_id;
+    const productCostPrice = baseUnit ? baseUnit.cost_price : cost_price;
+    const productSalePrice = baseUnit ? baseUnit.sale_price : sale_price;
     const fields = [];
     const params = [];
     if (name !== undefined) { fields.push('name=?'); params.push(name); }
     if (code !== undefined) { fields.push('code=?'); params.push(code); }
     if (barcode !== undefined) { fields.push('barcode=?'); params.push(barcode); }
     if (spec !== undefined) { fields.push('spec=?'); params.push(spec); }
-    if (unit_id !== undefined) { fields.push('unit_id=?'); params.push(unit_id); }
+    if (productUnitId !== undefined) { fields.push('unit_id=?'); params.push(productUnitId); }
     if (category_id !== undefined) { fields.push('category_id=?'); params.push(category_id); }
     if (brand_id !== undefined) { fields.push('brand_id=?'); params.push(brand_id); }
     if (default_supplier_id !== undefined) { fields.push('default_supplier_id=?'); params.push(default_supplier_id); }
-    if (cost_price !== undefined) { fields.push('cost_price=?'); params.push(cost_price); }
-    if (sale_price !== undefined) { fields.push('sale_price=?'); params.push(sale_price); }
+    if (productCostPrice !== undefined) { fields.push('cost_price=?'); params.push(productCostPrice); }
+    if (productSalePrice !== undefined) { fields.push('sale_price=?'); params.push(productSalePrice); }
     if (description !== undefined) { fields.push('description=?'); params.push(description); }
     if (image_urls !== undefined) { fields.push('image_urls=?'); params.push(JSON.stringify(image_urls)); }
     if (status !== undefined) { fields.push('status=?'); params.push(status); }
@@ -172,7 +177,6 @@ router.put('/:id', async (req, res) => {
         await conn.execute(`UPDATE product SET ${fields.join(',')} WHERE id=?`, params);
       }
       if (units !== undefined) {
-        const unitRows = normalizeUnits(units);
         await conn.execute('DELETE FROM product_unit WHERE product_id = ?', [req.params.id]);
         await saveProductUnits(conn, req.params.id, unitRows);
       }

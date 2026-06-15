@@ -553,10 +553,10 @@ function buildPayload() {
   const first = unitRows.value[0]
   return {
     ...form,
-    unit_id: form.unit_id || first?.unit_id || 0,
+    unit_id: first?.unit_id ?? form.unit_id ?? 0,
     spec: form.spec || first?.spec || unitMeta.spec || '',
-    cost_price: form.cost_price || first?.cost_price || 0,
-    sale_price: form.sale_price || first?.sale_price || 0,
+    cost_price: first?.cost_price ?? form.cost_price ?? 0,
+    sale_price: first?.sale_price ?? form.sale_price ?? 0,
     default_supplier_id: form.default_supplier_id || 0,
     image_urls: form.image_urls,
     units: unitRows.value.map((row, index) => ({

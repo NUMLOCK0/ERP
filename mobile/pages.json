@@ -17,7 +17,28 @@
     {
       "path": "pages/index/index",
       "style": {
-        "navigationBarTitleText": "进销存管理",
+        "navigationBarTitleText": "首页",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/purchase/index",
+      "style": {
+        "navigationBarTitleText": "采购管理",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/sale/index",
+      "style": {
+        "navigationBarTitleText": "销售管理",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/inventory/index",
+      "style": {
+        "navigationBarTitleText": "库存管理",
         "navigationStyle": "custom"
       }
     },
@@ -125,6 +146,12 @@
       }
     },
     {
+      "path": "pages/report/basic-stats",
+      "style": {
+        "navigationBarTitleText": "基础统计"
+      }
+    },
+    {
       "path": "pages/report/product-stock",
       "style": {
         "navigationBarTitleText": "产品库存报表"
@@ -167,6 +194,7 @@
     "selectedColor": "#409EFF",
     "backgroundColor": "#FFFFFF",
     "borderStyle": "black",
+    "height": "0px",
     "list": [
       {
         "pagePath": "pages/index/index",

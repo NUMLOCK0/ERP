@@ -5,29 +5,19 @@
       :class="{ active: current === 'index' }"
       @click="switchTab('index')"
     >
-      <view class="tabbar-icon-wrap">
-        <image
-          v-if="current === 'index'"
-          class="tabbar-icon"
-          src="/static/tabbar/home-active.png"
-          mode="aspectFit"
-        />
-        <image
-          v-else
-          class="tabbar-icon"
-          src="/static/tabbar/home.png"
-          mode="aspectFit"
-        />
-      </view>
-      <text class="tabbar-text" :class="{ active: current === 'index' }">首页</text>
+      <uni-icons
+        :type="current === 'index' ? 'home-filled' : 'home'"
+        :size="24"
+        :color="current === 'index' ? '#409EFF' : '#999999'"
+      ></uni-icons>
+      <text class="tabbar-text">首页</text>
     </view>
 
-    <!-- 中间开单按钮 -->
-    <view class="tabbar-center" @click="handleKaiden">
+    <!-- 中间 + 号 -->
+    <view class="tabbar-center" @click.stop="handleKaiden">
       <view class="center-btn">
         <text class="center-plus">+</text>
       </view>
-      <text class="tabbar-text center-text">开单</text>
     </view>
 
     <view
@@ -35,21 +25,12 @@
       :class="{ active: current === 'mine' }"
       @click="switchTab('mine')"
     >
-      <view class="tabbar-icon-wrap">
-        <image
-          v-if="current === 'mine'"
-          class="tabbar-icon"
-          src="/static/tabbar/mine-active.png"
-          mode="aspectFit"
-        />
-        <image
-          v-else
-          class="tabbar-icon"
-          src="/static/tabbar/mine.png"
-          mode="aspectFit"
-        />
-      </view>
-      <text class="tabbar-text" :class="{ active: current === 'mine' }">我的</text>
+      <uni-icons
+        :type="current === 'mine' ? 'person-filled' : 'person'"
+        :size="24"
+        :color="current === 'mine' ? '#409EFF' : '#999999'"
+      ></uni-icons>
+      <text class="tabbar-text">我的</text>
     </view>
   </view>
 </template>
@@ -64,10 +45,14 @@ const props = defineProps({
 
 const emit = defineEmits(['open-kaidan'])
 
+const tabMap = {
+  index: '/pages/index/index',
+  mine: '/pages/mine/index'
+}
+
 const switchTab = (tab) => {
   if (tab === props.current) return
-  const url = tab === 'index' ? '/pages/index/index' : '/pages/mine/index'
-  uni.switchTab({ url })
+  uni.switchTab({ url: tabMap[tab] || tabMap.index })
 }
 
 const handleKaiden = () => {
@@ -84,67 +69,57 @@ const handleKaiden = () => {
   display: flex;
   align-items: flex-end;
   justify-content: space-around;
-  height: 120rpx;
+  height: 130rpx;
   background: #FFFFFF;
-  box-shadow: 0 -2rpx 20rpx rgba(0, 0, 0, 0.05);
+  box-shadow: 0 -2rpx 16rpx rgba(0, 0, 0, 0.04);
   z-index: 100;
-  padding-bottom: 10rpx;
 }
 
 .tabbar-item {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex: 1;
   height: 100%;
   padding-top: 8rpx;
-}
-
-.tabbar-icon-wrap {
-  width: 48rpx;
-  height: 48rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 2rpx;
-
-  .tabbar-icon {
-    width: 44rpx;
-    height: 44rpx;
-  }
 }
 
 .tabbar-text {
   font-size: 20rpx;
   color: #999999;
+  margin-top: 4rpx;
+  font-weight: 400;
 
-  &.active {
+  .active & {
     color: #409EFF;
+    font-weight: 600;
   }
 }
 
 .tabbar-center {
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   height: 100%;
   position: relative;
 
   .center-btn {
-    width: 100rpx;
-    height: 100rpx;
+    width: 104rpx;
+    height: 104rpx;
     border-radius: 50%;
     background: linear-gradient(135deg, #409EFF, #66B1FF);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 2rpx;
-    box-shadow: 0 4rpx 16rpx rgba(64, 158, 255, 0.4);
+    box-shadow: 0 6rpx 20rpx rgba(64, 158, 255, 0.4);
     position: absolute;
-    top: -30rpx;
+    top: -32rpx;
+
+    &:active {
+      transform: scale(0.95);
+    }
   }
 
   .center-plus {
@@ -154,10 +129,6 @@ const handleKaiden = () => {
     line-height: 1;
     margin-top: -4rpx;
   }
-}
-
-.center-text {
-  margin-top: 40rpx;
 }
 
 .safe-bottom {

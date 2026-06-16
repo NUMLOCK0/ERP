@@ -9,7 +9,7 @@
       <text class="user-role">管理员</text>
     </view>
 
-    <!-- 功能列表 -->
+    <!-- 常用功能 -->
     <view class="section">
       <text class="section-title">常用功能</text>
       <view class="menu-list">
@@ -25,6 +25,7 @@
       </view>
     </view>
 
+    <!-- 退出登录 -->
     <view class="section">
       <view class="menu-list">
         <view class="menu-item" @click="handleLogout">
@@ -47,12 +48,17 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import CustomTabbar from '@/components/CustomTabbar.vue'
 import KaidenPopup from '@/components/KaidenPopup.vue'
 
 const userStore = useUserStore()
 const showKaidenPopup = ref(false)
+
+onShow(() => {
+  uni.hideTabBar()
+})
 
 const avatarText = computed(() => {
   const name = userStore.userName
@@ -89,7 +95,7 @@ const handleLogout = () => {
 .mine-page {
   min-height: 100vh;
   background: #F5F7FA;
-  padding-bottom: 120rpx;
+  padding-bottom: 140rpx;
 }
 
 .mine-header {

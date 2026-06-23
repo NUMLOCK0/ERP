@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <el-card>
       <SearchForm :model="searchForm" @search="handleSearch" @reset="handleReset">
@@ -15,7 +15,9 @@
         </el-form-item>
       </SearchForm>
 
-      <el-table :data="tableData" stripe v-loading="loading">
+      <TableColumnTools table-key="purchase-inbound" filename="采购入库单" />
+
+      <el-table border :data="tableData" stripe v-loading="loading">
         <el-table-column prop="inbound_no" label="入库单单号" width="190" show-overflow-tooltip>
           <template #default="{ row }"><CopyableNo :value="row.inbound_no" /></template>
         </el-table-column>
@@ -103,7 +105,7 @@
           </el-descriptions>
         </el-tab-pane>
         <el-tab-pane label="商品列表" name="items">
-          <el-table :data="detail.items" stripe class="detail-table">
+          <el-table border :data="detail.items" stripe class="detail-table">
             <el-table-column prop="product_name" label="产品标题" min-width="180" show-overflow-tooltip />
             <el-table-column prop="code" label="编码" width="120" show-overflow-tooltip />
             <el-table-column prop="spec" label="规格" width="120" show-overflow-tooltip />
@@ -130,6 +132,7 @@
 </template>
 
 <script setup lang="ts">
+import TableColumnTools from '@/components/TableColumnTools.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { View } from '@element-plus/icons-vue'
@@ -195,7 +198,7 @@ function formatMoney(value: any) {
 
 function formatQuantity(value: any) {
   const quantity = Number(value || 0)
-  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(3)))
+  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(2)))
 }
 
 function formatDateTime(value: any) {
@@ -225,3 +228,4 @@ onMounted(async () => {
   margin-top: 16px;
 }
 </style>
+

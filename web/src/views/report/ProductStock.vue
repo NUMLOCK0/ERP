@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <el-card>
       <SearchForm :model="searchForm" @search="handleSearch" @reset="handleReset">
@@ -8,7 +8,9 @@
       </SearchForm>
       <div class="toolbar"><el-button type="primary" @click="ElMessage.info('导出Excel')">导出Excel</el-button></div>
 
-      <el-table :data="tableData" stripe v-loading="loading">
+      <TableColumnTools table-key="report-product-stock" filename="商品库存报表" />
+
+      <el-table border :data="tableData" stripe v-loading="loading">
         <el-table-column prop="product_name" label="产品名称" min-width="150" />
         <el-table-column prop="product_code" label="产品编码" width="120" />
         <el-table-column prop="category_name" label="分类" width="100" />
@@ -25,6 +27,7 @@
 </template>
 
 <script setup lang="ts">
+import TableColumnTools from '@/components/TableColumnTools.vue'
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getProductStockReport } from '@/api/report'
@@ -58,3 +61,4 @@ onMounted(async () => {
 </script>
 
 <style scoped>.page-container{height:100%}.toolbar{margin-bottom:16px}</style>
+

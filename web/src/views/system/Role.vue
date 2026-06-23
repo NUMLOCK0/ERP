@@ -2,7 +2,7 @@
   <div class="page-container">
     <el-card>
       <div class="toolbar"><el-button type="primary" :icon="Plus" @click="handleAdd">新增角色</el-button></div>
-      <el-table :data="tableData" stripe v-loading="loading">
+      <el-table border :data="tableData" stripe v-loading="loading">
         <el-table-column prop="name" label="角色名称" min-width="150" />
         <el-table-column prop="description" label="描述" min-width="200" />
         <el-table-column label="权限" min-width="300">

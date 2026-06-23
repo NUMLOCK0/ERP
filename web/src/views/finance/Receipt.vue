@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <el-card>
       <SearchForm :model="searchForm" @search="handleSearch" @reset="handleReset">
@@ -20,7 +20,9 @@
         </el-form-item>
       </SearchForm>
 
-      <el-table :data="tableData" stripe v-loading="loading">
+      <TableColumnTools table-key="finance-receipt" filename="收款单" />
+
+      <el-table border :data="tableData" stripe v-loading="loading">
         <el-table-column prop="id" label="收款单id" width="100" />
         <el-table-column prop="order_no" label="销售单号" width="190" show-overflow-tooltip>
           <template #default="{ row }"><CopyableNo :value="row.order_no" /></template>
@@ -96,6 +98,7 @@
 </template>
 
 <script setup lang="ts">
+import TableColumnTools from '@/components/TableColumnTools.vue'
 import { ref, reactive, onMounted } from 'vue'
 import { getReceipts } from '@/api/finance'
 import { getSuppliers } from '@/api/supplier'
@@ -149,7 +152,7 @@ function formatMoney(value: any) {
 
 function formatQuantity(value: any) {
   const quantity = Number(value || 0)
-  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(3)))
+  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(2)))
 }
 
 function formatDateTime(value: any) {
@@ -180,3 +183,4 @@ onMounted(async () => {
   height: 100%;
 }
 </style>
+

@@ -4,7 +4,7 @@
       <div class="toolbar">
         <el-button type="primary" :icon="Plus" @click="handleAdd">新增职员</el-button>
       </div>
-      <el-table :data="tableData" stripe v-loading="loading">
+      <el-table border :data="tableData" stripe v-loading="loading">
         <el-table-column prop="username" label="登录账号" width="140" />
         <el-table-column prop="name" label="姓名" width="120" />
         <el-table-column prop="phone" label="手机号" width="140" />

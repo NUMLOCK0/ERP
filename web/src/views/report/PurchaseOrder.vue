@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="report-page">
     <el-card>
       <SearchForm :model="searchForm" @search="handleSearch" @reset="handleReset">
@@ -32,7 +32,9 @@
         </el-form-item>
       </SearchForm>
 
-      <el-table :data="tableData" stripe v-loading="loading">
+      <TableColumnTools table-key="report-purchase-order" filename="采购订单报表" />
+
+      <el-table border :data="tableData" stripe v-loading="loading">
         <el-table-column prop="id" label="数据ID" width="90" />
         <el-table-column prop="order_no" label="采购单号" width="190" show-overflow-tooltip>
           <template #default="{ row }"><CopyableNo :value="row.order_no" /></template>
@@ -231,7 +233,7 @@
     </el-drawer>
 
     <el-dialog v-model="warehouseDialogVisible" title="全部仓库采购入库数据" width="92%">
-      <el-table :data="warehouseSummaries" stripe max-height="520">
+      <el-table border :data="warehouseSummaries" stripe max-height="520">
         <el-table-column prop="warehouse_name" label="仓库名称" min-width="180" />
         <el-table-column label="产品总数" width="120" align="right">
           <template #default="{ row }">{{ formatQuantity(row.product_total) }}</template>
@@ -266,6 +268,7 @@
 </template>
 
 <script setup lang="ts">
+import TableColumnTools from '@/components/TableColumnTools.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ArrowDown, ArrowLeft, ArrowRight, View } from '@element-plus/icons-vue'
 import { getPurchaseOrderReport, getPurchaseOrderWarehouseSummary } from '@/api/report'
@@ -426,7 +429,7 @@ function emptyText(value: any) {
 
 function formatQuantity(value: any) {
   const quantity = Number(value || 0)
-  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(3)))
+  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(2)))
 }
 
 function formatMoney(value: any) {
@@ -553,3 +556,4 @@ onMounted(async () => {
   }
 }
 </style>
+

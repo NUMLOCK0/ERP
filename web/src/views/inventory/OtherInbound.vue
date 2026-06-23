@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <template v-if="editorVisible">
       <div class="editor-page">
@@ -35,7 +35,7 @@
             <el-button type="primary" plain @click="addBlankItem">添加产品</el-button>
           </div>
 
-          <el-table :data="form.items" class="inbound-detail-table" stripe>
+          <el-table border :data="form.items" class="inbound-detail-table" stripe>
             <template #empty>
               <div class="empty-inbound">
                 <div class="cart-line">▱</div>
@@ -85,7 +85,7 @@
                 <span>入库数量 <span class="edit-mark">✎</span></span>
               </template>
               <template #default="{ row }">
-                <el-input-number v-model="row.quantity" :min="0.001" :precision="3" :controls="false" @change="recalculateRow(row)" />
+                <el-input-number v-model="row.quantity" :min="0.01" :precision="2" :controls="false" @change="recalculateRow(row)" />
               </template>
             </el-table-column>
             <el-table-column label="入库价格" width="140" align="right">
@@ -160,7 +160,7 @@
           </el-input>
         </div>
 
-        <el-table :data="drawerProducts" class="drawer-product-table" height="calc(100vh - 190px)" stripe>
+        <el-table border :data="drawerProducts" class="drawer-product-table" height="calc(100vh - 190px)" stripe>
           <el-table-column width="44">
             <template #default="{ row }">
               <el-checkbox :model-value="isProductAdded(row.id)" @change="toggleDrawerProduct(row)" />
@@ -178,7 +178,7 @@
           <el-table-column label="数量/单位/基准数" width="250">
             <template #default="{ row }">
               <div class="drawer-unit-row">
-                <el-input-number v-model="selectorState(row).quantity" :min="0.001" :precision="3" :controls="false" />
+                <el-input-number v-model="selectorState(row).quantity" :min="0.01" :precision="2" :controls="false" />
                 <el-select v-model="selectorState(row).unit_name">
                   <el-option :label="productUnitName(row)" :value="productUnitName(row)" />
                 </el-select>
@@ -235,7 +235,9 @@
         </el-form-item>
       </SearchForm>
 
-      <el-table :data="tableData" stripe v-loading="loading">
+      <TableColumnTools table-key="inventory-other-inbound" filename="其他入库单" />
+
+      <el-table border :data="tableData" stripe v-loading="loading">
         <el-table-column prop="id" label="入库单id" width="100" />
         <el-table-column prop="inbound_no" label="入库单号" width="190" show-overflow-tooltip>
           <template #default="{ row }"><CopyableNo :value="row.inbound_no" /></template>
@@ -314,7 +316,7 @@
           </el-descriptions>
         </el-tab-pane>
         <el-tab-pane label="产品列表" name="items">
-          <el-table :data="detailData.items" stripe class="detail-item-table">
+          <el-table border :data="detailData.items" stripe class="detail-item-table">
             <el-table-column prop="product_name" label="产品标题" min-width="180" show-overflow-tooltip />
             <el-table-column prop="code" label="产品编码" width="130" show-overflow-tooltip />
             <el-table-column prop="spec" label="产品规格" width="120" show-overflow-tooltip />
@@ -341,6 +343,7 @@
 </template>
 
 <script setup lang="ts">
+import TableColumnTools from '@/components/TableColumnTools.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { Box, Plus, Search, View } from '@element-plus/icons-vue'
@@ -705,7 +708,7 @@ function formatMoney(value: any) {
 
 function formatQuantity(value: any) {
   const quantity = Number(value || 0)
-  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(3)))
+  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(2)))
 }
 
 function formatDateTime(value: any) {
@@ -938,3 +941,4 @@ onMounted(async () => {
   }
 }
 </style>
+

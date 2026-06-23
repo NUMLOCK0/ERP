@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <el-card>
       <div class="toolbar">
@@ -8,7 +8,9 @@
         <el-form-item label="调拨单号"><el-input v-model="searchForm.transfer_no" placeholder="调拨单号" clearable /></el-form-item>
       </SearchForm>
 
-      <el-table :data="tableData" stripe v-loading="loading">
+      <TableColumnTools table-key="inventory-transfer" filename="库存调拨单" />
+
+      <el-table border :data="tableData" stripe v-loading="loading">
         <el-table-column prop="transfer_no" label="调拨单号" width="190">
           <template #default="{ row }"><CopyableNo :value="row.transfer_no" /></template>
         </el-table-column>
@@ -36,6 +38,7 @@
 </template>
 
 <script setup lang="ts">
+import TableColumnTools from '@/components/TableColumnTools.vue'
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
@@ -73,3 +76,4 @@ onMounted(fetchData)
 </script>
 
 <style scoped>.page-container{height:100%}.toolbar{margin-bottom:16px}</style>
+

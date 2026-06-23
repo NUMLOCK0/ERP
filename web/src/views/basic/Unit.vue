@@ -4,7 +4,7 @@
       <div class="toolbar">
         <el-button type="primary" :icon="Plus" @click="handleAdd">新增单位</el-button>
       </div>
-      <el-table :data="tableData" stripe v-loading="loading">
+      <el-table border :data="tableData" stripe v-loading="loading">
         <el-table-column prop="name" label="单位名称" min-width="200" />
         <el-table-column label="默认单位" width="100">
           <template #default="{ row }">

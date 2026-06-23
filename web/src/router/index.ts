@@ -75,6 +75,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/purchase/Return.vue'),
         meta: { title: '采购退货单' }
       },
+      // 加工管理
+      {
+        path: 'processing/order',
+        name: 'ProcessingOrder',
+        component: () => import('@/views/processing/Order.vue'),
+        meta: { title: '药材加工批次' }
+      },
       // 销售管理
       {
         path: 'sale/order',

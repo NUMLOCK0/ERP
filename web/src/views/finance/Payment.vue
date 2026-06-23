@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <el-card>
       <SearchForm :model="searchForm" @search="handleSearch" @reset="handleReset">
@@ -23,7 +23,9 @@
         </el-form-item>
       </SearchForm>
 
-      <el-table :data="tableData" stripe v-loading="loading">
+      <TableColumnTools table-key="finance-payment" filename="付款单" />
+
+      <el-table border :data="tableData" stripe v-loading="loading">
         <el-table-column prop="id" label="付款单id" width="100" />
         <el-table-column prop="order_no" label="采购单号" width="190" show-overflow-tooltip>
           <template #default="{ row }"><CopyableNo :value="row.order_no" /></template>
@@ -278,7 +280,7 @@
           </el-descriptions>
         </el-tab-pane>
         <el-tab-pane label="付款信息" name="payments">
-          <el-table :data="detailPaymentRecords" stripe class="detail-item-table">
+          <el-table border :data="detailPaymentRecords" stripe class="detail-item-table">
             <el-table-column type="index" label="序号" width="70" />
             <el-table-column label="付款金额" width="120" align="right">
               <template #default="{ row }">¥{{ formatMoney(row.amount) }}</template>
@@ -364,7 +366,7 @@
           </el-descriptions>
         </el-tab-pane>
         <el-tab-pane label="产品列表" name="items">
-          <el-table :data="orderDetail.items" stripe class="detail-item-table">
+          <el-table border :data="orderDetail.items" stripe class="detail-item-table">
             <el-table-column prop="product_name" label="产品标题" min-width="180" show-overflow-tooltip />
             <el-table-column prop="code" label="产品编码" width="130" show-overflow-tooltip />
             <el-table-column prop="spec" label="产品规格" width="120" show-overflow-tooltip />
@@ -404,6 +406,7 @@
 </template>
 
 <script setup lang="ts">
+import TableColumnTools from '@/components/TableColumnTools.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import { deletePayment, getPayment, getPayments, invoicePayment, payPayment } from '@/api/finance'
@@ -837,7 +840,7 @@ function formatMoney(value: any) {
 
 function formatQuantity(value: any) {
   const quantity = Number(value || 0)
-  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(3)))
+  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(2)))
 }
 
 function formatDateTime(value: any) {
@@ -953,3 +956,4 @@ onMounted(async () => {
   white-space: nowrap;
 }
 </style>
+

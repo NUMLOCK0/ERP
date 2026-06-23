@@ -7,7 +7,7 @@
       </SearchForm>
       <div class="toolbar"><el-button type="primary" :icon="Plus" @click="handleAdd">新增企业</el-button></div>
 
-      <el-table :data="tableData" stripe v-loading="loading">
+      <el-table border :data="tableData" stripe v-loading="loading">
         <el-table-column prop="name" label="企业名称" min-width="180" />
         <el-table-column label="类型" width="80"><template #default="{ row }"><el-tag size="small">{{ row.type==='supplier'?'供应商':row.type==='customer'?'客户':'双重' }}</el-tag></template></el-table-column>
         <el-table-column prop="contact" label="联系人" width="100" />

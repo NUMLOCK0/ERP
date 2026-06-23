@@ -2,7 +2,7 @@
   <div class="page-container">
     <el-card>
       <div class="toolbar"><el-button type="primary" :icon="Plus" @click="handleAdd">新增模板</el-button></div>
-      <el-table :data="tableData" stripe v-loading="loading">
+      <el-table border :data="tableData" stripe v-loading="loading">
         <el-table-column prop="name" label="模板名称" min-width="180" />
         <el-table-column label="类型" width="120"><template #default="{ row }"><el-tag size="small">{{ row.type }}</el-tag></template></el-table-column>
         <el-table-column label="默认" width="80"><template #default="{ row }"><el-tag v-if="row.is_default" type="success" size="small">默认</el-tag></template></el-table-column>

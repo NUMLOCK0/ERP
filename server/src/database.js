@@ -26,6 +26,8 @@ async function initDatabase() {
   }
 
   await createTables();
+  await normalizeNumericPrecision();
+  await normalizeMemberPricePrecision();
   await initData();
   await ensureEmployeeRole();
 
@@ -74,8 +76,8 @@ async function createTables() {
       category_id INT DEFAULT 0,
       brand_id INT DEFAULT 0,
       default_supplier_id INT DEFAULT 0,
-      cost_price DOUBLE DEFAULT 0,
-      sale_price DOUBLE DEFAULT 0,
+      cost_price DECIMAL(18,2) DEFAULT 0,
+      sale_price DECIMAL(18,2) DEFAULT 0,
       description TEXT DEFAULT NULL,
       image_urls JSON DEFAULT NULL,
       status TINYINT(1) DEFAULT 1,
@@ -157,13 +159,13 @@ async function createTables() {
       unit_id INT DEFAULT 0,
       warehouse_id INT DEFAULT 0,
       is_base TINYINT(1) DEFAULT 0,
-      base_quantity DOUBLE DEFAULT 1,
+      base_quantity DECIMAL(18,2) DEFAULT 1,
       code VARCHAR(100) DEFAULT '',
       barcode VARCHAR(100) DEFAULT '',
-      weight DOUBLE DEFAULT 0,
-      volume DOUBLE DEFAULT 0,
-      sale_price DOUBLE DEFAULT 0,
-      cost_price DOUBLE DEFAULT 0,
+      weight DECIMAL(18,2) DEFAULT 0,
+      volume DECIMAL(18,2) DEFAULT 0,
+      sale_price DECIMAL(18,2) DEFAULT 0,
+      cost_price DECIMAL(18,2) DEFAULT 0,
       member_prices JSON DEFAULT NULL,
       spec VARCHAR(100) DEFAULT '',
       bm_code VARCHAR(100) DEFAULT '',
@@ -180,7 +182,7 @@ async function createTables() {
       supplier_id INT DEFAULT 0,
       warehouse_id INT DEFAULT 0,
       payment_method VARCHAR(50) DEFAULT '',
-      total_amount DOUBLE DEFAULT 0,
+      total_amount DECIMAL(18,2) DEFAULT 0,
       admin_remark TEXT DEFAULT NULL,
       purchase_remark TEXT DEFAULT NULL,
       status INT DEFAULT 0,
@@ -202,15 +204,15 @@ async function createTables() {
       id INT PRIMARY KEY AUTO_INCREMENT,
       order_id INT DEFAULT 0,
       product_id INT DEFAULT 0,
-      quantity DOUBLE DEFAULT 0,
-      price DOUBLE DEFAULT 0,
-      tax DOUBLE DEFAULT 0,
-      amount DOUBLE DEFAULT 0,
+      quantity DECIMAL(18,2) DEFAULT 0,
+      price DECIMAL(18,2) DEFAULT 0,
+      tax DECIMAL(18,2) DEFAULT 0,
+      amount DECIMAL(18,2) DEFAULT 0,
       remark VARCHAR(255) DEFAULT '',
-      final_quantity DOUBLE DEFAULT NULL,
-      final_price DOUBLE DEFAULT NULL,
-      final_tax DOUBLE DEFAULT 0,
-      final_amount DOUBLE DEFAULT NULL,
+      final_quantity DECIMAL(18,2) DEFAULT NULL,
+      final_price DECIMAL(18,2) DEFAULT NULL,
+      final_tax DECIMAL(18,2) DEFAULT 0,
+      final_amount DECIMAL(18,2) DEFAULT NULL,
       final_remark VARCHAR(255) DEFAULT ''
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
@@ -220,7 +222,7 @@ async function createTables() {
       order_id INT DEFAULT 0,
       warehouse_id INT DEFAULT 0,
       supplier_id INT DEFAULT 0,
-      total_amount DOUBLE DEFAULT 0,
+      total_amount DECIMAL(18,2) DEFAULT 0,
       status INT DEFAULT 0,
       remark TEXT DEFAULT NULL,
       completed_time DATETIME DEFAULT NULL,
@@ -234,9 +236,9 @@ async function createTables() {
       id INT PRIMARY KEY AUTO_INCREMENT,
       inbound_id INT DEFAULT 0,
       product_id INT DEFAULT 0,
-      quantity DOUBLE DEFAULT 0,
-      price DOUBLE DEFAULT 0,
-      amount DOUBLE DEFAULT 0,
+      quantity DECIMAL(18,2) DEFAULT 0,
+      price DECIMAL(18,2) DEFAULT 0,
+      amount DECIMAL(18,2) DEFAULT 0,
       location VARCHAR(100) DEFAULT '',
       remark VARCHAR(255) DEFAULT ''
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
@@ -247,7 +249,7 @@ async function createTables() {
       inbound_id INT DEFAULT 0,
       order_id INT DEFAULT 0,
       supplier_id INT DEFAULT 0,
-      total_amount DOUBLE DEFAULT 0,
+      total_amount DECIMAL(18,2) DEFAULT 0,
       status INT DEFAULT 0,
       express_name VARCHAR(100) DEFAULT '',
       express_no VARCHAR(100) DEFAULT '',
@@ -266,9 +268,9 @@ async function createTables() {
       id INT PRIMARY KEY AUTO_INCREMENT,
       return_id INT DEFAULT 0,
       product_id INT DEFAULT 0,
-      quantity DOUBLE DEFAULT 0,
-      price DOUBLE DEFAULT 0,
-      amount DOUBLE DEFAULT 0,
+      quantity DECIMAL(18,2) DEFAULT 0,
+      price DECIMAL(18,2) DEFAULT 0,
+      amount DECIMAL(18,2) DEFAULT 0,
       remark VARCHAR(255) DEFAULT ''
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
@@ -279,7 +281,7 @@ async function createTables() {
       employee_id INT DEFAULT 0,
       warehouse_id INT DEFAULT 0,
       payment_method VARCHAR(50) DEFAULT '',
-      total_amount DOUBLE DEFAULT 0,
+      total_amount DECIMAL(18,2) DEFAULT 0,
       admin_remark TEXT DEFAULT NULL,
       sale_remark TEXT DEFAULT NULL,
       customer_contact VARCHAR(100) DEFAULT '',
@@ -303,10 +305,10 @@ async function createTables() {
       id INT PRIMARY KEY AUTO_INCREMENT,
       order_id INT DEFAULT 0,
       product_id INT DEFAULT 0,
-      quantity DOUBLE DEFAULT 0,
-      price DOUBLE DEFAULT 0,
-      tax DOUBLE DEFAULT 0,
-      amount DOUBLE DEFAULT 0
+      quantity DECIMAL(18,2) DEFAULT 0,
+      price DECIMAL(18,2) DEFAULT 0,
+      tax DECIMAL(18,2) DEFAULT 0,
+      amount DECIMAL(18,2) DEFAULT 0
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS sale_delivery (
@@ -315,7 +317,7 @@ async function createTables() {
       order_id INT DEFAULT 0,
       customer_id INT DEFAULT 0,
       warehouse_id INT DEFAULT 0,
-      total_amount DOUBLE DEFAULT 0,
+      total_amount DECIMAL(18,2) DEFAULT 0,
       status INT DEFAULT 0,
       logistics_company VARCHAR(100) DEFAULT '',
       logistics_no VARCHAR(100) DEFAULT '',
@@ -333,9 +335,9 @@ async function createTables() {
       id INT PRIMARY KEY AUTO_INCREMENT,
       delivery_id INT DEFAULT 0,
       product_id INT DEFAULT 0,
-      quantity DOUBLE DEFAULT 0,
-      price DOUBLE DEFAULT 0,
-      amount DOUBLE DEFAULT 0
+      quantity DECIMAL(18,2) DEFAULT 0,
+      price DECIMAL(18,2) DEFAULT 0,
+      amount DECIMAL(18,2) DEFAULT 0
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS sale_return (
@@ -344,7 +346,7 @@ async function createTables() {
       delivery_id INT DEFAULT 0,
       customer_id INT DEFAULT 0,
       employee_id INT DEFAULT 0,
-      total_amount DOUBLE DEFAULT 0,
+      total_amount DECIMAL(18,2) DEFAULT 0,
       status INT DEFAULT 0,
       express_name VARCHAR(100) DEFAULT '',
       express_no VARCHAR(100) DEFAULT '',
@@ -364,10 +366,10 @@ async function createTables() {
       return_id INT DEFAULT 0,
       delivery_item_id INT DEFAULT 0,
       product_id INT DEFAULT 0,
-      quantity DOUBLE DEFAULT 0,
-      price DOUBLE DEFAULT 0,
-      tax DOUBLE DEFAULT 0,
-      amount DOUBLE DEFAULT 0,
+      quantity DECIMAL(18,2) DEFAULT 0,
+      price DECIMAL(18,2) DEFAULT 0,
+      tax DECIMAL(18,2) DEFAULT 0,
+      amount DECIMAL(18,2) DEFAULT 0,
       remark VARCHAR(255) DEFAULT ''
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
@@ -375,7 +377,7 @@ async function createTables() {
       id INT PRIMARY KEY AUTO_INCREMENT,
       product_id INT DEFAULT 0,
       warehouse_id INT DEFAULT 0,
-      quantity DOUBLE DEFAULT 0,
+      quantity DECIMAL(18,2) DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       UNIQUE KEY uk_product_warehouse (product_id, warehouse_id)
@@ -404,9 +406,9 @@ async function createTables() {
       id INT PRIMARY KEY AUTO_INCREMENT,
       check_id INT DEFAULT 0,
       product_id INT DEFAULT 0,
-      book_quantity DOUBLE DEFAULT 0,
-      actual_quantity DOUBLE DEFAULT 0,
-      difference DOUBLE DEFAULT 0,
+      book_quantity DECIMAL(18,2) DEFAULT 0,
+      actual_quantity DECIMAL(18,2) DEFAULT 0,
+      difference DECIMAL(18,2) DEFAULT 0,
       remark VARCHAR(255) DEFAULT ''
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
@@ -415,7 +417,7 @@ async function createTables() {
       transfer_no VARCHAR(50) NOT NULL UNIQUE,
       from_warehouse_id INT DEFAULT 0,
       to_warehouse_id INT DEFAULT 0,
-      total_amount DOUBLE DEFAULT 0,
+      total_amount DECIMAL(18,2) DEFAULT 0,
       status INT DEFAULT 0,
       creator_id INT DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -425,8 +427,8 @@ async function createTables() {
       id INT PRIMARY KEY AUTO_INCREMENT,
       transfer_id INT DEFAULT 0,
       product_id INT DEFAULT 0,
-      quantity DOUBLE DEFAULT 0,
-      price DOUBLE DEFAULT 0
+      quantity DECIMAL(18,2) DEFAULT 0,
+      price DECIMAL(18,2) DEFAULT 0
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS inventory_log (
@@ -434,12 +436,78 @@ async function createTables() {
       product_id INT DEFAULT 0,
       warehouse_id INT DEFAULT 0,
       change_type VARCHAR(50) DEFAULT '',
-      change_quantity DOUBLE DEFAULT 0,
-      before_quantity DOUBLE DEFAULT 0,
-      after_quantity DOUBLE DEFAULT 0,
+      change_quantity DECIMAL(18,2) DEFAULT 0,
+      before_quantity DECIMAL(18,2) DEFAULT 0,
+      after_quantity DECIMAL(18,2) DEFAULT 0,
       ref_no VARCHAR(50) DEFAULT '',
       remark TEXT DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+    await conn.execute(`CREATE TABLE IF NOT EXISTS herb_processing_order (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      batch_no VARCHAR(50) NOT NULL UNIQUE,
+      source_product_id INT DEFAULT 0,
+      target_product_id INT DEFAULT 0,
+      source_warehouse_id INT DEFAULT 0,
+      target_warehouse_id INT DEFAULT 0,
+      supplier_id INT DEFAULT 0,
+      source_quantity DECIMAL(18,2) DEFAULT 0,
+      processed_quantity DECIMAL(18,2) DEFAULT 0,
+      return_quantity DECIMAL(18,2) DEFAULT 0,
+      loss_quantity DECIMAL(18,2) DEFAULT 0,
+      status INT DEFAULT 0,
+      remark TEXT DEFAULT NULL,
+      creator_id INT DEFAULT 0,
+      start_time DATETIME DEFAULT NULL,
+      completed_time DATETIME DEFAULT NULL,
+      cancel_time DATETIME DEFAULT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+    await conn.execute(`CREATE TABLE IF NOT EXISTS herb_processing_stage (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      order_id INT NOT NULL,
+      stage_key VARCHAR(30) NOT NULL,
+      stage_name VARCHAR(50) NOT NULL,
+      input_quantity DECIMAL(18,2) DEFAULT 0,
+      output_quantity DECIMAL(18,2) DEFAULT 0,
+      transfer_quantity DECIMAL(18,2) DEFAULT 0,
+      output_product_id INT DEFAULT 0,
+      output_unit_price DECIMAL(18,2) DEFAULT 0,
+      byproduct_product_id INT DEFAULT 0,
+      byproduct_quantity DECIMAL(18,2) DEFAULT 0,
+      byproduct_unit_price DECIMAL(18,2) DEFAULT 0,
+      loss_quantity DECIMAL(18,2) DEFAULT 0,
+      return_quantity DECIMAL(18,2) DEFAULT 0,
+      is_skipped TINYINT(1) DEFAULT 0,
+      operator_id INT DEFAULT 0,
+      operator_name VARCHAR(100) DEFAULT '',
+      processed_at DATETIME DEFAULT NULL,
+      remark TEXT DEFAULT NULL,
+      sort_order INT DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_processing_stage (order_id, stage_key),
+      INDEX idx_processing_order (order_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+    await conn.execute(`CREATE TABLE IF NOT EXISTS herb_processing_inbound_item (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      order_id INT NOT NULL,
+      stage_id INT NOT NULL,
+      stage_key VARCHAR(30) NOT NULL,
+      output_type VARCHAR(20) NOT NULL,
+      product_id INT NOT NULL,
+      warehouse_id INT NOT NULL,
+      quantity DECIMAL(18,2) DEFAULT 0,
+      unit_price DECIMAL(18,2) DEFAULT 0,
+      amount DECIMAL(18,2) DEFAULT 0,
+      creator_id INT DEFAULT 0,
+      inbound_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_processing_inbound_output (stage_id, output_type),
+      INDEX idx_processing_inbound_order (order_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS other_inbound (
@@ -448,9 +516,9 @@ async function createTables() {
       supplier_id INT DEFAULT 0,
       warehouse_id INT DEFAULT 0,
       type VARCHAR(50) DEFAULT '',
-      total_amount DOUBLE DEFAULT 0,
-      total_quantity DOUBLE DEFAULT 0,
-      tax_amount DOUBLE DEFAULT 0,
+      total_amount DECIMAL(18,2) DEFAULT 0,
+      total_quantity DECIMAL(18,2) DEFAULT 0,
+      tax_amount DECIMAL(18,2) DEFAULT 0,
       status INT DEFAULT 0,
       admin_remark TEXT DEFAULT NULL,
       inbound_remark TEXT DEFAULT NULL,
@@ -469,10 +537,10 @@ async function createTables() {
       id INT PRIMARY KEY AUTO_INCREMENT,
       inbound_id INT DEFAULT 0,
       product_id INT DEFAULT 0,
-      quantity DOUBLE DEFAULT 0,
-      price DOUBLE DEFAULT 0,
-      tax DOUBLE DEFAULT 0,
-      amount DOUBLE DEFAULT 0
+      quantity DECIMAL(18,2) DEFAULT 0,
+      price DECIMAL(18,2) DEFAULT 0,
+      tax DECIMAL(18,2) DEFAULT 0,
+      amount DECIMAL(18,2) DEFAULT 0
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS other_outbound (
@@ -481,9 +549,9 @@ async function createTables() {
       customer_id INT DEFAULT 0,
       warehouse_id INT DEFAULT 0,
       type VARCHAR(50) DEFAULT '',
-      total_amount DOUBLE DEFAULT 0,
-      total_quantity DOUBLE DEFAULT 0,
-      tax_amount DOUBLE DEFAULT 0,
+      total_amount DECIMAL(18,2) DEFAULT 0,
+      total_quantity DECIMAL(18,2) DEFAULT 0,
+      tax_amount DECIMAL(18,2) DEFAULT 0,
       status INT DEFAULT 0,
       contact VARCHAR(100) DEFAULT '',
       phone VARCHAR(50) DEFAULT '',
@@ -507,11 +575,11 @@ async function createTables() {
       id INT PRIMARY KEY AUTO_INCREMENT,
       outbound_id INT DEFAULT 0,
       product_id INT DEFAULT 0,
-      quantity DOUBLE DEFAULT 0,
-      price DOUBLE DEFAULT 0,
-      tax DOUBLE DEFAULT 0,
+      quantity DECIMAL(18,2) DEFAULT 0,
+      price DECIMAL(18,2) DEFAULT 0,
+      tax DECIMAL(18,2) DEFAULT 0,
       location VARCHAR(100) DEFAULT '',
-      amount DOUBLE DEFAULT 0
+      amount DECIMAL(18,2) DEFAULT 0
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS finance_payment (
@@ -520,8 +588,8 @@ async function createTables() {
       order_id INT DEFAULT 0,
       supplier_id INT DEFAULT 0,
       inbound_id INT DEFAULT 0,
-      amount DOUBLE DEFAULT 0,
-      should_amount DOUBLE DEFAULT 0,
+      amount DECIMAL(18,2) DEFAULT 0,
+      should_amount DECIMAL(18,2) DEFAULT 0,
       pay_method VARCHAR(50) DEFAULT '',
       status INT DEFAULT 0,
       invoice_time DATETIME DEFAULT NULL,
@@ -543,7 +611,7 @@ async function createTables() {
     await conn.execute(`CREATE TABLE IF NOT EXISTS finance_payment_record (
       id INT PRIMARY KEY AUTO_INCREMENT,
       payment_id INT NOT NULL,
-      amount DOUBLE DEFAULT 0,
+      amount DECIMAL(18,2) DEFAULT 0,
       payer VARCHAR(30) DEFAULT '',
       pay_time DATETIME DEFAULT NULL,
       pay_method VARCHAR(50) DEFAULT '',
@@ -560,8 +628,8 @@ async function createTables() {
       order_id INT DEFAULT 0,
       customer_id INT DEFAULT 0,
       delivery_id INT DEFAULT 0,
-      amount DOUBLE DEFAULT 0,
-      should_amount DOUBLE DEFAULT 0,
+      amount DECIMAL(18,2) DEFAULT 0,
+      should_amount DECIMAL(18,2) DEFAULT 0,
       pay_method VARCHAR(50) DEFAULT '',
       status INT DEFAULT 0,
       invoice_time DATETIME DEFAULT NULL,
@@ -612,6 +680,28 @@ async function createTables() {
   await ensureColumn('employee', 'user_id', 'INT DEFAULT 0');
   await ensureColumn('unit', 'is_default', 'TINYINT(1) DEFAULT 0');
   await ensureColumn('inventory_stock', 'created_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP');
+  await ensureColumn('herb_processing_order', 'supplier_id', 'INT DEFAULT 0');
+  await ensureColumn('herb_processing_order', 'source_warehouse_id', 'INT DEFAULT 0');
+  await ensureColumn('herb_processing_order', 'target_warehouse_id', 'INT DEFAULT 0');
+  await ensureColumn('herb_processing_order', 'return_quantity', 'DECIMAL(18,2) DEFAULT 0');
+  await ensureColumn('herb_processing_order', 'loss_quantity', 'DECIMAL(18,2) DEFAULT 0');
+  await ensureColumn('herb_processing_order', 'start_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('herb_processing_order', 'completed_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('herb_processing_order', 'cancel_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('herb_processing_order', 'source_unit_price', 'DECIMAL(18,2) DEFAULT 0');
+  await ensureColumn('herb_processing_order', 'inbound_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('herb_processing_order', 'inbound_user_id', 'INT DEFAULT 0');
+  await ensureColumn('herb_processing_stage', 'return_quantity', 'DECIMAL(18,2) DEFAULT 0');
+  await ensureColumn('herb_processing_stage', 'transfer_quantity', 'DECIMAL(18,2) DEFAULT 0');
+  await ensureColumn('herb_processing_stage', 'output_product_id', 'INT DEFAULT 0');
+  await ensureColumn('herb_processing_stage', 'output_unit_price', 'DECIMAL(18,2) DEFAULT 0');
+  await ensureColumn('herb_processing_stage', 'byproduct_product_id', 'INT DEFAULT 0');
+  await ensureColumn('herb_processing_stage', 'byproduct_quantity', 'DECIMAL(18,2) DEFAULT 0');
+  await ensureColumn('herb_processing_stage', 'byproduct_unit_price', 'DECIMAL(18,2) DEFAULT 0');
+  await ensureColumn('herb_processing_stage', 'is_skipped', 'TINYINT(1) DEFAULT 0');
+  await ensureColumn('herb_processing_stage', 'operator_id', 'INT DEFAULT 0');
+  await ensureColumn('herb_processing_stage', 'operator_name', "VARCHAR(100) DEFAULT ''");
+  await ensureColumn('herb_processing_stage', 'processed_at', 'DATETIME DEFAULT NULL');
   await ensureColumn('product_unit', 'warehouse_id', 'INT DEFAULT 0');
   await ensureColumn('purchase_order', 'submit_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('purchase_order', 'payment_method', "VARCHAR(50) DEFAULT ''");
@@ -623,12 +713,12 @@ async function createTables() {
   await ensureColumn('purchase_order', 'completed_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('purchase_order', 'cancel_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('purchase_order', 'close_time', 'DATETIME DEFAULT NULL');
-  await ensureColumn('purchase_order_item', 'tax', 'DOUBLE DEFAULT 0');
+  await ensureColumn('purchase_order_item', 'tax', 'DECIMAL(18,2) DEFAULT 0');
   await ensureColumn('purchase_order_item', 'remark', "VARCHAR(255) DEFAULT ''");
-  await ensureColumn('purchase_order_item', 'final_quantity', 'DOUBLE DEFAULT NULL');
-  await ensureColumn('purchase_order_item', 'final_price', 'DOUBLE DEFAULT NULL');
-  await ensureColumn('purchase_order_item', 'final_tax', 'DOUBLE DEFAULT 0');
-  await ensureColumn('purchase_order_item', 'final_amount', 'DOUBLE DEFAULT NULL');
+  await ensureColumn('purchase_order_item', 'final_quantity', 'DECIMAL(18,2) DEFAULT NULL');
+  await ensureColumn('purchase_order_item', 'final_price', 'DECIMAL(18,2) DEFAULT NULL');
+  await ensureColumn('purchase_order_item', 'final_tax', 'DECIMAL(18,2) DEFAULT 0');
+  await ensureColumn('purchase_order_item', 'final_amount', 'DECIMAL(18,2) DEFAULT NULL');
   await ensureColumn('purchase_order_item', 'final_remark', "VARCHAR(255) DEFAULT ''");
   await ensureColumn('purchase_inbound', 'remark', 'TEXT DEFAULT NULL');
   await ensureColumn('purchase_inbound', 'completed_time', 'DATETIME DEFAULT NULL');
@@ -657,8 +747,8 @@ async function createTables() {
   await ensureColumn('inventory_check', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
   await ensureColumn('inventory_check_item', 'remark', "VARCHAR(255) DEFAULT ''");
   await ensureColumn('other_inbound', 'supplier_id', 'INT DEFAULT 0');
-  await ensureColumn('other_inbound', 'total_quantity', 'DOUBLE DEFAULT 0');
-  await ensureColumn('other_inbound', 'tax_amount', 'DOUBLE DEFAULT 0');
+  await ensureColumn('other_inbound', 'total_quantity', 'DECIMAL(18,2) DEFAULT 0');
+  await ensureColumn('other_inbound', 'tax_amount', 'DECIMAL(18,2) DEFAULT 0');
   await ensureColumn('other_inbound', 'admin_remark', 'TEXT DEFAULT NULL');
   await ensureColumn('other_inbound', 'inbound_remark', 'TEXT DEFAULT NULL');
   await ensureColumn('other_inbound', 'completed_time', 'DATETIME DEFAULT NULL');
@@ -667,10 +757,10 @@ async function createTables() {
   await ensureColumn('other_inbound', 'cancel_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('other_inbound', 'close_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('other_inbound', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
-  await ensureColumn('other_inbound_item', 'tax', 'DOUBLE DEFAULT 0');
+  await ensureColumn('other_inbound_item', 'tax', 'DECIMAL(18,2) DEFAULT 0');
   await ensureColumn('other_outbound', 'customer_id', 'INT DEFAULT 0');
-  await ensureColumn('other_outbound', 'total_quantity', 'DOUBLE DEFAULT 0');
-  await ensureColumn('other_outbound', 'tax_amount', 'DOUBLE DEFAULT 0');
+  await ensureColumn('other_outbound', 'total_quantity', 'DECIMAL(18,2) DEFAULT 0');
+  await ensureColumn('other_outbound', 'tax_amount', 'DECIMAL(18,2) DEFAULT 0');
   await ensureColumn('other_outbound', 'contact', "VARCHAR(100) DEFAULT ''");
   await ensureColumn('other_outbound', 'phone', "VARCHAR(50) DEFAULT ''");
   await ensureColumn('other_outbound', 'address', "VARCHAR(255) DEFAULT ''");
@@ -684,10 +774,10 @@ async function createTables() {
   await ensureColumn('other_outbound', 'cancel_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('other_outbound', 'close_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('other_outbound', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
-  await ensureColumn('other_outbound_item', 'tax', 'DOUBLE DEFAULT 0');
+  await ensureColumn('other_outbound_item', 'tax', 'DECIMAL(18,2) DEFAULT 0');
   await ensureColumn('other_outbound_item', 'location', "VARCHAR(100) DEFAULT ''");
   await ensureColumn('finance_payment', 'order_id', 'INT DEFAULT 0');
-  await ensureColumn('finance_payment', 'should_amount', 'DOUBLE DEFAULT 0');
+  await ensureColumn('finance_payment', 'should_amount', 'DECIMAL(18,2) DEFAULT 0');
   await ensureColumn('finance_payment', 'invoice_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('finance_payment', 'invoice_status', 'INT DEFAULT 0');
   await ensureColumn('finance_payment', 'invoice_remark', 'TEXT DEFAULT NULL');
@@ -716,7 +806,7 @@ async function createTables() {
   await ensureColumn('sale_order', 'completed_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('sale_order', 'cancel_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('sale_order', 'close_time', 'DATETIME DEFAULT NULL');
-  await ensureColumn('sale_order_item', 'tax', 'DOUBLE DEFAULT 0');
+  await ensureColumn('sale_order_item', 'tax', 'DECIMAL(18,2) DEFAULT 0');
   await ensureColumn('sale_delivery', 'delivery_remark', 'TEXT DEFAULT NULL');
   await ensureColumn('sale_delivery', 'completed_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('sale_delivery', 'shipped_time', 'DATETIME DEFAULT NULL');
@@ -733,7 +823,7 @@ async function createTables() {
   await ensureColumn('sale_return', 'cancel_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('sale_return', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
   await ensureColumn('sale_return_item', 'delivery_item_id', 'INT DEFAULT 0');
-  await ensureColumn('sale_return_item', 'tax', 'DOUBLE DEFAULT 0');
+  await ensureColumn('sale_return_item', 'tax', 'DECIMAL(18,2) DEFAULT 0');
   await ensureColumn('sale_return_item', 'remark', "VARCHAR(255) DEFAULT ''");
   await pool.execute(
     `UPDATE sale_delivery
@@ -741,7 +831,7 @@ async function createTables() {
      WHERE status = 1 AND shipped_time IS NULL AND completed_time IS NOT NULL`
   );
   await ensureColumn('finance_receipt', 'order_id', 'INT DEFAULT 0');
-  await ensureColumn('finance_receipt', 'should_amount', 'DOUBLE DEFAULT 0');
+  await ensureColumn('finance_receipt', 'should_amount', 'DECIMAL(18,2) DEFAULT 0');
   await ensureColumn('finance_receipt', 'invoice_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('finance_receipt', 'invoice_status', 'INT DEFAULT 0');
   await ensureColumn('finance_receipt', 'invoice_remark', 'TEXT DEFAULT NULL');
@@ -835,6 +925,50 @@ async function initData() {
 
 function getPool() {
   return pool;
+}
+
+async function normalizeNumericPrecision() {
+  const [columns] = await pool.execute(
+    `SELECT TABLE_NAME, COLUMN_NAME, IS_NULLABLE, COLUMN_DEFAULT
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND DATA_TYPE IN ('double', 'float', 'real')`
+  );
+
+  for (const column of columns) {
+    const tableName = `\`${String(column.TABLE_NAME).replace(/`/g, '``')}\``;
+    const columnName = `\`${String(column.COLUMN_NAME).replace(/`/g, '``')}\``;
+    const nullable = column.IS_NULLABLE === 'YES' ? 'NULL' : 'NOT NULL';
+    const defaultClause = column.COLUMN_DEFAULT === null
+      ? 'DEFAULT NULL'
+      : `DEFAULT ${Number(column.COLUMN_DEFAULT)}`;
+    await pool.execute(
+      `ALTER TABLE ${tableName} MODIFY COLUMN ${columnName} DECIMAL(18,2) ${nullable} ${defaultClause}`
+    );
+  }
+
+  if (columns.length) console.log(`数值精度已统一为两位小数，共调整 ${columns.length} 个字段`);
+}
+
+async function normalizeMemberPricePrecision() {
+  const [rows] = await pool.execute(
+    'SELECT id, member_prices FROM product_unit WHERE member_prices IS NOT NULL'
+  );
+  for (const row of rows) {
+    let prices;
+    try {
+      prices = typeof row.member_prices === 'string' ? JSON.parse(row.member_prices) : row.member_prices;
+    } catch {
+      continue;
+    }
+    if (!prices || typeof prices !== 'object' || Array.isArray(prices)) continue;
+    const normalized = Object.fromEntries(
+      Object.entries(prices).map(([key, value]) => [key, Number(Number(value || 0).toFixed(2))])
+    );
+    if (JSON.stringify(normalized) !== JSON.stringify(prices)) {
+      await pool.execute('UPDATE product_unit SET member_prices = ? WHERE id = ?', [JSON.stringify(normalized), row.id]);
+    }
+  }
 }
 
 async function ensureEmployeeRole() {

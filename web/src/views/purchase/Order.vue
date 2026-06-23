@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <template v-if="editorVisible">
       <div class="editor-page">
@@ -50,7 +50,7 @@
             <el-button type="primary" plain @click="addBlankItem">添加产品</el-button>
           </div>
 
-          <el-table :data="form.items" class="purchase-detail-table" stripe>
+          <el-table border :data="form.items" class="purchase-detail-table" stripe>
             <template #empty>
               <div class="empty-purchase">
                 <div class="cart-line">▱</div>
@@ -100,7 +100,7 @@
                 <span>采购数量 <span class="edit-mark">✎</span></span>
               </template>
               <template #default="{ row }">
-                <el-input-number v-model="row.quantity" :min="0.001" :precision="3" :controls="false" @change="recalculateRow(row)" />
+                <el-input-number v-model="row.quantity" :min="0.01" :precision="2" :controls="false" @change="recalculateRow(row)" />
               </template>
             </el-table-column>
             <el-table-column label="采购价格" width="140" align="right">
@@ -188,7 +188,7 @@
           </el-input>
         </div>
 
-        <el-table :data="drawerProducts" class="drawer-product-table" height="calc(100vh - 190px)" stripe>
+        <el-table border :data="drawerProducts" class="drawer-product-table" height="calc(100vh - 190px)" stripe>
           <el-table-column width="44">
             <template #default="{ row }">
               <el-checkbox :model-value="isProductAdded(row.id)" @change="toggleDrawerProduct(row)" />
@@ -206,7 +206,7 @@
           <el-table-column label="数量/单位/基准数" width="250">
             <template #default="{ row }">
               <div class="drawer-unit-row">
-                <el-input-number v-model="selectorState(row).quantity" :min="0.001" :precision="3" :controls="false" />
+                <el-input-number v-model="selectorState(row).quantity" :min="0.01" :precision="2" :controls="false" />
                 <el-select v-model="selectorState(row).unit_name">
                   <el-option :label="productUnitName(row)" :value="productUnitName(row)" />
                 </el-select>
@@ -277,7 +277,7 @@
             </el-form-item>
           </div>
 
-          <el-table :data="confirmForm.items" class="purchase-detail-table confirm-table" stripe>
+          <el-table border :data="confirmForm.items" class="purchase-detail-table confirm-table" stripe>
             <el-table-column prop="product_name" label="产品标题" min-width="180" show-overflow-tooltip />
             <el-table-column label="计量单位" width="130">
               <template #default="{ row }">{{ emptyText(row.unit_name) }} / {{ formatQuantity(row.base_quantity) }}</template>
@@ -290,7 +290,7 @@
             </el-table-column>
             <el-table-column label="最终采购数量" width="150">
               <template #default="{ row }">
-                <el-input-number v-model="row.final_quantity" :min="0.001" :precision="3" :controls="false" @change="recalculateFinalRow(row)" />
+                <el-input-number v-model="row.final_quantity" :min="0.01" :precision="2" :controls="false" @change="recalculateFinalRow(row)" />
               </template>
             </el-table-column>
             <el-table-column label="最终采购单价" width="150">
@@ -358,7 +358,7 @@
             </el-form-item>
           </div>
 
-          <el-table :data="inboundForm.items" class="purchase-detail-table confirm-table" stripe>
+          <el-table border :data="inboundForm.items" class="purchase-detail-table confirm-table" stripe>
             <el-table-column prop="product_name" label="产品标题" min-width="180" show-overflow-tooltip />
             <el-table-column label="采购单价 / 总额" width="150">
               <template #default="{ row }">{{ formatMoney(row.final_price) }} / {{ formatMoney(row.final_amount) }}</template>
@@ -380,7 +380,7 @@
                 <span>入库数量 <span class="edit-mark">✎</span> <span class="help-dot">?</span></span>
               </template>
               <template #default="{ row }">
-                <el-input-number v-model="row.inbound_quantity" :min="0" :max="Number(row.remaining_quantity || 0)" :precision="3" :controls="false" placeholder="入库数量" />
+                <el-input-number v-model="row.inbound_quantity" :min="0" :max="Number(row.remaining_quantity || 0)" :precision="2" :controls="false" placeholder="入库数量" />
               </template>
             </el-table-column>
             <el-table-column label="仓位" width="160">
@@ -449,7 +449,7 @@
             </el-form-item>
           </div>
 
-          <el-table :data="returnForm.items" class="purchase-detail-table confirm-table" stripe>
+          <el-table border :data="returnForm.items" class="purchase-detail-table confirm-table" stripe>
             <el-table-column prop="product_name" label="产品标题" min-width="180" show-overflow-tooltip />
             <el-table-column label="采购单价 / 总额" width="150">
               <template #default="{ row }">{{ formatMoney(row.final_price) }} / {{ formatMoney(row.final_amount) }}</template>
@@ -471,7 +471,7 @@
                 <span>退货数量 <span class="edit-mark">✎</span> <span class="help-dot">?</span></span>
               </template>
               <template #default="{ row }">
-                <el-input-number v-model="row.return_quantity" :min="0" :max="Number(row.remaining_quantity || 0)" :precision="3" :controls="false" placeholder="退货数量" @change="recalculateReturnRow(row)" />
+                <el-input-number v-model="row.return_quantity" :min="0" :max="Number(row.remaining_quantity || 0)" :precision="2" :controls="false" placeholder="退货数量" @change="recalculateReturnRow(row)" />
               </template>
             </el-table-column>
             <el-table-column label="退款金额" width="150">
@@ -526,7 +526,9 @@
           <el-button type="primary" :icon="Plus" @click="handleAdd">新增采购订单</el-button>
         </div>
 
-        <el-table :data="tableData" stripe v-loading="loading">
+        <TableColumnTools table-key="purchase-order" filename="采购订单" />
+
+        <el-table border :data="tableData" stripe v-loading="loading">
           <el-table-column prop="order_no" label="采购单号" width="190">
             <template #default="{ row }"><CopyableNo :value="row.order_no" /></template>
           </el-table-column>
@@ -687,7 +689,7 @@
           </el-descriptions>
         </el-tab-pane>
         <el-tab-pane label="产品列表" name="items">
-          <el-table :data="detailData.items" stripe class="detail-item-table">
+          <el-table border :data="detailData.items" stripe class="detail-item-table">
             <el-table-column prop="product_name" label="产品标题" min-width="180" show-overflow-tooltip />
             <el-table-column prop="code" label="产品编码" width="130" show-overflow-tooltip />
             <el-table-column prop="spec" label="产品规格" width="120" show-overflow-tooltip />
@@ -730,6 +732,7 @@
 </template>
 
 <script setup lang="ts">
+import TableColumnTools from '@/components/TableColumnTools.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import { Box, MoreFilled, Plus, Search } from '@element-plus/icons-vue'
@@ -1574,7 +1577,7 @@ function formatMoney(value: any) {
 
 function formatQuantity(value: any) {
   const quantity = Number(value || 0)
-  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(3)))
+  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(2)))
 }
 
 function formatDateTime(value: any) {
@@ -1804,3 +1807,4 @@ onMounted(async () => {
   }
 }
 </style>
+

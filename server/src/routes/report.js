@@ -22,6 +22,14 @@ router.get('/dashboard', async (req, res) => {
       'SELECT COALESCE(SUM(total_amount), 0) AS amount FROM sale_order WHERE created_at >= ?',
       [monthStartText]
     );
+    const [processingRows] = await pool.execute(
+      `SELECT COALESCE(SUM(CASE WHEN status IN (1, 4) THEN 1 ELSE 0 END), 0) AS processingCount,
+              COALESCE(SUM(CASE WHEN status = 2 AND inbound_time >= ? THEN processed_quantity ELSE 0 END), 0) AS monthProcessedQuantity,
+              COALESCE(SUM(CASE WHEN status = 2 AND inbound_time >= ? THEN return_quantity ELSE 0 END), 0) AS monthReturnQuantity
+       FROM herb_processing_order
+       WHERE status IN (1, 4) OR inbound_time >= ?`,
+      [monthStartText, monthStartText, monthStartText]
+    );
 
     const [configRows] = await pool.execute('SELECT value FROM system_config WHERE `key` = ?', ['stock_warning']);
     const stockWarning = Number(configRows[0]?.value || 10);
@@ -54,14 +62,26 @@ router.get('/dashboard', async (req, res) => {
        ORDER BY so.id DESC
        LIMIT 5`
     );
+    const [recentProcessing] = await pool.execute(
+      `SELECT hpo.*, sp.name AS source_product_name, tp.name AS target_product_name
+       FROM herb_processing_order hpo
+       LEFT JOIN product sp ON hpo.source_product_id = sp.id
+       LEFT JOIN product tp ON hpo.target_product_id = tp.id
+       ORDER BY hpo.id DESC
+       LIMIT 5`
+    );
 
     res.json(Response.success({
       productCount: Number(productRows[0]?.cnt || 0),
       monthPurchase: Number(purchaseRows[0]?.amount || 0),
       monthSale: Number(saleRows[0]?.amount || 0),
+      processingCount: Number(processingRows[0]?.processingCount || 0),
+      monthProcessedQuantity: Number(processingRows[0]?.monthProcessedQuantity || 0),
+      monthReturnQuantity: Number(processingRows[0]?.monthReturnQuantity || 0),
       alertCount: Number(alertCountRows[0]?.cnt || 0),
       recentPurchase,
       recentSale,
+      recentProcessing,
       alertStocks
     }));
   } catch (err) {

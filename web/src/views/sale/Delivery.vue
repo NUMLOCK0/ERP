@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <el-card>
       <SearchForm :model="searchForm" @search="handleSearch" @reset="handleReset">
@@ -30,7 +30,9 @@
         <span v-if="selectedRows.length" class="selection-tip">已选择 {{ selectedRows.length }} 条</span>
       </div>
 
-      <el-table :data="tableData" stripe v-loading="loading" @selection-change="handleSelectionChange">
+      <TableColumnTools table-key="sale-delivery" filename="销售发货单" />
+
+      <el-table border :data="tableData" stripe v-loading="loading" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="48" fixed="left" />
         <el-table-column prop="id" label="发货单id" width="100" />
         <el-table-column prop="delivery_no" label="发货单号" width="190" show-overflow-tooltip>
@@ -155,7 +157,7 @@
           </el-descriptions>
         </el-tab-pane>
         <el-tab-pane label="商品列表" name="items">
-          <el-table :data="detail.items" stripe>
+          <el-table border :data="detail.items" stripe>
             <el-table-column prop="product_name" label="产品标题" min-width="180" show-overflow-tooltip />
             <el-table-column prop="code" label="编码" width="130" show-overflow-tooltip />
             <el-table-column prop="spec" label="规格" width="130" show-overflow-tooltip />
@@ -219,6 +221,7 @@
 </template>
 
 <script setup lang="ts">
+import TableColumnTools from '@/components/TableColumnTools.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
@@ -398,7 +401,7 @@ function formatMoney(value: any) {
 
 function formatQuantity(value: any) {
   const quantity = Number(value || 0)
-  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(3)))
+  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(2)))
 }
 
 function formatDateTime(value: any) {
@@ -438,3 +441,4 @@ onMounted(async () => {
   margin-top: 20px;
 }
 </style>
+

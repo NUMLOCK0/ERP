@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <el-card>
       <SearchForm :model="searchForm" @search="handleSearch" @reset="handleReset">
@@ -26,7 +26,9 @@
         <el-button type="primary" :icon="RefreshLeft" @click="openCreateDialog">退单</el-button>
       </div>
 
-      <el-table :data="tableData" stripe v-loading="loading">
+      <TableColumnTools table-key="sale-return" filename="销售退货单" />
+
+      <el-table border :data="tableData" stripe v-loading="loading">
         <el-table-column prop="id" label="退单id" width="90" />
         <el-table-column prop="return_no" label="退货单号" width="190" show-overflow-tooltip>
           <template #default="{ row }"><CopyableNo :value="row.return_no" /></template>
@@ -154,6 +156,7 @@
 </template>
 
 <script setup lang="ts">
+import TableColumnTools from '@/components/TableColumnTools.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
@@ -331,7 +334,7 @@ function formatMoney(value: any) {
 
 function formatQuantity(value: any) {
   const quantity = Number(value || 0)
-  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(3)))
+  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(2)))
 }
 
 function formatDateTime(value: any) {
@@ -370,3 +373,4 @@ onMounted(async () => {
   margin-top: 20px;
 }
 </style>
+

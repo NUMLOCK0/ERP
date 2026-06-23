@@ -46,7 +46,7 @@
         <el-button type="primary" :icon="Plus" @click="addFirstQuickProduct">添加</el-button>
       </div>
 
-      <el-table :data="form.items" class="detail-table" stripe>
+      <el-table border :data="form.items" class="detail-table" stripe>
         <template #empty>
           <div class="empty-products">
             <el-icon :size="78"><ShoppingCart /></el-icon>
@@ -73,7 +73,7 @@
             <el-input-number
               v-model="row.actual_quantity"
               :min="0"
-              :precision="3"
+              :precision="2"
               :controls="false"
             />
           </template>
@@ -122,7 +122,7 @@
         </el-input>
       </div>
 
-      <el-table :data="drawerProducts" class="drawer-product-table" height="calc(100vh - 190px)" stripe>
+      <el-table border :data="drawerProducts" class="drawer-product-table" height="calc(100vh - 190px)" stripe>
         <el-table-column width="44">
           <template #default="{ row }">
             <el-checkbox :model-value="isProductAdded(row.id)" @change="toggleDrawerProduct(row)" />
@@ -140,7 +140,7 @@
         <el-table-column label="数量/单位/基准数" width="250">
           <template #default="{ row }">
             <div class="drawer-unit-row">
-              <el-input-number v-model="selectorState(row).quantity" :min="0" :precision="3" :controls="false" />
+              <el-input-number v-model="selectorState(row).quantity" :min="0" :precision="2" :controls="false" />
               <el-select v-model="selectorState(row).unit_name">
                 <el-option :label="productUnitName(row)" :value="productUnitName(row)" />
               </el-select>
@@ -441,7 +441,7 @@ function differenceClass(row: CheckItem) {
 
 function formatQuantity(value: any) {
   const quantity = Number(value || 0)
-  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(3)))
+  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(2)))
 }
 
 function formatSignedQuantity(value: any) {

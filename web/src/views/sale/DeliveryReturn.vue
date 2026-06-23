@@ -46,7 +46,7 @@
         </el-form-item>
       </div>
 
-      <el-table :data="form.items" stripe class="return-table">
+      <el-table border :data="form.items" stripe class="return-table">
         <el-table-column prop="product_name" label="产品标题" min-width="240" show-overflow-tooltip />
         <el-table-column label="单价 / 总额" width="160">
           <template #default="{ row }">{{ formatMoney(row.price) }} / {{ formatMoney(row.amount) }}</template>
@@ -72,7 +72,7 @@
               v-model="row.return_quantity"
               :min="0"
               :max="row.available_quantity"
-              :precision="3"
+              :precision="2"
               :controls="false"
               placeholder="退货数量"
               @change="handleQuantityChange(row)"
@@ -293,7 +293,7 @@ function formatMoney(value: any) {
 
 function formatQuantity(value: any) {
   const quantity = Number(value || 0)
-  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(3)))
+  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(2)))
 }
 
 function formatDateTime(value: any) {

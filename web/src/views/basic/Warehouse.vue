@@ -4,7 +4,7 @@
       <div class="toolbar">
         <el-button type="primary" :icon="Plus" @click="handleAdd">新增仓库</el-button>
       </div>
-      <el-table :data="tableData" stripe v-loading="loading">
+      <el-table border :data="tableData" stripe v-loading="loading">
         <el-table-column prop="name" label="仓库名称" min-width="150" />
         <el-table-column prop="address" label="地址" min-width="200" />
         <el-table-column prop="manager" label="负责人" width="100" />

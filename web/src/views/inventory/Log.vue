@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <el-card>
       <SearchForm :model="searchForm" @search="handleSearch" @reset="handleReset">
@@ -33,7 +33,9 @@
         </el-form-item>
       </SearchForm>
 
-      <el-table :data="tableData" stripe v-loading="loading">
+      <TableColumnTools table-key="inventory-log" filename="库存日志" />
+
+      <el-table border :data="tableData" stripe v-loading="loading">
         <el-table-column prop="id" label="日志id" width="90" />
         <el-table-column prop="product_id" label="产品id" width="90" />
         <el-table-column label="产品主图" width="90" align="center">
@@ -108,6 +110,7 @@
 </template>
 
 <script setup lang="ts">
+import TableColumnTools from '@/components/TableColumnTools.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { getInventoryLogs } from '@/api/inventory'
 import { getWarehouses } from '@/api/warehouse'
@@ -123,7 +126,9 @@ const businessTypeOptions = [
   { label: '调拨入库', value: 'inventory_transfer_in' },
   { label: '调拨出库', value: 'inventory_transfer_out' },
   { label: '其他入库', value: 'other_inbound' },
-  { label: '其他出库', value: 'other_outbound' }
+  { label: '其他出库', value: 'other_outbound' },
+  { label: '加工领料', value: 'herb_processing_issue' },
+  { label: '加工产品入库', value: 'herb_processing_inbound' }
 ]
 
 const loading = ref(false)
@@ -200,7 +205,9 @@ function businessTypeText(type: string) {
   const aliases: Record<string, string> = {
     check: '盘点调整',
     transfer_in: '调拨入库',
-    transfer_out: '调拨出库'
+    transfer_out: '调拨出库',
+    herb_processing_issue: '加工领料',
+    herb_processing_inbound: '加工产品入库'
   }
   return businessTypeOptions.find(item => item.value === type)?.label || aliases[type] || emptyText(type)
 }
@@ -214,7 +221,7 @@ function operationQuantityClass(value: any) {
 
 function formatSignedQuantity(value: any) {
   const quantity = Number(value || 0)
-  const text = Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(3)))
+  const text = Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(2)))
   return quantity > 0 ? `+${text}` : text
 }
 
@@ -281,3 +288,4 @@ onMounted(async () => {
   font-weight: 600;
 }
 </style>
+

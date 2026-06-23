@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <el-card>
       <div class="toolbar">
@@ -19,7 +19,9 @@
         </el-form-item>
       </SearchForm>
 
-      <el-table :data="tableData" stripe v-loading="loading">
+      <TableColumnTools table-key="purchase-return" filename="采购退货单" />
+
+      <el-table border :data="tableData" stripe v-loading="loading">
         <el-table-column prop="return_no" label="退货单号" width="190" show-overflow-tooltip>
           <template #default="{ row }"><CopyableNo :value="row.return_no" /></template>
         </el-table-column>
@@ -130,7 +132,7 @@
           <el-table-column prop="spec" label="规格" width="120" show-overflow-tooltip />
           <el-table-column label="数量" width="140" align="right">
             <template #default="{ row }">
-              <el-input-number v-model="row.quantity" :min="0.001" :precision="3" :controls="false" :disabled="dialogMode === 'view'" @change="recalculateRow(row)" />
+              <el-input-number v-model="row.quantity" :min="0.01" :precision="2" :controls="false" :disabled="dialogMode === 'view'" @change="recalculateRow(row)" />
             </template>
           </el-table-column>
           <el-table-column label="单价" width="140" align="right">
@@ -185,7 +187,7 @@
           </el-descriptions>
         </el-tab-pane>
         <el-tab-pane label="商品列表" name="items">
-          <el-table :data="detail.items" stripe class="detail-table">
+          <el-table border :data="detail.items" stripe class="detail-table">
             <el-table-column prop="product_name" label="产品标题" min-width="180" show-overflow-tooltip />
             <el-table-column prop="code" label="编码" width="120" show-overflow-tooltip />
             <el-table-column prop="spec" label="规格" width="120" show-overflow-tooltip />
@@ -228,6 +230,7 @@
 </template>
 
 <script setup lang="ts">
+import TableColumnTools from '@/components/TableColumnTools.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, type FormInstance } from 'element-plus'
 import { Delete, Plus, View } from '@element-plus/icons-vue'
@@ -445,7 +448,7 @@ function formatMoney(value: any) {
 
 function formatQuantity(value: any) {
   const quantity = Number(value || 0)
-  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(3)))
+  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(2)))
 }
 
 function formatDateTime(value: any) {
@@ -528,3 +531,4 @@ onMounted(async () => {
   }
 }
 </style>
+

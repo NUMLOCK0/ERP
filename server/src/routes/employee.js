@@ -46,7 +46,7 @@ router.get('/all', async (req, res) => {
   try {
     const pool = getPool();
     const [list] = await pool.execute(
-      'SELECT id, name, position, department FROM employee WHERE status = 1 ORDER BY id DESC'
+      'SELECT id, user_id, name, position, department FROM employee WHERE status = 1 ORDER BY id DESC'
     );
     res.json(Response.success(list));
   } catch (err) {

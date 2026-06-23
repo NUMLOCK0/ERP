@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="report-page">
     <el-card>
       <SearchForm :model="searchForm" @search="handleSearch" @reset="handleReset">
@@ -27,7 +27,9 @@
         </el-form-item>
       </SearchForm>
 
-      <el-table :data="tableData" stripe v-loading="loading">
+      <TableColumnTools table-key="report-sale-receipt" filename="销售收款报表" />
+
+      <el-table border :data="tableData" stripe v-loading="loading">
         <el-table-column prop="id" label="数据ID" width="90" />
         <el-table-column prop="order_no" label="销售单号" width="190" show-overflow-tooltip>
           <template #default="{ row }"><CopyableNo :value="row.order_no" /></template>
@@ -120,7 +122,7 @@
     </el-drawer>
 
     <el-dialog v-model="warehouseDialogVisible" title="全部仓库销售收款数据" width="760px">
-      <el-table :data="warehouseSummaries" stripe max-height="520">
+      <el-table border :data="warehouseSummaries" stripe max-height="520">
         <el-table-column prop="warehouse_name" label="仓库名称" min-width="180" />
         <el-table-column label="应收总额" width="160" align="right">
           <template #default="{ row }">¥{{ formatMoney(row.receivable_total) }}</template>
@@ -137,6 +139,7 @@
 </template>
 
 <script setup lang="ts">
+import TableColumnTools from '@/components/TableColumnTools.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ArrowDown, ArrowLeft, ArrowRight, View } from '@element-plus/icons-vue'
 import { getSaleReceiptReport, getSaleReceiptWarehouseSummary } from '@/api/report'
@@ -350,3 +353,4 @@ onMounted(async () => {
   }
 }
 </style>
+

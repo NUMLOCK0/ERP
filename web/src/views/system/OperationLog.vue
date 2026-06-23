@@ -7,7 +7,7 @@
         <el-form-item label="日期范围"><el-date-picker v-model="searchForm.dateRange" type="daterange" range-separator="至" start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD" /></el-form-item>
       </SearchForm>
 
-      <el-table :data="tableData" stripe v-loading="loading">
+      <el-table border :data="tableData" stripe v-loading="loading">
         <el-table-column prop="username" label="操作人" width="100" />
         <el-table-column prop="module" label="模块" width="100" />
         <el-table-column prop="action" label="操作" width="80" />

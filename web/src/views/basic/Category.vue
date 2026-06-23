@@ -4,7 +4,7 @@
       <div class="toolbar">
         <el-button type="primary" :icon="Plus" @click="handleAdd">新增分类</el-button>
       </div>
-      <el-table :data="tableData" stripe row-key="id" v-loading="loading" default-expand-all>
+      <el-table border :data="tableData" stripe row-key="id" v-loading="loading" default-expand-all>
         <el-table-column prop="name" label="分类名称" min-width="200" />
         <el-table-column prop="sort_order" label="排序" width="100" />
         <el-table-column label="创建时间" width="180">

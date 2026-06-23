@@ -214,19 +214,28 @@ function normalizeUnits(units) {
       unit_id: Number(item.unit_id || 0),
       warehouse_id: Number(item.warehouse_id || 0),
       is_base: item.is_base ? 1 : 0,
-      base_quantity: Number(item.base_quantity || 1),
+      base_quantity: round2(item.base_quantity || 1),
       code: item.code || '',
       barcode: item.barcode || '',
-      weight: Number(item.weight || 0),
-      volume: Number(item.volume || 0),
-      sale_price: Number(item.sale_price || 0),
-      cost_price: Number(item.cost_price || 0),
-      member_prices: item.member_prices && typeof item.member_prices === 'object' ? item.member_prices : {},
+      weight: round2(item.weight || 0),
+      volume: round2(item.volume || 0),
+      sale_price: round2(item.sale_price || 0),
+      cost_price: round2(item.cost_price || 0),
+      member_prices: normalizePriceMap(item.member_prices),
       spec: item.spec || '',
       bm_code: item.bm_code || '',
       remark: item.remark || '',
       sort_order: Number(item.sort_order ?? index)
     }));
+}
+
+function round2(value) {
+  return Number(Number(value || 0).toFixed(2));
+}
+
+function normalizePriceMap(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).map(([key, price]) => [key, round2(price)]));
 }
 
 async function saveProductUnits(conn, productId, units) {

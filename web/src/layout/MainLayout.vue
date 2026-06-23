@@ -53,6 +53,14 @@
           <el-menu-item index="/sale/return">发货退货单</el-menu-item>
         </el-sub-menu>
 
+        <el-sub-menu index="processing">
+          <template #title>
+            <el-icon><SetUp /></el-icon>
+            <span>加工管理</span>
+          </template>
+          <el-menu-item index="/processing/order">药材加工批次</el-menu-item>
+        </el-sub-menu>
+
         <el-sub-menu index="inventory">
           <template #title>
             <el-icon><Coin /></el-icon>
@@ -155,7 +163,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   DataBoard, Box, ShoppingCart, Sell, Coin, Money,
-  TrendCharts, OfficeBuilding, Setting, Fold, Expand, ArrowDown
+  TrendCharts, OfficeBuilding, Setting, Fold, Expand, ArrowDown, SetUp
 } from '@element-plus/icons-vue'
 import { useAppStore } from '@/stores/app'
 import { useUserStore } from '@/stores/user'

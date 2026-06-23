@@ -14,7 +14,7 @@
         <el-button :icon="Download" @click="handleExport">导出</el-button>
       </div>
 
-      <el-table :data="tableData" stripe v-loading="loading" style="width:100%">
+      <el-table border :data="tableData" stripe v-loading="loading" style="width:100%">
         <el-table-column prop="name" label="标题" min-width="180" show-overflow-tooltip />
         <el-table-column label="主图" width="82" align="center">
           <template #default="{ row }">
@@ -149,10 +149,10 @@
                   <template #default="{ row }"><el-input v-model="row.code" placeholder="{product}-{unit}" /></template>
                 </el-table-column>
                 <el-table-column label="重量(kg)" width="130">
-                  <template #default="{ row }"><el-input-number v-model="row.weight" :min="0" :precision="3" :controls="false" placeholder="重量" /></template>
+                  <template #default="{ row }"><el-input-number v-model="row.weight" :min="0" :precision="2" :controls="false" placeholder="重量" /></template>
                 </el-table-column>
                 <el-table-column label="体积(m³)" width="130">
-                  <template #default="{ row }"><el-input-number v-model="row.volume" :min="0" :precision="3" :controls="false" placeholder="体积" /></template>
+                  <template #default="{ row }"><el-input-number v-model="row.volume" :min="0" :precision="2" :controls="false" placeholder="体积" /></template>
                 </el-table-column>
                 <el-table-column label="零售价" width="130">
                   <template #default="{ row }"><el-input-number v-model="row.sale_price" :min="0" :precision="2" :controls="false" placeholder="零售价" /></template>
@@ -412,7 +412,7 @@ function formatMoney(value: any) {
 
 function formatQuantity(value: any) {
   const quantity = Number(value || 0)
-  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(3)))
+  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(2)))
 }
 
 function formatDateTime(value: any) {

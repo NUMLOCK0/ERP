@@ -37,7 +37,7 @@
         <el-date-picker v-model="searchForm.updated_end" value-format="YYYY-MM-DD" placeholder="结束" />
       </div>
 
-      <el-table
+      <el-table border
         :data="tableData"
         stripe
         v-loading="loading"

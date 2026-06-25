@@ -11,3 +11,5 @@ export function deletePayment(id: number) { return del(`/finance/payment/${id}`)
 // 销售收款单
 export function getReceipts(params?: any) { return get('/finance/receipt', params) }
 export function getReceipt(id: number) { return get(`/finance/receipt/${id}`) }
+export function receiveReceipt(id: number, data: any) { return post(`/finance/receipt/${id}/receive`, data) }
+export function invoiceReceipt(id: number, data: any) { return post(`/finance/receipt/${id}/invoice`, data) }

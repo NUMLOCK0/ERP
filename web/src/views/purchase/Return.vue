@@ -79,10 +79,17 @@
         <el-table-column label="更新时间" width="170">
           <template #default="{ row }">{{ formatDateTime(row.updated_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="140" fixed="right">
+        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link :icon="View" @click="handleView(row)">详情</el-button>
-            <el-button v-if="Number(row.status) === 0" type="success" link @click="handleComplete(row)">退货</el-button>
+            <el-button type="primary" link @click="handleView(row)">详情</el-button>
+            <el-dropdown v-if="Number(row.status) === 0" trigger="hover">
+              <el-button type="primary" link>更多</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="handleComplete(row)">退货</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -94,9 +101,7 @@
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="90px" :disabled="dialogMode === 'view'">
         <div class="return-summary">
           <el-form-item label="退货单号">
-            <el-input v-model="form.return_no" placeholder="保存后自动生成" disabled>
-              <template #append><CopyableNo :value="form.return_no" icon-only /></template>
-            </el-input>
+            <el-input v-model="form.return_no" placeholder="保存后自动生成" />
           </el-form-item>
           <el-form-item label="入库单">
             <el-select v-model="form.inbound_id" placeholder="选择入库单带出明细" clearable filterable @change="handleInboundChange">
@@ -145,7 +150,14 @@
           </el-table-column>
           <el-table-column label="操作" width="90" fixed="right">
             <template #default="{ $index }">
-              <el-button type="danger" link :icon="Delete" :disabled="dialogMode === 'view'" @click="removeItem($index)">移除</el-button>
+              <el-dropdown trigger="hover">
+                <el-button type="primary" link :disabled="dialogMode === 'view'">更多</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item @click="removeItem($index)">移除</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </template>
           </el-table-column>
         </el-table>
@@ -233,7 +245,7 @@
 import TableColumnTools from '@/components/TableColumnTools.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, type FormInstance } from 'element-plus'
-import { Delete, Plus, View } from '@element-plus/icons-vue'
+import { Plus } from '@element-plus/icons-vue'
 import { completePurchaseReturn, createPurchaseReturn, getPurchaseInbound, getPurchaseInbounds, getPurchaseReturn, getPurchaseReturns } from '@/api/purchase'
 import { getProducts } from '@/api/product'
 import { getSuppliers } from '@/api/supplier'

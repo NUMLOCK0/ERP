@@ -10,9 +10,7 @@
         <el-form ref="formRef" :model="form" :rules="formRules" label-width="96px" :disabled="editorMode === 'view'" class="sale-form">
           <div class="sale-form-grid">
             <el-form-item label="销售单号" required>
-              <el-input v-model="form.order_no" placeholder="S{date}{time}{id}******" :disabled="true">
-                <template #append><CopyableNo :value="form.order_no" icon-only /></template>
-              </el-input>
+              <el-input v-model="form.order_no" placeholder="S{date}{time}{id}******" />
             </el-form-item>
             <el-form-item label="职员">
               <el-select v-model="form.employee_id" placeholder="请选择..." clearable filterable>
@@ -102,12 +100,20 @@
                 <el-input-number v-model="row.price" :min="0" :precision="2" :controls="false" @change="recalculateRow(row)" />
               </template>
             </el-table-column>
+            <el-table-column label="税率" width="110" align="right">
+              <template #header>
+                <span>税率 <span class="edit-mark">✎</span></span>
+              </template>
+              <template #default="{ row }">
+                <el-input-number v-model="row.tax_rate" :min="0" :max="100" :precision="2" :controls="false" @change="recalculateRow(row)" />
+              </template>
+            </el-table-column>
             <el-table-column label="税金" width="120" align="right">
               <template #header>
                 <span>税金 <span class="edit-mark">✎</span> <span class="help-dot">?</span></span>
               </template>
               <template #default="{ row }">
-                <el-input-number v-model="row.tax" :min="0" :precision="2" :controls="false" @change="recalculateRow(row)" />
+                <el-input-number v-model="row.tax" :min="0" :precision="2" :controls="false" @change="recalculateRow(row, false)" />
               </template>
             </el-table-column>
             <el-table-column label="销售总价" width="130" align="right">
@@ -122,7 +128,14 @@
             </el-table-column>
             <el-table-column label="操作" width="90" fixed="right">
               <template #default="{ $index }">
-                <el-button type="danger" link @click="removeItem($index)">移除</el-button>
+                <el-dropdown trigger="hover">
+                  <el-button type="primary" link>更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item @click="removeItem($index)">移除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </template>
             </el-table-column>
           </el-table>
@@ -146,8 +159,15 @@
             </el-table-column>
             <el-table-column label="操作" width="90" fixed="right">
               <template #default="{ row }">
-                <el-button v-if="isProductAdded(row.id)" type="danger" link @click="removeProductById(row.id)">移除</el-button>
-                <el-button v-else type="primary" link @click="addProduct(row)">添加</el-button>
+                <el-dropdown trigger="hover">
+                  <el-button type="primary" link>更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item v-if="isProductAdded(row.id)" @click="removeProductById(row.id)">移除</el-dropdown-item>
+                      <el-dropdown-item v-else @click="addProduct(row)">添加</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </template>
             </el-table-column>
           </el-table>
@@ -232,8 +252,15 @@
           <el-table-column prop="code" label="编码" width="150" show-overflow-tooltip />
           <el-table-column label="操作" width="90" fixed="right">
             <template #default="{ row }">
-              <el-button v-if="isProductAdded(row.id)" type="danger" link @click="removeProductById(row.id)">移除</el-button>
-              <el-button v-else type="primary" link @click="addProduct(row, selectorState(row).quantity)">选择</el-button>
+              <el-dropdown trigger="hover">
+                <el-button type="primary" link>更多</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item v-if="isProductAdded(row.id)" @click="removeProductById(row.id)">移除</el-dropdown-item>
+                    <el-dropdown-item v-else @click="addProduct(row, selectorState(row).quantity)">选择</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </template>
           </el-table-column>
         </el-table>
@@ -352,15 +379,25 @@
         <el-table-column label="更新时间" width="170">
           <template #default="{ row }">{{ formatDateTime(row.updated_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="340" fixed="right">
+        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleView(row)">详情</el-button>
-            <el-button v-if="Number(row.status) === 0 || (!saleAuditEnabled && Number(row.status) === 2)" type="warning" link @click="handleSubmit(row)">{{ saleAuditEnabled ? '提审' : '提交' }}</el-button>
-            <el-button v-if="saleAuditEnabled && [0, 2].includes(Number(row.status))" type="success" link @click="handleAudit(row)">审核</el-button>
-            <el-button v-if="Number(row.status) === 0" type="primary" link @click="handleEdit(row)">编辑</el-button>
-            <el-button v-if="[0, 2].includes(Number(row.status))" type="danger" link @click="handleCancel(row)">取消</el-button>
-            <el-button v-if="Number(row.status) === 1" type="warning" link @click="handleClose(row)">关闭</el-button>
-            <el-button v-if="[3, 4].includes(Number(row.status))" type="danger" link @click="handleDelete(row)">删除</el-button>
+            <el-dropdown
+              v-if="Number(row.status) === 0 || Number(row.status) === 1 || Number(row.status) === 2 || [3, 4].includes(Number(row.status))"
+              trigger="hover"
+            >
+              <el-button type="primary" link>更多</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-if="Number(row.status) === 0 || (!saleAuditEnabled && Number(row.status) === 2)" @click="handleSubmit(row)">{{ saleAuditEnabled ? '提审' : '提交' }}</el-dropdown-item>
+                  <el-dropdown-item v-if="saleAuditEnabled && [0, 2].includes(Number(row.status))" @click="handleAudit(row)">审核</el-dropdown-item>
+                  <el-dropdown-item v-if="Number(row.status) === 0" @click="handleEdit(row)">编辑</el-dropdown-item>
+                  <el-dropdown-item v-if="[0, 2].includes(Number(row.status))" @click="handleCancel(row)">取消</el-dropdown-item>
+                  <el-dropdown-item v-if="Number(row.status) === 1" @click="handleClose(row)">关闭</el-dropdown-item>
+                  <el-dropdown-item v-if="[3, 4].includes(Number(row.status))" @click="handleDelete(row)">删除</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -410,6 +447,7 @@ interface SaleItem {
   base_quantity: number
   quantity: number
   price: number
+  tax_rate: number
   tax: number
   amount: number
   remark: string
@@ -586,6 +624,7 @@ function normalizeOrderItems(items: any[]) {
     base_quantity: Number(item.base_quantity || 1),
     quantity: Number(item.quantity || 1),
     price: Number(item.price || 0),
+    tax_rate: Number(item.tax_rate ?? inferTaxRate(item)),
     tax: Number(item.tax || 0),
     amount: Number(item.amount || 0),
     remark: item.remark || ''
@@ -603,6 +642,7 @@ function createItem(partial: Partial<SaleItem> = {}): SaleItem {
     base_quantity: partial.base_quantity ?? 1,
     quantity: partial.quantity ?? 1,
     price: partial.price ?? 0,
+    tax_rate: partial.tax_rate ?? 13,
     tax: partial.tax ?? 0,
     amount: partial.amount ?? 0,
     remark: partial.remark ?? ''
@@ -670,11 +710,31 @@ function fillRowFromProduct(row: SaleItem, product: any, quantity = 1) {
   row.base_quantity = productBaseQuantity(product)
   row.quantity = Number(quantity || row.quantity || 1)
   row.price = productPrice(product)
-  row.tax = row.tax || 0
+  row.tax_rate = row.tax_rate ?? 13
+  row.tax = calculateTax(row.quantity, row.price, row.tax_rate)
 }
 
-function recalculateRow(row: SaleItem) {
-  row.amount = Number((Number(row.quantity || 0) * Number(row.price || 0) + Number(row.tax || 0)).toFixed(2))
+function recalculateRow(row: SaleItem, recalculateTax = true) {
+  row.tax_rate = row.tax_rate ?? 13
+  if (recalculateTax) row.tax = calculateTax(row.quantity, row.price, row.tax_rate)
+  row.amount = calculateLineAmount(row.quantity, row.price)
+}
+
+function calculateTax(quantity: any, price: any, taxRate: any) {
+  const grossAmount = calculateLineAmount(quantity, price)
+  const rate = Number(taxRate || 0)
+  return rate > 0 ? Number((grossAmount * rate / (100 + rate)).toFixed(2)) : 0
+}
+
+function calculateLineAmount(quantity: any, price: any) {
+  return Number((Number(quantity || 0) * Number(price || 0)).toFixed(2))
+}
+
+function inferTaxRate(item: any) {
+  const grossAmount = calculateLineAmount(item.quantity, item.price)
+  const tax = Number(item.tax || 0)
+  if (grossAmount <= 0 || tax <= 0 || tax >= grossAmount) return 13
+  return Number((tax / (grossAmount - tax) * 100).toFixed(2))
 }
 
 function removeItem(index: number) {
@@ -711,7 +771,7 @@ async function saveOrder(isSubmit: boolean) {
     ElMessage.warning('请选择产品后再保存')
     return null
   }
-  form.items.forEach(recalculateRow)
+  form.items.forEach(item => recalculateRow(item, false))
   const payload = {
     customer_id: form.customer_id,
     employee_id: form.employee_id || 0,
@@ -728,6 +788,7 @@ async function saveOrder(isSubmit: boolean) {
       product_id: item.product_id,
       quantity: item.quantity,
       price: item.price,
+      tax_rate: item.tax_rate,
       tax: item.tax,
       amount: item.amount,
       remark: item.remark

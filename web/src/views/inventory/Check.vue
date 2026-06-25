@@ -84,14 +84,15 @@
         </el-table-column>
         <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
-            <el-button
-              v-if="[0, 4].includes(Number(row.status))"
-              type="success"
-              link
-              @click="handleConfirm(row)"
-            >
-              确认盘点
-            </el-button>
+            <el-dropdown v-if="[0, 4].includes(Number(row.status))" trigger="hover">
+              <el-button type="primary" link>更多</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="handleConfirm(row)">确认盘点</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <span v-else>-</span>
           </template>
         </el-table-column>
       </el-table>

@@ -1,60 +1,61 @@
 <template>
   <view class="inventory-page">
-    <!-- 顶部 -->
     <view class="page-header">
       <text class="page-title">库存管理</text>
+      <text class="page-subtitle">库存查询、单据录入、盘点和日志</text>
     </view>
 
-    <!-- 统计卡片 -->
     <view class="stats-row">
       <view class="stat-card">
-        <text class="stat-num">79</text>
-        <text class="stat-label">有效产品</text>
+        <text class="stat-num">4</text>
+        <text class="stat-label">核心功能</text>
       </view>
       <view class="stat-card">
-        <text class="stat-num">7</text>
-        <text class="stat-label">无效产品</text>
+        <text class="stat-num">1</text>
+        <text class="stat-label">查询入口</text>
       </view>
       <view class="stat-card">
-        <text class="stat-num">15</text>
-        <text class="stat-label">盘点中</text>
+        <text class="stat-num">3</text>
+        <text class="stat-label">单据入口</text>
       </view>
     </view>
 
-    <!-- 功能菜单 -->
     <view class="section">
       <text class="section-title">库存功能</text>
       <view class="menu-list">
-        <view class="menu-item" v-for="item in menuList" :key="item.label" @click="navigateTo(item.url)">
+        <view v-for="item in menuList" :key="item.label" class="menu-item" @click="navigateTo(item.url)">
           <view class="menu-left">
             <view class="menu-icon" :style="{ backgroundColor: item.bgColor }">
-              <uni-icons :type="item.icon" size="20" color="#FFFFFF"></uni-icons>
+              <uni-icons :type="item.icon" size="20" color="#FFFFFF" />
             </view>
-            <text class="menu-label">{{ item.label }}</text>
+            <view class="menu-meta">
+              <text class="menu-label">{{ item.label }}</text>
+              <text class="menu-desc">{{ item.desc }}</text>
+            </view>
           </view>
-          <uni-icons type="right" size="16" color="#C0C4CC"></uni-icons>
+          <uni-icons type="right" size="16" color="#C0C4CC" />
         </view>
       </view>
     </view>
-
   </view>
 </template>
 
 <script setup>
-
 const menuList = [
-  { label: '库存查询', icon: 'search', bgColor: '#FF9800', url: '/pages/inventory/stock' },
-  { label: '盘点单', icon: 'checkbox', bgColor: '#409EFF', url: '/pages/inventory/check-list' },
-  { label: '调拨单', icon: 'exchange', bgColor: '#67C23A', url: '/pages/inventory/transfer-list' },
-  { label: '库存日志', icon: 'list', bgColor: '#909399', url: '/pages/inventory/log' }
+  { label: '库存查询', desc: '按产品和仓库查看库存', icon: 'search', bgColor: '#409EFF', url: '/pages/inventory/stock' },
+  { label: '其他入库', desc: '快速新增其他入库单', icon: 'arrowdown', bgColor: '#67C23A', url: '/pages/inventory/other-in-list' },
+  { label: '其他出库', desc: '快速新增其他出库单', icon: 'arrowup', bgColor: '#F56C6C', url: '/pages/inventory/other-out-list' },
+  { label: '库存盘点', desc: '盘点确认与调整库存', icon: 'checkbox', bgColor: '#E6A23C', url: '/pages/inventory/check-list' },
+  { label: '库存日志', desc: '查看库存变动记录', icon: 'list', bgColor: '#909399', url: '/pages/inventory/log' },
+  { label: '仓库管理', desc: '维护仓库基础资料', icon: 'home', bgColor: '#8E44AD', url: '/pages/inventory/warehouse' }
 ]
 
-const navigateTo = (url) => {
+function navigateTo(url) {
   uni.navigateTo({ url })
 }
 </script>
 
-<style lang="scss" scoped>
+<style scoped lang="scss">
 .inventory-page {
   min-height: 100vh;
   background: #F5F7FA;
@@ -62,14 +63,22 @@ const navigateTo = (url) => {
 }
 
 .page-header {
-  background: linear-gradient(160deg, #FF9800, #FFB74D);
+  background: linear-gradient(160deg, #409EFF, #5CADFF);
   padding: 44rpx 30rpx 30rpx;
 }
 
 .page-title {
+  display: block;
   font-size: 36rpx;
   font-weight: 700;
   color: #FFFFFF;
+}
+
+.page-subtitle {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .stats-row {
@@ -89,18 +98,18 @@ const navigateTo = (url) => {
 }
 
 .stat-num {
+  display: block;
   font-size: 40rpx;
   font-weight: 700;
   color: #303133;
-  display: block;
   line-height: 1.2;
 }
 
 .stat-label {
+  display: block;
+  margin-top: 6rpx;
   font-size: 22rpx;
   color: #909399;
-  margin-top: 6rpx;
-  display: block;
 }
 
 .section {
@@ -108,48 +117,64 @@ const navigateTo = (url) => {
 }
 
 .section-title {
+  display: block;
+  padding: 10rpx 10rpx 20rpx;
   font-size: 28rpx;
   font-weight: 700;
   color: #303133;
-  padding: 10rpx 10rpx 20rpx;
-  display: block;
 }
 
 .menu-list {
   background: #FFFFFF;
   border-radius: 16rpx;
   overflow: hidden;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
 }
 
 .menu-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 28rpx 30rpx;
+  padding: 24rpx 28rpx;
   border-bottom: 1rpx solid #F2F6FC;
 
   &:last-child {
     border-bottom: none;
   }
+}
 
-  .menu-left {
-    display: flex;
-    align-items: center;
+.menu-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
 
-    .menu-icon {
-      width: 64rpx;
-      height: 64rpx;
-      border-radius: 14rpx;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-right: 20rpx;
-    }
+.menu-icon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 18rpx;
+  flex-shrink: 0;
+}
 
-    .menu-label {
-      font-size: 28rpx;
-      color: #303133;
-    }
-  }
+.menu-meta {
+  min-width: 0;
+}
+
+.menu-label {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #303133;
+}
+
+.menu-desc {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #909399;
 }
 </style>

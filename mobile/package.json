@@ -5,10 +5,10 @@
   "main": "main.js",
   "scripts": {
     "dev:app": "uni -p app",
-    "dev:h5": "uni",
+    "dev:h5": "node -e \"process.env.UNI_INPUT_DIR='.'; require('child_process').execSync('uni', {stdio: 'inherit'})\"",
     "dev:mp-weixin": "uni -p mp-weixin",
     "build:app": "uni build -p app",
-    "build:h5": "uni build",
+    "build:h5": "node -e \"process.env.UNI_INPUT_DIR='.'; require('child_process').execSync('uni build', {stdio: 'inherit'})\"",
     "build:mp-weixin": "uni build -p mp-weixin"
   },
   "dependencies": {

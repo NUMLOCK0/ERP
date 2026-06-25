@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <el-card>
       <div class="toolbar">
@@ -16,10 +16,17 @@
         <el-table-column label="入职时间" width="180">
           <template #default="{ row }">{{ $formatDateTime(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="150">
+        <el-table-column label="操作" width="100">
           <template #default="{ row }">
-            <el-button type="primary" link :icon="Edit" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link :icon="Delete" @click="handleDelete(row)">删除</el-button>
+            <el-dropdown trigger="hover">
+              <el-button type="primary" link>更多</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="handleEdit(row)">编辑</el-dropdown-item>
+                  <el-dropdown-item @click="handleDelete(row)">删除</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -56,7 +63,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { Plus, Edit, Delete } from '@element-plus/icons-vue'
+import { Plus } from '@element-plus/icons-vue'
 import { getEmployees, createEmployee, updateEmployee, deleteEmployee } from '@/api/employee'
 
 const loading = ref(false)
@@ -83,7 +90,7 @@ const rules: FormRules = {
       if (passwordRequired && !value) {
         callback(new Error('请输入登录密码'))
       } else if (value && String(value).length < 6) {
-        callback(new Error('登录密码不能少于6位'))
+        callback(new Error('密码长度不能少于6位'))
       } else {
         callback()
       }
@@ -120,7 +127,7 @@ function handleEdit(row: any) {
   dialogVisible.value = true
 }
 async function handleDelete(row: any) {
-  await ElMessageBox.confirm('确认删除？', '提示', { type: 'warning' })
+  await ElMessageBox.confirm('确认删除该职员？', '提示', { type: 'warning' })
   await deleteEmployee(row.id); ElMessage.success('删除成功'); fetchData()
 }
 async function handleSubmit() {

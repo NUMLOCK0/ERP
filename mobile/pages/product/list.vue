@@ -29,10 +29,10 @@
           <view
             class="picker-item"
             v-for="cat in categories"
-            :key="cat"
-            :class="{ active: selectedCategory === cat }"
+            :key="cat.id"
+            :class="{ active: selectedCategory === cat.id }"
             @click="selectCategory(cat)"
-          >{{ cat }}</view>
+          >{{ cat.name }}</view>
         </view>
       </view>
     </view>
@@ -108,7 +108,7 @@
 
             <!-- 价格 & 库存 -->
             <view class="detail-section">
-              <text class="detail-title">Price &amp; Inventory</text>
+              <text class="detail-title">价格与库存</text>
               <view class="price-grid">
                 <view class="price-item">
                   <text class="price-label">零售价</text>
@@ -127,7 +127,7 @@
 
             <!-- 产品详情 -->
             <view class="detail-section">
-              <text class="detail-title">Product Details</text>
+              <text class="detail-title">产品详情</text>
               <view class="detail-row">
                 <text class="detail-label">编码 (SKU)</text>
                 <view class="detail-right">
@@ -187,7 +187,9 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { productApi } from '@/api/product'
+import { categoryApi } from '@/api/category'
 
 const bottomPadding = ref(50) // 底部栏高度补偿
 
@@ -195,7 +197,7 @@ const keyword = ref('')
 const selectedCategory = ref('')
 const categoryLabel = ref('请选择')
 const showCategoryPicker = ref(false)
-const categories = ['女装', '男装', '童装', '配饰', '鞋类']
+const categories = ref([])
 
 const list = ref([])
 const page = ref(1)
@@ -242,12 +244,28 @@ const toggleCard = (id) => {
 }
 
 const selectCategory = (cat) => {
-  selectedCategory.value = cat
-  categoryLabel.value = cat || '请选择'
+  if (cat === '') {
+    selectedCategory.value = ''
+    categoryLabel.value = '请选择'
+  } else {
+    selectedCategory.value = cat.id
+    categoryLabel.value = cat.name
+  }
   showCategoryPicker.value = false
   page.value = 1
   noMore.value = false
   fetchList(true)
+}
+
+const fetchCategories = async () => {
+  try {
+    const res = await categoryApi.getList()
+    if (res.code === 0) {
+      categories.value = res.data || []
+    }
+  } catch (e) {
+    console.error('获取分类失败', e)
+  }
 }
 
 const copyId = (id) => {
@@ -268,7 +286,7 @@ const fetchList = async (isRefresh = false) => {
       page: isRefresh ? 1 : page.value,
       pageSize,
       keyword: keyword.value.trim(),
-      category: selectedCategory.value
+      category_id: selectedCategory.value
     }
     const res = await productApi.getList(params)
     if (res.code === 0) {
@@ -313,11 +331,11 @@ const goDetail = (id) => {
 }
 
 const goEdit = (id) => {
-  uni.navigateTo({ url: `/pages/product/detail?id=${id}&edit=1` })
+  uni.navigateTo({ url: `/pages/product/edit?id=${id}` })
 }
 
 const goCreate = () => {
-  uni.navigateTo({ url: '/pages/product/detail' })
+  uni.navigateTo({ url: '/pages/product/edit' })
 }
 
 const showMore = (item) => {
@@ -343,14 +361,18 @@ const showMore = (item) => {
   })
 }
 
-onMounted(() => {
+onShow(() => {
   fetchList(true)
+})
+
+onMounted(() => {
+  fetchCategories()
 })
 </script>
 
 <style lang="scss" scoped>
 .product-list-page {
-  height: 100vh;
+  height: calc(100vh - var(--window-top));
   display: flex;
   flex-direction: column;
   background: #F5F7FA;

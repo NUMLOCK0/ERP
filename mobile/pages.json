@@ -55,10 +55,40 @@
         "navigationBarTitleText": "产品管理"
       }
     },
+	{
+	  "path": "pages/product/category",
+	  "style": {
+	    "navigationBarTitleText": "产品分类"
+	  }
+	},
+	{
+	  "path": "pages/product/brand",
+	  "style": {
+	    "navigationBarTitleText": "品牌管理"
+	  }
+	},
+	{
+	  "path": "pages/product/unit",
+	  "style": {
+	    "navigationBarTitleText": "计量单位"
+	  }
+	},
+	{
+	  "path": "pages/product/employee",
+	  "style": {
+	    "navigationBarTitleText": "职员管理"
+	  }
+	},
     {
       "path": "pages/product/detail",
       "style": {
         "navigationBarTitleText": "产品详情"
+      }
+    },
+    {
+      "path": "pages/product/edit",
+      "style": {
+        "navigationBarTitleText": "编辑产品"
       }
     },
     {
@@ -74,15 +104,57 @@
       }
     },
     {
+      "path": "pages/purchase/order-edit",
+      "style": {
+        "navigationBarTitleText": "编辑采购订单"
+      }
+    },
+    {
       "path": "pages/purchase/inbound-list",
       "style": {
         "navigationBarTitleText": "采购入库单"
       }
     },
     {
+      "path": "pages/purchase/inbound-detail",
+      "style": {
+        "navigationBarTitleText": "采购入库单详情"
+      }
+    },
+    {
       "path": "pages/purchase/return-list",
       "style": {
         "navigationBarTitleText": "采购退货单"
+      }
+    },
+    {
+      "path": "pages/purchase/return-detail",
+      "style": {
+        "navigationBarTitleText": "采购退货单详情"
+      }
+    },
+    {
+      "path": "pages/purchase/return-edit",
+      "style": {
+        "navigationBarTitleText": "新增采购退货单"
+      }
+    },
+    {
+      "path": "pages/purchase/invoice-list",
+      "style": {
+        "navigationBarTitleText": "采购发票登记"
+      }
+    },
+    {
+      "path": "pages/purchase/invoice-detail",
+      "style": {
+        "navigationBarTitleText": "采购发票详情"
+      }
+    },
+    {
+      "path": "pages/purchase/invoice-edit",
+      "style": {
+        "navigationBarTitleText": "新增采购发票登记"
       }
     },
     {
@@ -98,15 +170,111 @@
       }
     },
     {
+      "path": "pages/sale/order-edit",
+      "style": {
+        "navigationBarTitleText": "编辑销售订单"
+      }
+    },
+    {
       "path": "pages/sale/delivery-list",
       "style": {
         "navigationBarTitleText": "销售发货单"
       }
     },
     {
+      "path": "pages/sale/delivery-detail",
+      "style": {
+        "navigationBarTitleText": "销售发货单详情"
+      }
+    },
+    {
       "path": "pages/sale/return-list",
       "style": {
-        "navigationBarTitleText": "销售退货单"
+        "navigationBarTitleText": "发货退货单"
+      }
+    },
+    {
+      "path": "pages/sale/return-detail",
+      "style": {
+        "navigationBarTitleText": "发货退货单详情"
+      }
+    },
+    {
+      "path": "pages/sale/return-edit",
+      "style": {
+        "navigationBarTitleText": "新增发货退货单"
+      }
+    },
+    {
+      "path": "pages/finance/receipt-detail",
+      "style": {
+        "navigationBarTitleText": "销售收款单详情"
+      }
+    },
+    {
+      "path": "pages/supplier/company-list",
+      "style": {
+        "navigationBarTitleText": "企业管理"
+      }
+    },
+    {
+      "path": "pages/supplier/company-detail",
+      "style": {
+        "navigationBarTitleText": "企业详情"
+      }
+    },
+    {
+      "path": "pages/supplier/company-edit",
+      "style": {
+        "navigationBarTitleText": "编辑企业"
+      }
+    },
+    {
+      "path": "pages/supplier/category-list",
+      "style": {
+        "navigationBarTitleText": "企业分类"
+      }
+    },
+    {
+      "path": "pages/supplier/member-list",
+      "style": {
+        "navigationBarTitleText": "会员登记"
+      }
+    },
+    {
+      "path": "pages/supplier/member-detail",
+      "style": {
+        "navigationBarTitleText": "会员登记详情"
+      }
+    },
+    {
+      "path": "pages/supplier/member-edit",
+      "style": {
+        "navigationBarTitleText": "编辑会员等级"
+      }
+    },
+    {
+      "path": "pages/sale/invoice-list",
+      "style": {
+        "navigationBarTitleText": "销售发票登记"
+      }
+    },
+    {
+      "path": "pages/sale/invoice-detail",
+      "style": {
+        "navigationBarTitleText": "销售发票详情"
+      }
+    },
+    {
+      "path": "pages/sale/invoice-edit",
+      "style": {
+        "navigationBarTitleText": "新增销售发票登记"
+      }
+    },
+    {
+      "path": "pages/inventory/warehouse",
+      "style": {
+        "navigationBarTitleText": "仓库管理"
       }
     },
     {
@@ -133,10 +301,53 @@
         "navigationBarTitleText": "库存日志"
       }
     },
+
+    {
+      "path": "pages/inventory/other-in-list",
+      "style": {
+        "navigationBarTitleText": "鍏朵粬鍏ュ簱"
+      }
+    },
+    {
+      "path": "pages/inventory/other-out-list",
+      "style": {
+        "navigationBarTitleText": "鍏朵粬鍑哄簱"
+      }
+    },
+    {
+      "path": "pages/inventory/check-edit",
+      "style": {
+        "navigationBarTitleText": "缂栬緫鐩樼偣鍗?"
+      }
+    },
+    {
+      "path": "pages/inventory/other-in-edit",
+      "style": {
+        "navigationBarTitleText": "鏂板鍏朵粬鍏ュ簱"
+      }
+    },
+    {
+      "path": "pages/inventory/other-out-edit",
+      "style": {
+        "navigationBarTitleText": "鏂板鍏朵粬鍑哄簱"
+      }
+    },
     {
       "path": "pages/finance/payment-list",
       "style": {
         "navigationBarTitleText": "采购付款单"
+      }
+    },
+    {
+      "path": "pages/finance/payment-detail",
+      "style": {
+        "navigationBarTitleText": "付款单详情"
+      }
+    },
+    {
+      "path": "pages/finance/payment-edit",
+      "style": {
+        "navigationBarTitleText": "新增付款单"
       }
     },
     {

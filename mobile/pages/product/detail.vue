@@ -1,15 +1,6 @@
 <template>
   <view class="detail-page">
-    <!-- 导航栏 -->
-    <view class="nav-bar">
-      <view class="nav-left" @click="goBack">
-        <uni-icons type="arrow-left" size="20" color="#FFFFFF"></uni-icons>
-      </view>
-      <text class="nav-title">详情</text>
-      <view class="nav-right"></view>
-    </view>
-
-    <scroll-view class="detail-scroll" scroll-y :style="{ paddingBottom: bottomPad + 'px' }">
+    <scroll-view class="detail-scroll" scroll-y>
       <view class="scroll-inner">
         <!-- ===== 基础信息 ===== -->
         <view class="section">
@@ -44,7 +35,7 @@
             </view>
             <view class="info-row">
               <text class="info-label">简介</text>
-              <text class="info-value">{{ product.intro || '--' }}</text>
+              <text class="info-value">{{ product.intro || product.description || '--' }}</text>
             </view>
             <view class="info-row">
               <text class="info-label">编码</text>
@@ -57,17 +48,17 @@
               <text class="info-label">状态</text>
               <text class="info-value">
                 <text class="status-tag" :class="product.status === 1 ? 'normal' : 'disabled'">
-                  {{ product.status === 1 ? '正常' : '停用' }}
+                  {{ product.status === 1 ? '正常' : (product.status === 0 ? '下架' : (product.status === 2 ? '停售' : '停产')) }}
                 </text>
               </text>
             </view>
             <view class="info-row">
               <text class="info-label">产品分类</text>
-              <text class="info-value">{{ product.category || '--' }}</text>
+              <text class="info-value">{{ product.category_name || product.category || '--' }}</text>
             </view>
             <view class="info-row">
               <text class="info-label">品牌</text>
-              <text class="info-value">{{ product.brand || '--' }}</text>
+              <text class="info-value">{{ product.brand_name || product.brand || '--' }}</text>
             </view>
             <view class="info-row">
               <text class="info-label">零售价</text>
@@ -83,15 +74,15 @@
             </view>
             <view class="info-row">
               <text class="info-label">默认供应商</text>
-              <text class="info-value">{{ product.supplier || '--' }}</text>
+              <text class="info-value">{{ product.supplier_name || product.supplier || '--' }}</text>
             </view>
             <view class="info-row">
               <text class="info-label">是否多规格</text>
-              <text class="info-value">{{ product.multi_spec ? '是' : '否' }}</text>
+              <text class="info-value">{{ product.units && product.units.length > 1 ? '是' : '否' }}</text>
             </view>
             <view class="info-row">
               <text class="info-label">是否多单位</text>
-              <text class="info-value">{{ product.multi_unit ? '是' : '否' }}</text>
+              <text class="info-value">{{ product.units && product.units.length > 1 ? '是' : '否' }}</text>
             </view>
             <view class="info-row">
               <text class="info-label">创建时间</text>
@@ -116,18 +107,26 @@
             <uni-icons :type="specExpanded ? 'arrowup' : 'arrowdown'" size="16" color="#999"></uni-icons>
           </view>
           <view v-if="specExpanded">
-            <view class="spec-table" v-if="units.length > 0">
-              <view class="spec-header">
-                <text class="spec-th">基础ID</text>
-                <text class="spec-th">单位</text>
-                <text class="spec-th">基准数</text>
+            <scroll-view class="spec-scroll-wrap" scroll-x="true" v-if="units.length > 0">
+              <view class="spec-table">
+                <view class="spec-header">
+                  <text class="spec-th col-unit">单位</text>
+                  <text class="spec-th col-base">基准数</text>
+                  <text class="spec-th col-code">编码</text>
+                  <text class="spec-th col-spec">规格</text>
+                  <text class="spec-th col-price">零售价</text>
+                  <text class="spec-th col-price">成本价</text>
+                </view>
+                <view class="spec-row" v-for="u in units" :key="u.id">
+                  <text class="spec-td col-unit">{{ u.unit_name || u.name || '--' }}</text>
+                  <text class="spec-td col-base">{{ u.base_quantity || 1 }}</text>
+                  <text class="spec-td col-code">{{ u.code || '--' }}</text>
+                  <text class="spec-td col-spec">{{ u.spec || '--' }}</text>
+                  <text class="spec-td col-price">¥{{ formatPrice(u.sale_price) }}</text>
+                  <text class="spec-td col-price">¥{{ formatPrice(u.cost_price) }}</text>
+                </view>
               </view>
-              <view class="spec-row" v-for="u in units" :key="u.id">
-                <text class="spec-td">{{ u.id }}</text>
-                <text class="spec-td">{{ u.name }}</text>
-                <text class="spec-td">{{ u.base_num || 1 }}</text>
-              </view>
-            </view>
+            </scroll-view>
             <view v-else class="spec-empty">
               <text class="empty-text">暂无规格数据</text>
             </view>
@@ -145,7 +144,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { productApi } from '@/api/product'
 
@@ -153,10 +152,20 @@ const product = ref({})
 const units = ref([])
 const basicExpanded = ref(true)
 const specExpanded = ref(true)
-const bottomPad = ref(120)
+
+const refreshHandler = () => {
+  if (product.value.id) {
+    fetchDetail(product.value.id)
+  }
+}
 
 onShow(() => {
   uni.hideTabBar()
+  uni.$on('refreshProductDetail', refreshHandler)
+})
+
+onUnmounted(() => {
+  uni.$off('refreshProductDetail', refreshHandler)
 })
 
 const formatPrice = (val) => {
@@ -198,8 +207,9 @@ const fetchDetail = async (id) => {
   try {
     const res = await productApi.getDetail(id)
     if (res.code === 0) {
-      product.value = res.data || {}
-      units.value = res.data?.units || []
+      const data = res.data || {}
+      product.value = data
+      units.value = data.units || []
     }
   } catch (e) {
     uni.showToast({ title: '加载失败', icon: 'none' })
@@ -211,52 +221,27 @@ const goBack = () => {
 }
 
 const goEdit = () => {
-  uni.navigateTo({ url: `/pages/product/detail?id=${product.value.id}&edit=1` })
+  uni.navigateTo({ url: `/pages/product/edit?id=${product.value.id}` })
 }
 
 onMounted(() => {
   const pages = getCurrentPages()
   const current = pages[pages.length - 1]
   const id = current.$page?.options?.id
-  if (id) fetchDetail(id)
+  
+  if (id) {
+    fetchDetail(id)
+  }
 })
 </script>
 
 <style lang="scss" scoped>
 .detail-page {
-  height: 100vh;
+  height: calc(100vh - var(--window-top));
   display: flex;
   flex-direction: column;
   background: #F5F7FA;
   overflow: hidden;
-}
-
-/* 导航栏 */
-.nav-bar {
-  flex-shrink: 0;
-  background: #1890FF;
-  padding: 44rpx 24rpx 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.nav-left {
-  width: 60rpx;
-  height: 60rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.nav-title {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #FFFFFF;
-}
-
-.nav-right {
-  width: 60rpx;
 }
 
 /* 滚动区 */
@@ -376,8 +361,15 @@ onMounted(() => {
 }
 
 /* 规格表格 */
+.spec-scroll-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
 .spec-table {
+  width: 850rpx;
   padding: 0 24rpx 24rpx;
+  box-sizing: border-box;
 }
 
 .spec-header {
@@ -388,8 +380,6 @@ onMounted(() => {
 }
 
 .spec-th {
-  flex: 1;
-  text-align: center;
   font-size: 26rpx;
   font-weight: 700;
   color: #303133;
@@ -402,10 +392,40 @@ onMounted(() => {
 }
 
 .spec-td {
-  flex: 1;
-  text-align: center;
   font-size: 26rpx;
   color: #303133;
+}
+
+.col-unit {
+  width: 120rpx;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.col-base {
+  width: 120rpx;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.col-code {
+  width: 200rpx;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.col-spec {
+  width: 150rpx;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.col-price {
+  width: 130rpx;
+  flex-shrink: 0;
+  text-align: right;
+  padding-right: 10rpx;
+  box-sizing: border-box;
 }
 
 .spec-empty {

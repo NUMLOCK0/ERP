@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <el-card>
       <div class="toolbar"><el-button type="primary" :icon="Plus" @click="handleAdd">新增分类</el-button></div>
@@ -9,10 +9,17 @@
         <el-table-column label="创建时间" width="180">
           <template #default="{ row }">{{ $formatDateTime(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
+            <el-dropdown trigger="hover">
+              <el-button type="primary" link>更多</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="handleEdit(row)">编辑</el-dropdown-item>
+                  <el-dropdown-item @click="handleDelete(row)">删除</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -45,7 +52,7 @@ async function fetchData() {
 }
 function handleAdd() { dialogTitle.value = '新增'; Object.assign(form, { id: null, name: '', description: '' }); dialogVisible.value = true }
 function handleEdit(row: any) { dialogTitle.value = '编辑'; Object.assign(form, row); dialogVisible.value = true }
-async function handleDelete(row: any) { await ElMessageBox.confirm('确认删除？', '提示', { type: 'warning' }); await deleteSupplierCategory(row.id); ElMessage.success('已删除'); fetchData() }
+async function handleDelete(row: any) { await ElMessageBox.confirm('确认删除该分类？', '提示', { type: 'warning' }); await deleteSupplierCategory(row.id); ElMessage.success('删除成功'); fetchData() }
 async function handleSubmit() {
   const valid = await formRef.value!.validate().catch(() => false); if (!valid) return
   if (form.id) { await updateSupplierCategory(form.id, form) } else { await createSupplierCategory(form) }

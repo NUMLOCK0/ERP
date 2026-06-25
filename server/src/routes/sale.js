@@ -3,8 +3,122 @@ const router = express.Router();
 const { getPool } = require('../database');
 const Response = require('../utils/response');
 const { isAuditEnabled } = require('../utils/auditConfig');
+const { generateBusinessNo } = require('../utils/bizNo');
 
 // ==================== 销售订单 ====================
+
+router.get('/invoice', async (req, res) => {
+  try {
+    const pool = getPool();
+    const { page = 1, pageSize = 20, keyword = '', customer_id = '', status = '', start_date = '', end_date = '' } = req.query;
+    let where = '1=1';
+    const params = [];
+    if (keyword) {
+      where += ' AND (si.invoice_no LIKE ? OR si.external_invoice_no LIKE ? OR so.order_no LIKE ? OR sc.name LIKE ?)';
+      params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
+    }
+    if (customer_id) { where += ' AND si.customer_id = ?'; params.push(Number(customer_id)); }
+    if (status !== '') { where += ' AND si.status = ?'; params.push(Number(status)); }
+    if (start_date) { where += ' AND si.created_at >= ?'; params.push(start_date); }
+    if (end_date) { where += ' AND si.created_at <= ?'; params.push(end_date + ' 23:59:59'); }
+    const offset = (Number(page) - 1) * Number(pageSize);
+    const [totalRows] = await pool.execute(
+      `SELECT COUNT(*) AS cnt
+       FROM sale_invoice si
+       LEFT JOIN sale_order so ON si.order_id = so.id
+       LEFT JOIN supplier_customer sc ON si.customer_id = sc.id
+       WHERE ${where}`,
+      params
+    );
+    const [list] = await pool.execute(
+      `SELECT si.*, so.order_no, so.total_amount AS order_total_amount,
+              sc.name AS customer_name, sc.contact, sc.phone,
+              COALESCE(receipt_stats.received_amount, 0) AS received_amount,
+              u.real_name AS creator_name
+       FROM sale_invoice si
+       LEFT JOIN sale_order so ON si.order_id = so.id
+       LEFT JOIN supplier_customer sc ON si.customer_id = sc.id
+       LEFT JOIN sys_user u ON si.creator_id = u.id
+       LEFT JOIN (
+         SELECT order_id, SUM(amount) AS received_amount
+         FROM finance_receipt
+         GROUP BY order_id
+       ) receipt_stats ON so.id = receipt_stats.order_id
+       WHERE ${where}
+       ORDER BY si.id DESC LIMIT ?, ?`,
+      [...params, offset, Number(pageSize)]
+    );
+    res.json(Response.paginate(list, Number(totalRows[0].cnt || 0), Number(page), Number(pageSize)));
+  } catch (err) {
+    res.json(Response.error(err.message));
+  }
+});
+
+router.get('/invoice/:id', async (req, res) => {
+  try {
+    const pool = getPool();
+    const [rows] = await pool.execute(
+      `SELECT si.*, so.order_no, so.total_amount AS order_total_amount,
+              sc.name AS customer_name, sc.contact, sc.phone,
+              u.real_name AS creator_name
+       FROM sale_invoice si
+       LEFT JOIN sale_order so ON si.order_id = so.id
+       LEFT JOIN supplier_customer sc ON si.customer_id = sc.id
+       LEFT JOIN sys_user u ON si.creator_id = u.id
+       WHERE si.id = ?`,
+      [req.params.id]
+    );
+    if (!rows.length) return res.json(Response.error('销售发票不存在'));
+    res.json(Response.success(rows[0]));
+  } catch (err) {
+    res.json(Response.error(err.message));
+  }
+});
+
+router.post('/invoice', async (req, res) => {
+  const conn = await getPool().getConnection();
+  try {
+    await conn.beginTransaction();
+    const orderId = Number(req.body.order_id || 0);
+    if (!orderId) throw new Error('请选择销售订单');
+    const [orderRows] = await conn.execute('SELECT * FROM sale_order WHERE id = ?', [orderId]);
+    const order = orderRows[0];
+    if (!order) throw new Error('销售订单不存在');
+
+    const taxRate = roundMoney(req.body.tax_rate ?? 13);
+    const totalAmount = roundMoney(req.body.total_amount ?? order.total_amount ?? 0);
+    const taxAmount = roundMoney(req.body.tax_amount ?? calculateIncludedTax(totalAmount, taxRate));
+    const amount = roundMoney(req.body.amount ?? Math.max(totalAmount - taxAmount, 0));
+    const externalInvoiceNo = String(req.body.external_invoice_no || '').trim();
+    const invoiceDate = req.body.invoice_date || null;
+    const remark = String(req.body.remark || '');
+    const rawAttachmentUrls = Array.isArray(req.body.attachment_urls) ? req.body.attachment_urls : [];
+    const attachmentUrls = rawAttachmentUrls.filter(Boolean).slice(0, 10);
+    if (totalAmount <= 0) throw new Error('发票金额必须大于0');
+    if (taxRate < 0 || taxRate > 100) throw new Error('税率需要在0到100之间');
+    if (taxAmount < 0 || taxAmount > totalAmount) throw new Error('税金需要在0到发票金额之间');
+    if (remark.length > 300) throw new Error('备注最多300个字符');
+    if (rawAttachmentUrls.length > 10) throw new Error('发票附件最多10个');
+
+    const invoiceNo = await generateBusinessNo(conn, 'sale_invoice');
+    const [result] = await conn.execute(
+      `INSERT INTO sale_invoice
+       (invoice_no, order_id, customer_id, external_invoice_no, invoice_date, amount, tax_rate, tax_amount, total_amount, status, remark, attachment_urls, creator_id)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [invoiceNo, order.id, order.customer_id, externalInvoiceNo, invoiceDate, amount, taxRate, taxAmount, totalAmount, 1, remark, JSON.stringify(attachmentUrls), req.user.id]
+    );
+    await syncSaleReceiptInvoiceStatus(conn, order.id);
+
+    await conn.commit();
+    await writeSystemLog(getPool(), req.user.id, '销售管理', '销售发票登记', invoiceNo);
+    res.json(Response.success({ id: result.insertId, invoice_no: invoiceNo }));
+  } catch (err) {
+    await conn.rollback();
+    res.json(Response.error(err.message));
+  } finally {
+    conn.release();
+  }
+});
 
 router.get('/order', async (req, res) => {
   try {
@@ -182,7 +296,7 @@ router.post('/order', async (req, res) => {
     const orderNo = await generateNo(pool, 'XS');
     let totalAmount = 0;
     for (const item of items) {
-      totalAmount += (item.quantity || 0) * (item.price || 0) + Number(item.tax || 0);
+      totalAmount += calculateLineAmount(item);
     }
 
     const conn = await pool.getConnection();
@@ -202,9 +316,12 @@ router.post('/order', async (req, res) => {
       const orderId = result.insertId;
 
       for (const item of items) {
+        const taxRate = normalizeTaxRate(item.tax_rate);
+        const tax = calculateItemTax(item);
+        const amount = calculateLineAmount(item);
         await conn.execute(
-          'INSERT INTO sale_order_item (order_id, product_id, quantity, price, tax, amount) VALUES (?,?,?,?,?,?)',
-          [orderId, item.product_id, item.quantity, item.price, item.tax || 0, (item.quantity || 0) * (item.price || 0) + Number(item.tax || 0)]
+          'INSERT INTO sale_order_item (order_id, product_id, quantity, price, tax, tax_rate, amount) VALUES (?,?,?,?,?,?,?)',
+          [orderId, item.product_id, item.quantity, item.price, tax, taxRate, amount]
         );
       }
 
@@ -274,11 +391,13 @@ router.put('/order/:id', async (req, res) => {
       let totalAmount = 0;
       await conn.execute('DELETE FROM sale_order_item WHERE order_id = ?', [req.params.id]);
       for (const item of (items || [])) {
-        const amount = (item.quantity || 0) * (item.price || 0) + Number(item.tax || 0);
+        const taxRate = normalizeTaxRate(item.tax_rate);
+        const tax = calculateItemTax(item);
+        const amount = calculateLineAmount(item);
         totalAmount += amount;
         await conn.execute(
-          'INSERT INTO sale_order_item (order_id, product_id, quantity, price, tax, amount) VALUES (?,?,?,?,?,?)',
-          [req.params.id, item.product_id, item.quantity, item.price, item.tax || 0, amount]
+          'INSERT INTO sale_order_item (order_id, product_id, quantity, price, tax, tax_rate, amount) VALUES (?,?,?,?,?,?,?)',
+          [req.params.id, item.product_id, item.quantity, item.price, tax, taxRate, amount]
         );
       }
 
@@ -1092,12 +1211,13 @@ router.delete('/return/:id', async (req, res) => {
 // ==================== 辅助函数 ====================
 
 async function updateStock(conn, productId, warehouseId, quantity, changeType, refNo) {
+  const changeQty = Number(quantity || 0);
   const [rows] = await conn.execute(
     'SELECT * FROM inventory_stock WHERE product_id = ? AND warehouse_id = ?',
     [productId, warehouseId]
   );
-  const beforeQty = rows.length ? rows[0].quantity : 0;
-  const afterQty = beforeQty + quantity;
+  const beforeQty = rows.length ? Number(rows[0].quantity || 0) : 0;
+  const afterQty = beforeQty + changeQty;
 
   if (rows.length) {
     await conn.execute(
@@ -1114,7 +1234,7 @@ async function updateStock(conn, productId, warehouseId, quantity, changeType, r
   await conn.execute(
     `INSERT INTO inventory_log (product_id, warehouse_id, change_type, change_quantity, before_quantity, after_quantity, ref_no)
      VALUES (?,?,?,?,?,?,?)`,
-    [productId, warehouseId, changeType, quantity, beforeQty, afterQty, refNo]
+    [productId, warehouseId, changeType, changeQty, beforeQty, afterQty, refNo]
   );
 }
 
@@ -1258,32 +1378,62 @@ async function resolveSaleWarehouse(conn, preferredWarehouseId, items) {
   return preferredWarehouseId;
 }
 
-async function generateNo(poolOrConn, prefix) {
-  const now = new Date();
-  const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-  const tableMap = {
-    'XS': { table: 'sale_order', col: 'order_no' },
-    'FH': { table: 'sale_delivery', col: 'delivery_no' },
-    'XT': { table: 'sale_return', col: 'return_no' }
-  };
-  const mapping = tableMap[prefix] || { table: 'sale_order', col: 'order_no' };
-  const [rows] = await poolOrConn.execute(
-    `SELECT COUNT(*) AS cnt FROM ${mapping.table} WHERE ${mapping.col} LIKE ?`,
-    [`${prefix}-${dateStr}-%`]
+async function syncSaleReceiptInvoiceStatus(conn, orderId) {
+  const [rows] = await conn.execute(
+    `SELECT COALESCE(SUM(total_amount), 0) AS invoice_amount
+     FROM sale_invoice
+     WHERE order_id = ? AND status = 1`,
+    [orderId]
   );
-  const seq = (Number(rows[0]?.cnt) || 0) + 1;
-  return `${prefix}-${dateStr}-${String(seq).padStart(4, '0')}`;
+  const invoiceAmount = roundMoney(rows[0]?.invoice_amount || 0);
+  const [receiptRows] = await conn.execute('SELECT id, should_amount FROM finance_receipt WHERE order_id = ?', [orderId]);
+  for (const receipt of receiptRows) {
+    const shouldAmount = roundMoney(receipt.should_amount || 0);
+    const invoiceStatus = invoiceAmount <= 0 ? 0 : (shouldAmount > 0 && invoiceAmount >= shouldAmount ? 1 : 2);
+    await conn.execute(
+      'UPDATE finance_receipt SET invoice_status = ?, invoice_time = ? WHERE id = ?',
+      [invoiceStatus, invoiceStatus === 1 ? new Date() : null, receipt.id]
+    );
+  }
+}
+
+function roundMoney(value) {
+  const amount = Number(value || 0);
+  if (!Number.isFinite(amount)) return 0;
+  return Math.round(amount * 100) / 100;
+}
+
+function calculateIncludedTax(totalAmount, taxRate) {
+  const total = roundMoney(totalAmount);
+  const rate = roundMoney(taxRate);
+  return rate > 0 ? roundMoney(total * rate / (100 + rate)) : 0;
+}
+
+function normalizeTaxRate(value) {
+  const rate = Number(value ?? 13);
+  if (!Number.isFinite(rate)) return 13;
+  return Math.min(Math.max(roundMoney(rate), 0), 100);
+}
+
+function calculateItemTax(item) {
+  if (item.tax !== undefined && item.tax !== null && item.tax !== '') {
+    return roundMoney(item.tax);
+  }
+  const rate = normalizeTaxRate(item.tax_rate);
+  const grossAmount = calculateLineAmount(item);
+  return rate > 0 ? roundMoney(grossAmount * rate / (100 + rate)) : 0;
+}
+
+function calculateLineAmount(item) {
+  return roundMoney(Number(item.quantity || 0) * Number(item.price || 0));
+}
+
+async function generateNo(poolOrConn, prefix) {
+  return generateBusinessNo(poolOrConn, prefix);
 }
 
 async function generateFinanceReceiptNo(poolOrConn) {
-  const now = new Date();
-  const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-  const [rows] = await poolOrConn.execute(
-    'SELECT COUNT(*) AS cnt FROM finance_receipt WHERE receipt_no LIKE ?',
-    [`SK-${dateStr}-%`]
-  );
-  const seq = (Number(rows[0]?.cnt) || 0) + 1;
-  return `SK-${dateStr}-${String(seq).padStart(4, '0')}`;
+  return generateBusinessNo(poolOrConn, 'finance_receipt');
 }
 
 async function writeSystemLog(pool, userId, module, action, target) {

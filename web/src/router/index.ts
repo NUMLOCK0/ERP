@@ -14,6 +14,18 @@ const routes: RouteRecordRaw[] = [
     redirect: '/dashboard',
     children: [
       {
+        path: 'purchase/invoice',
+        name: 'PurchaseInvoice',
+        component: () => import('@/views/purchase/Invoice.vue'),
+        meta: { title: '采购发票登记' }
+      },
+      {
+        path: 'sale/invoice',
+        name: 'SaleInvoice',
+        component: () => import('@/views/sale/Invoice.vue'),
+        meta: { title: '销售发票登记' }
+      },
+      {
         path: 'dashboard',
         name: 'Dashboard',
         component: () => import('@/views/Dashboard.vue'),
@@ -75,6 +87,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/purchase/Return.vue'),
         meta: { title: '采购退货单' }
       },
+      {
+        path: 'purchase/payment',
+        name: 'PurchasePayment',
+        component: () => import('@/views/finance/Payment.vue'),
+        meta: { title: '采购付款单' }
+      },
       // 加工管理
       {
         path: 'processing/order',
@@ -106,6 +124,12 @@ const routes: RouteRecordRaw[] = [
         name: 'SaleReturn',
         component: () => import('@/views/sale/Return.vue'),
         meta: { title: '发货退货单' }
+      },
+      {
+        path: 'sale/receipt',
+        name: 'SaleReceipt',
+        component: () => import('@/views/finance/Receipt.vue'),
+        meta: { title: '销售收款单' }
       },
       // 库存管理
       {
@@ -149,18 +173,16 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/inventory/Log.vue'),
         meta: { title: '库存日志' }
       },
-      // 资金账单
+      // 旧资金账单路径兼容
       {
         path: 'finance/payment',
         name: 'FinancePayment',
-        component: () => import('@/views/finance/Payment.vue'),
-        meta: { title: '采购付款单' }
+        redirect: '/purchase/payment'
       },
       {
         path: 'finance/receipt',
         name: 'FinanceReceipt',
-        component: () => import('@/views/finance/Receipt.vue'),
-        meta: { title: '销售收款单' }
+        redirect: '/sale/receipt'
       },
       // 数据报表
       {

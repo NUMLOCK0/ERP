@@ -44,12 +44,20 @@
 
 const menuList = [
   { label: '采购订单', icon: 'cart', bgColor: '#409EFF', url: '/pages/purchase/order-list' },
-  { label: '采购入库', icon: 'arrow-down', bgColor: '#67C23A', url: '/pages/purchase/inbound-list' },
-  { label: '采购退货', icon: 'undo', bgColor: '#F56C6C', url: '/pages/purchase/return-list' },
-  { label: '采购付款', icon: 'wallet', bgColor: '#8E44AD', url: '/pages/finance/payment-list' }
+  { label: '采购入库单', icon: 'arrowdown', bgColor: '#67C23A', url: '/pages/purchase/inbound-list' },
+  { label: '采购退货单', icon: 'undo', bgColor: '#F56C6C', url: '/pages/purchase/return-list' },
+  { label: '采购付款单', icon: 'wallet', bgColor: '#8E44AD', url: '/pages/finance/payment-list' },
+  { label: '采购发票登记', icon: 'compose', bgColor: '#909399', url: '/pages/purchase/invoice-list' }
 ]
 
 const navigateTo = (url) => {
+  if (!url || url === 'todo') {
+    uni.showToast({
+      title: '该功能暂未开放',
+      icon: 'none'
+    })
+    return
+  }
   uni.navigateTo({ url })
 }
 </script>

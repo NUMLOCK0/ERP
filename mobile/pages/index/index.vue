@@ -85,8 +85,6 @@
           </view>
           <text class="data-label">{{ item.label }}</text>
         </view>
-        <!-- 占位空格 -->
-        <view class="data-item empty"></view>
       </view>
     </view>
 
@@ -132,15 +130,16 @@
       </view>
     </view>
 
-    <!-- ===== 库存管理 ===== -->
+    <!-- ===== 加工管理 ===== -->
     <view class="section">
       <view class="section-header">
-        <text class="section-title">库存管理</text>
+        <text class="section-title">加工管理</text>
       </view>
+
       <view class="data-grid">
         <view
           class="data-item"
-          v-for="item in inventoryItems"
+          v-for="item in processingItems"
           :key="item.label"
           @click="navigateTo(item.url)"
         >
@@ -152,15 +151,15 @@
       </view>
     </view>
 
-    <!-- ===== 资金账单 ===== -->
+    <!-- ===== 库存管理 ===== -->
     <view class="section">
       <view class="section-header">
-        <text class="section-title">资金账单</text>
+        <text class="section-title">库存管理</text>
       </view>
       <view class="data-grid">
         <view
           class="data-item"
-          v-for="item in financeItems"
+          v-for="item in inventoryItems"
           :key="item.label"
           @click="navigateTo(item.url)"
         >
@@ -200,7 +199,27 @@
       <view class="data-grid">
         <view
           class="data-item"
-          v-for="item in customerItems"
+          v-for="item in supplierItems"
+          :key="item.label"
+          @click="navigateTo(item.url)"
+        >
+          <view class="data-icon" :style="{ backgroundColor: item.bgColor }">
+            <uni-icons :type="item.icon" size="22" color="#FFFFFF"></uni-icons>
+          </view>
+          <text class="data-label">{{ item.label }}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- ===== 系统配置 ===== -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">系统配置</text>
+      </view>
+      <view class="data-grid">
+        <view
+          class="data-item"
+          v-for="item in systemItems"
           :key="item.label"
           @click="navigateTo(item.url)"
         >
@@ -267,59 +286,79 @@ const statCards = [
 
 const dataItems = [
   { label: '产品管理', icon: 'gift', bgColor: '#FF9800', url: '/pages/product/list' },
-  { label: '产品分类', icon: 'bars', bgColor: '#FF9800', url: '/pages/product/list' },
-  { label: '品牌管理', icon: 'star', bgColor: '#FF9800', url: '/pages/product/list' },
-  { label: '品牌分类', icon: 'flag', bgColor: '#FF9800', url: '/pages/product/list' },
-  { label: '计量单位', icon: 'compose', bgColor: '#FF9800', url: '/pages/product/list' },
-  { label: '职员管理', icon: 'contact', bgColor: '#FF9800', url: '/pages/mine/index' },
-  { label: '仓库管理', icon: 'home', bgColor: '#FF9800', url: '/pages/inventory/stock' }
+  { label: '产品分类', icon: 'bars', bgColor: '#FF9800', url: '/pages/product/category' },
+  { label: '品牌管理', icon: 'star', bgColor: '#FF9800', url: '/pages/product/brand' },
+  { label: '计量单位', icon: 'compose', bgColor: '#FF9800', url: '/pages/product/unit' },
+  { label: '职员管理', icon: 'contact', bgColor: '#FF9800', url: '/pages/product/employee' },
+  { label: '仓库管理', icon: 'home', bgColor: '#FF9800', url: '/pages/inventory/warehouse' },
+  { label: '企业管理', icon: 'shop', bgColor: '#FF9800', url: '/pages/supplier/company-list' },
+  { label: '企业分类', icon: 'list', bgColor: '#FF9800', url: '/pages/supplier/category-list' },
+  { label: '会员登记', icon: 'medal', bgColor: '#FF9800', url: '/pages/supplier/member-list' }
 ]
 
 const purchaseItems = [
   { label: '采购订单', icon: 'cart', bgColor: '#67C23A', url: '/pages/purchase/order-list' },
-  { label: '采购入库单', icon: 'arrow-down', bgColor: '#67C23A', url: '/pages/purchase/inbound-list' },
-  { label: '采购退货单', icon: 'undo', bgColor: '#67C23A', url: '/pages/purchase/return-list' }
+  { label: '采购入库单', icon: 'arrowdown', bgColor: '#67C23A', url: '/pages/purchase/inbound-list' },
+  { label: '采购退货单', icon: 'undo', bgColor: '#67C23A', url: '/pages/purchase/return-list' },
+  { label: '采购付款单', icon: 'wallet', bgColor: '#67C23A', url: '/pages/finance/payment-list' },
+  { label: '采购发票登记', icon: 'compose', bgColor: '#67C23A', url: '/pages/purchase/invoice-list' }
 ]
 
 const saleItems = [
   { label: '销售订单', icon: 'wallet', bgColor: '#409EFF', url: '/pages/sale/order-list' },
   { label: '销售发货单', icon: 'paperplane', bgColor: '#409EFF', url: '/pages/sale/delivery-list' },
-  { label: '发货退货单', icon: 'undo', bgColor: '#409EFF', url: '/pages/sale/delivery-list' },
-  { label: '销售退货单', icon: 'refresh', bgColor: '#409EFF', url: '/pages/sale/return-list' }
+  { label: '发货退货单', icon: 'undo', bgColor: '#409EFF', url: '/pages/sale/return-list' },
+  { label: '销售收款单', icon: 'wallet', bgColor: '#409EFF', url: '/pages/finance/receipt-list' },
+  { label: '销售发票登记', icon: 'compose', bgColor: '#409EFF', url: '/pages/sale/invoice-list' }
+]
+
+const processingItems = [
+  { label: '药材加工批次', icon: 'loop', bgColor: '#E6A23C', url: 'todo' }
 ]
 
 const inventoryItems = [
-  { label: '其他入库', icon: 'arrow-down', bgColor: '#9B59B6', url: '/pages/inventory/stock' },
-  { label: '其他出库', icon: 'arrow-up', bgColor: '#9B59B6', url: '/pages/inventory/stock' },
+  { label: '库存查询', icon: 'home', bgColor: '#9B59B6', url: '/pages/inventory/stock' },
+  { label: '其他入库', icon: 'arrowdown', bgColor: '#9B59B6', url: '/pages/inventory/other-in-list' },
+  { label: '其他出库', icon: 'arrowup', bgColor: '#9B59B6', url: '/pages/inventory/other-out-list' },
   { label: '库存盘点', icon: 'checkbox', bgColor: '#9B59B6', url: '/pages/inventory/check-list' },
   { label: '库存日志', icon: 'list', bgColor: '#9B59B6', url: '/pages/inventory/log' }
 ]
 
-const financeItems = [
-  { label: '采购付款单', icon: 'wallet', bgColor: '#E74C3C', url: '/pages/finance/payment-list' },
-  { label: '销售收款单', icon: 'wallet', bgColor: '#E74C3C', url: '/pages/finance/receipt-list' }
-]
-
 const reportItems = [
   { label: '产品库存', icon: 'gift', bgColor: '#2C3E50', url: '/pages/report/product-stock' },
-  { label: '销售发货', icon: 'paperplane', bgColor: '#2C3E50', url: '/pages/report/sale-delivery' },
-  { label: '其他出库', icon: 'arrow-up', bgColor: '#2C3E50', url: '/pages/inventory/stock' },
-  { label: '采购入库', icon: 'arrow-down', bgColor: '#2C3E50', url: '/pages/report/purchase-inbound' },
-  { label: '其他入库', icon: 'arrow-down', bgColor: '#2C3E50', url: '/pages/inventory/stock' },
   { label: '采购订单', icon: 'cart', bgColor: '#2C3E50', url: '/pages/report/purchase-order' },
+  { label: '采购入库', icon: 'arrowdown', bgColor: '#2C3E50', url: '/pages/report/purchase-inbound' },
+  { label: '采购付款', icon: 'wallet', bgColor: '#2C3E50', url: '/pages/finance/payment-list' },
+  { label: '其他入库', icon: 'arrowdown', bgColor: '#2C3E50', url: 'todo' },
   { label: '销售订单', icon: 'wallet', bgColor: '#2C3E50', url: '/pages/report/sale-order' },
+  { label: '销售发货', icon: 'paperplane', bgColor: '#2C3E50', url: '/pages/report/sale-delivery' },
   { label: '销售收款', icon: 'wallet', bgColor: '#2C3E50', url: '/pages/finance/receipt-list' },
-  { label: '采购付款', icon: 'wallet', bgColor: '#2C3E50', url: '/pages/finance/payment-list' }
+  { label: '其他出库', icon: 'arrowup', bgColor: '#2C3E50', url: 'todo' }
 ]
 
-const customerItems = [
-  { label: '企业管理', icon: 'staff', bgColor: '#67C23A', url: '/pages/mine/index' },
-  { label: '企业分类', icon: 'bars', bgColor: '#67C23A', url: '/pages/mine/index' },
-  { label: '会员等级', icon: 'medal', bgColor: '#67C23A', url: '/pages/mine/index' }
+const supplierItems = [
+  { label: '企业管理', icon: 'staff', bgColor: '#1ABC9C', url: '/pages/supplier/company-list' },
+  { label: '企业分类', icon: 'bars', bgColor: '#1ABC9C', url: '/pages/supplier/category-list' },
+  { label: '会员等级', icon: 'medal', bgColor: '#1ABC9C', url: '/pages/supplier/member-list' }
+]
+
+const systemItems = [
+  { label: '系统设置', icon: 'gear', bgColor: '#909399', url: 'todo' },
+  { label: '管理员', icon: 'staff', bgColor: '#909399', url: 'todo' },
+  { label: '角色', icon: 'person', bgColor: '#909399', url: 'todo' },
+  { label: '打印模板', icon: 'compose', bgColor: '#909399', url: 'todo' },
+  { label: '操作日志', icon: 'list', bgColor: '#909399', url: 'todo' }
 ]
 
 const navigateTo = (url) => {
-  if (url) uni.navigateTo({ url })
+  if (!url || url === 'todo') {
+    uni.showToast({
+      title: '该功能暂未开放',
+      icon: 'none'
+    })
+    return
+  }
+  uni.navigateTo({ url })
 }
 
 const viewAllStats = () => {

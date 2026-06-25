@@ -43,13 +43,21 @@
 <script setup>
 
 const menuList = [
-  { label: '销售订单', icon: 'wallet', bgColor: '#67C23A', url: '/pages/sale/order-list' },
-  { label: '销售发货', icon: 'paperplane', bgColor: '#409EFF', url: '/pages/sale/delivery-list' },
-  { label: '销售退货', icon: 'undo', bgColor: '#F56C6C', url: '/pages/sale/return-list' },
-  { label: '销售收款', icon: 'wallet', bgColor: '#8E44AD', url: '/pages/finance/receipt-list' }
+  { label: '销售订单', icon: 'wallet', bgColor: '#409EFF', url: '/pages/sale/order-list' },
+  { label: '销售发货单', icon: 'paperplane', bgColor: '#409EFF', url: '/pages/sale/delivery-list' },
+  { label: '发货退货单', icon: 'undo', bgColor: '#F56C6C', url: '/pages/sale/return-list' },
+  { label: '销售收款单', icon: 'wallet', bgColor: '#8E44AD', url: '/pages/finance/receipt-list' },
+  { label: '销售发票登记', icon: 'compose', bgColor: '#909399', url: 'todo' }
 ]
 
 const navigateTo = (url) => {
+  if (!url || url === 'todo') {
+    uni.showToast({
+      title: '该功能暂未开放',
+      icon: 'none'
+    })
+    return
+  }
   uni.navigateTo({ url })
 }
 </script>

@@ -4,6 +4,7 @@ const { getPool } = require('../database');
 const Response = require('../utils/response');
 const { isAuditEnabled } = require('../utils/auditConfig');
 const { resolveInlineProduct } = require('../utils/inlineProduct');
+const { generateBusinessNo } = require('../utils/bizNo');
 
 // ==================== 库存查询 ====================
 
@@ -122,7 +123,7 @@ router.get('/log', async (req, res) => {
               w.name AS warehouse_name,
               il.change_type AS business_type,
               COALESCE(
-                pi.id, pr.id, sd.id, sr.id, ic.id, itr.id, oi.id, oo.id, auto_so.id
+                pi.id, pr.id, sd.id, sr.id, ic.id, itr.id, oi.id, oo.id, auto_so.id, hpo.id
               ) AS business_order_id,
               il.ref_no AS business_order_no,
               COALESCE(operator.real_name, operator.username, '') AS operator_name,
@@ -151,6 +152,9 @@ router.get('/log', async (req, res) => {
        LEFT JOIN sale_order auto_so
          ON il.change_type = 'other_inbound'
         AND il.ref_no = CONCAT(auto_so.order_no, '-自动补库')
+       LEFT JOIN herb_processing_order hpo
+         ON il.change_type IN ('herb_processing_issue', 'herb_processing_return', 'herb_processing_inbound')
+        AND il.ref_no = hpo.batch_no
        LEFT JOIN sys_user operator
          ON operator.id = COALESCE(
            pi.creator_id,
@@ -161,7 +165,8 @@ router.get('/log', async (req, res) => {
            itr.creator_id,
            oi.creator_id,
            oo.creator_id,
-           auto_so.creator_id
+           auto_so.creator_id,
+           hpo.creator_id
          )
        WHERE ${where} ORDER BY il.id DESC LIMIT ?, ?`,
       [...params, offset, Number(pageSize)]
@@ -893,12 +898,13 @@ router.post('/other-outbound', async (req, res) => {
 // ==================== 辅助函数 ====================
 
 async function updateStock(conn, productId, warehouseId, quantity, changeType, refNo) {
+  const changeQty = Number(quantity || 0);
   const [rows] = await conn.execute(
     'SELECT * FROM inventory_stock WHERE product_id = ? AND warehouse_id = ?',
     [productId, warehouseId]
   );
-  const beforeQty = rows.length ? rows[0].quantity : 0;
-  const afterQty = beforeQty + quantity;
+  const beforeQty = rows.length ? Number(rows[0].quantity || 0) : 0;
+  const afterQty = beforeQty + changeQty;
 
   if (rows.length) {
     await conn.execute(
@@ -915,7 +921,7 @@ async function updateStock(conn, productId, warehouseId, quantity, changeType, r
   await conn.execute(
     `INSERT INTO inventory_log (product_id, warehouse_id, change_type, change_quantity, before_quantity, after_quantity, ref_no)
      VALUES (?,?,?,?,?,?,?)`,
-    [productId, warehouseId, changeType, quantity, beforeQty, afterQty, refNo]
+    [productId, warehouseId, changeType, changeQty, beforeQty, afterQty, refNo]
   );
 }
 
@@ -970,21 +976,7 @@ async function confirmInventoryTransfer(conn, transferId) {
 }
 
 async function generateNo(poolOrConn, prefix) {
-  const now = new Date();
-  const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-  const tableMap = {
-    'PD': { table: 'inventory_check', col: 'check_no' },
-    'DB': { table: 'inventory_transfer', col: 'transfer_no' },
-    'QT': { table: 'other_inbound', col: 'inbound_no' },
-    'QC': { table: 'other_outbound', col: 'outbound_no' }
-  };
-  const mapping = tableMap[prefix] || { table: 'inventory_check', col: 'check_no' };
-  const [rows] = await poolOrConn.execute(
-    `SELECT COUNT(*) AS cnt FROM ${mapping.table} WHERE ${mapping.col} LIKE ?`,
-    [`${prefix}-${dateStr}-%`]
-  );
-  const seq = (Number(rows[0]?.cnt) || 0) + 1;
-  return `${prefix}-${dateStr}-${String(seq).padStart(4, '0')}`;
+  return generateBusinessNo(poolOrConn, prefix);
 }
 
 async function writeSystemLog(pool, userId, module, action, target) {

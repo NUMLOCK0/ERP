@@ -27,3 +27,8 @@ export function createSaleReturn(data: any) { return post('/sale/return', data) 
 export function completeSaleReturn(id: number, data?: any) { return post(`/sale/return/${id}/complete`, data) }
 export function cancelSaleReturn(id: number) { return post(`/sale/return/${id}/cancel`) }
 export function deleteSaleReturn(id: number) { return del(`/sale/return/${id}`) }
+
+// 销售发票登记
+export function getSaleInvoices(params?: any) { return get('/sale/invoice', params) }
+export function getSaleInvoice(id: number) { return get(`/sale/invoice/${id}`) }
+export function createSaleInvoice(data: any) { return post('/sale/invoice', data) }

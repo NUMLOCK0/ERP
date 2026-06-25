@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <el-card>
       <SearchForm :model="searchForm" @search="handleSearch" @reset="handleReset">
@@ -44,7 +44,7 @@
           <template #default="{ row }"><el-tag :type="statusTagType(row.status)" size="small">{{ statusText(row.status) }}</el-tag></template>
         </el-table-column>
         <el-table-column prop="category_name" label="产品分类" min-width="120" show-overflow-tooltip />
-        <el-table-column prop="id" label="产品id" width="90" />
+        <el-table-column prop="id" label="产品ID" width="90" />
         <el-table-column label="是否多规格" width="110">
           <template #default="{ row }">
             <el-tag :type="row.is_multi_spec ? 'success' : 'info'" size="small">{{ row.is_multi_spec ? '是' : '否' }}</el-tag>
@@ -57,11 +57,18 @@
         <el-table-column label="更新时间" width="170">
           <template #default="{ row }">{{ formatDateTime(row.updated_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="210" fixed="right">
+        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link :icon="View" @click="handleDetail(row)">详情</el-button>
-            <el-button type="primary" link :icon="Edit" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link :icon="Delete" @click="handleDelete(row)">删除</el-button>
+            <el-button type="primary" link @click="handleDetail(row)">详情</el-button>
+            <el-dropdown trigger="hover">
+              <el-button type="primary" link>更多</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="handleEdit(row)">编辑</el-dropdown-item>
+                  <el-dropdown-item @click="handleDelete(row)">删除</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -96,7 +103,7 @@
                 </el-select>
               </el-form-item>
               <el-form-item label="简述" prop="description">
-                <el-input v-model="form.description" maxlength="160" placeholder="简述格式最多160个字符" />
+                <el-input v-model="form.description" maxlength="160" placeholder="简述格式最大160个字符" />
               </el-form-item>
               <el-form-item label="产品图片">
                 <el-upload
@@ -151,7 +158,7 @@
                 <el-table-column label="重量(kg)" width="130">
                   <template #default="{ row }"><el-input-number v-model="row.weight" :min="0" :precision="2" :controls="false" placeholder="重量" /></template>
                 </el-table-column>
-                <el-table-column label="体积(m³)" width="130">
+                <el-table-column label="体积(m3)" width="130">
                   <template #default="{ row }"><el-input-number v-model="row.volume" :min="0" :precision="2" :controls="false" placeholder="体积" /></template>
                 </el-table-column>
                 <el-table-column label="零售价" width="130">
@@ -160,15 +167,24 @@
                 <el-table-column label="成本价" width="130">
                   <template #default="{ row }"><el-input-number v-model="row.cost_price" :min="0" :precision="2" :controls="false" placeholder="成本价" /></template>
                 </el-table-column>
-                <el-table-column v-for="level in memberLevels" :key="level.id" :label="level.name" width="150">
-                  <template #default="{ row }">
-                    <el-input-number v-model="row.member_prices[level.id]" :min="0" :precision="2" :controls="false" :placeholder="`${level.name}价格`" />
-                  </template>
-                </el-table-column>
+                <template v-for="level in memberLevels" :key="level.id">
+                  <el-table-column :label="level.name" width="150">
+                    <template #default="{ row }">
+                      <el-input-number v-model="row.member_prices[level.id]" :min="0" :precision="2" :controls="false" :placeholder="`${level.name}价格`" />
+                    </template>
+                  </el-table-column>
+                </template>
                 <el-table-column label="操作" width="120" fixed="right">
                   <template #default="{ row, $index }">
-                    <el-button type="primary" link @click="copyUnitRow(row)">复制</el-button>
-                    <el-button v-if="unitRows.length > 1 && !row.is_base" type="danger" link @click="removeUnitRow($index)">移除</el-button>
+                    <el-dropdown trigger="hover">
+                      <el-button type="primary" link>更多</el-button>
+                      <template #dropdown>
+                        <el-dropdown-menu>
+                          <el-dropdown-item @click="copyUnitRow(row)">复制</el-dropdown-item>
+                          <el-dropdown-item v-if="unitRows.length > 1 && !row.is_base" @click="removeUnitRow($index)">移除</el-dropdown-item>
+                        </el-dropdown-menu>
+                      </template>
+                    </el-dropdown>
                   </template>
                 </el-table-column>
               </el-table>
@@ -188,9 +204,9 @@
                   <el-input v-model="unitMeta.bmCode" placeholder="bm{id}******" clearable @focus="codeRuleFocused = true" @blur="codeRuleFocused = false" />
                   <div v-if="codeRuleFocused" class="code-rule-tip">
                     <div>bm{id}******</div>
-                    <div>1. {id}为当前产品id，强烈建议保留{id}规则</div>
-                    <div>2. 星号则表示自动生成，位数表示生成的长度</div>
-                    <div>3. 仅添加数据执行自动生成</div>
+                    <div>1. {id}为当前产品id，建议保留{id}规则</div>
+                    <div>2. 星号表示自动生成，位数表示生成长度</div>
+                    <div>3. 仅添加数据时执行自动生成</div>
                   </div>
                 </div>
                 <el-input v-model="unitMeta.remark" placeholder="备注" />
@@ -271,7 +287,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
-import { CopyDocument, Delete, Download, Edit, Plus, QuestionFilled, Upload, View } from '@element-plus/icons-vue'
+import { CopyDocument, Download, Plus, QuestionFilled, Upload } from '@element-plus/icons-vue'
 import { getProducts, getProduct, createProduct, updateProduct, deleteProduct } from '@/api/product'
 import { getCategories } from '@/api/category'
 import { getBrands } from '@/api/brand'
@@ -329,11 +345,11 @@ const form = reactive({
 })
 const formRules = {
   name: [
-    { required: true, message: '请输入标题', trigger: 'blur' },
-    { min: 1, max: 120, message: '标题格式1~120个字符', trigger: 'blur' }
+    { required: true, message: '请输入产品名称', trigger: 'blur' },
+    { min: 1, max: 120, message: '名称长度为1~120个字符', trigger: 'blur' }
   ],
   category_id: [{ required: true, message: '请选择产品分类', trigger: 'change' }],
-  description: [{ max: 160, message: '简述最多160个字符', trigger: 'blur' }],
+  description: [{ max: 160, message: '简述不超过160个字符', trigger: 'blur' }],
   status: [{ required: true, message: '请选择状态', trigger: 'change' }]
 }
 const unitMeta = reactive({ defaultWarehouseId: null as number | null, spec: '', bmCode: '', remark: '' })
@@ -576,7 +592,7 @@ async function handleSubmit() {
   if (!valid) return
   if (!unitRows.value.length || !unitRows.value[0].unit_id) {
     activeTab.value = 'units'
-    ElMessage.warning('请选择至少一个计量单位')
+    ElMessage.warning('请至少选择一个计量单位')
     return
   }
   const payload = buildPayload()
@@ -654,8 +670,8 @@ function removeProductImage() {
   form.image_urls = []
 }
 
-function handleImport() { ElMessage.info('导入功能请调用后端产品导入接口') }
-function handleExport() { ElMessage.info('导出功能请调用后端产品导出接口') }
+function handleImport() { ElMessage.info('导入功能开发中') }
+function handleExport() { ElMessage.info('导出功能开发中') }
 
 onMounted(async () => {
   fetchData()

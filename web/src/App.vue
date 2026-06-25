@@ -15,4 +15,22 @@ html, body, #app {
   height: 100%;
   font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
 }
+
+.el-table__body td:has(.el-dropdown) .cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.el-table__body td:has(.el-dropdown) .cell > .el-button,
+.el-table__body td:has(.el-dropdown) .cell > .el-dropdown {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.el-table__body td:has(.el-dropdown) .cell .el-button.is-link {
+  height: 24px;
+  padding: 0;
+}
 </style>

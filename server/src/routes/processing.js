@@ -2,13 +2,15 @@
 const router = express.Router();
 const { getPool } = require('../database');
 const Response = require('../utils/response');
+const { generateBusinessNo, generateTempBusinessNo } = require('../utils/bizNo');
 
 const PROCESSING_STATUS = {
   DRAFT: 0,
   PROCESSING: 1,
   INBOUNDED: 2,
   CANCELED: 3,
-  PENDING_INBOUND: 4
+  PENDING_INBOUND: 4,
+  CLOSED: 5
 };
 
 const STAGES = [
@@ -688,6 +690,46 @@ router.post('/order/:id/cancel', async (req, res) => {
   }
 });
 
+router.post('/order/:id/close', async (req, res) => {
+  const conn = await getPool().getConnection();
+  try {
+    await conn.beginTransaction();
+    const [rows] = await conn.execute('SELECT * FROM herb_processing_order WHERE id = ? FOR UPDATE', [req.params.id]);
+    const order = rows[0];
+    if (!order) throw new Error('加工批次不存在');
+    if (Number(order.status) !== PROCESSING_STATUS.PROCESSING) throw new Error('仅加工中的批次允许关闭');
+
+    const [inboundRows] = await conn.execute(
+      'SELECT id FROM herb_processing_inbound_item WHERE order_id = ? LIMIT 1',
+      [order.id]
+    );
+    if (inboundRows.length) throw new Error('该批次已生成入库记录，不能关闭');
+
+    await updateStock(
+      conn,
+      order.source_product_id,
+      order.source_warehouse_id,
+      Number(order.source_quantity),
+      'herb_processing_return',
+      order.batch_no,
+      '加工批次关闭，原包货退回库存'
+    );
+    await conn.execute(
+      'UPDATE herb_processing_order SET status = ?, close_time = NOW() WHERE id = ?',
+      [PROCESSING_STATUS.CLOSED, order.id]
+    );
+
+    await conn.commit();
+    await writeSystemLog(getPool(), req.user.id, '加工管理', '关闭加工批次并退回库存', order.batch_no);
+    res.json(Response.success());
+  } catch (err) {
+    await conn.rollback();
+    res.json(Response.error(err.message));
+  } finally {
+    conn.release();
+  }
+});
+
 router.delete('/order/:id', async (req, res) => {
   const conn = await getPool().getConnection();
   try {
@@ -860,31 +902,11 @@ async function updateStock(conn, productId, warehouseId, quantity, changeType, r
 }
 
 async function generateTempNo(conn) {
-  for (let i = 0; i < 20; i += 1) {
-    const no = `TMP-HP-${Date.now()}-${randomChars(6)}`;
-    const [rows] = await conn.execute('SELECT id FROM herb_processing_order WHERE batch_no = ? LIMIT 1', [no]);
-    if (!rows.length) return no;
-  }
-  return `TMP-HP-${Date.now()}-${randomChars(8)}`;
+  return generateTempBusinessNo(conn, 'herb_processing_order');
 }
 
 async function generateBatchNo(conn, orderId) {
-  const now = new Date();
-  const date = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-  const time = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
-  for (let i = 0; i < 20; i += 1) {
-    const no = `JG${date}${time}${orderId}${randomChars(4)}`;
-    const [rows] = await conn.execute('SELECT id FROM herb_processing_order WHERE batch_no = ? AND id <> ? LIMIT 1', [no, orderId]);
-    if (!rows.length) return no;
-  }
-  return `JG${date}${time}${orderId}${randomChars(6)}`;
-}
-
-function randomChars(length) {
-  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  let text = '';
-  for (let i = 0; i < length; i += 1) text += chars[Math.floor(Math.random() * chars.length)];
-  return text;
+  return generateBusinessNo(conn, 'herb_processing_order', { id: orderId });
 }
 
 function sumBy(rows, key) {

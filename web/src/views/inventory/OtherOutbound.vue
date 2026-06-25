@@ -10,7 +10,7 @@
         <el-form ref="formRef" :model="form" :rules="formRules" label-width="96px" class="outbound-form">
           <div class="outbound-form-grid">
             <el-form-item label="出库单号" required>
-              <el-input v-model="form.outbound_no" disabled />
+              <el-input v-model="form.outbound_no" />
             </el-form-item>
             <el-form-item label="仓库" prop="warehouse_id" required>
               <el-select v-model="form.warehouse_id" placeholder="请选择..." clearable filterable>
@@ -125,7 +125,14 @@
             </el-table-column>
             <el-table-column label="操作" width="90" fixed="right">
               <template #default="{ $index }">
-                <el-button type="danger" link @click="removeItem($index)">移除</el-button>
+                <el-dropdown trigger="hover">
+                  <el-button type="primary" link>更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item @click="removeItem($index)">移除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </template>
             </el-table-column>
           </el-table>
@@ -140,8 +147,15 @@
             </el-table-column>
             <el-table-column label="操作" width="90">
               <template #default="{ row }">
-                <el-button v-if="isProductAdded(row.id)" type="danger" link @click="removeProductById(row.id)">移除</el-button>
-                <el-button v-else type="primary" link @click="addProduct(row)">添加</el-button>
+                <el-dropdown trigger="hover">
+                  <el-button type="primary" link>更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item v-if="isProductAdded(row.id)" @click="removeProductById(row.id)">移除</el-dropdown-item>
+                      <el-dropdown-item v-else @click="addProduct(row)">添加</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </template>
             </el-table-column>
           </el-table>
@@ -319,7 +333,7 @@
         </el-table-column>
         <el-table-column label="操作" width="110" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link :icon="View" @click="handleView(row)">查看详情</el-button>
+            <el-button type="primary" link :icon="View" @click="handleView(row)">详情</el-button>
           </template>
         </el-table-column>
       </el-table>

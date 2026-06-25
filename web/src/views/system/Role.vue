@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <el-card>
       <div class="toolbar"><el-button type="primary" :icon="Plus" @click="handleAdd">新增角色</el-button></div>
@@ -13,10 +13,17 @@
         <el-table-column label="创建时间" width="180">
           <template #default="{ row }">{{ $formatDateTime(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
+            <el-dropdown trigger="hover">
+              <el-button type="primary" link>更多</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="handleEdit(row)">编辑</el-dropdown-item>
+                  <el-dropdown-item @click="handleDelete(row)">删除</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -50,13 +57,12 @@ const checkedKeys = ref<number[]>([])
 const permTree = [
   { id: 1, label: '仪表盘', children: [] },
   { id: 2, label: '基础数据', children: [{ id: 21, label: '产品管理' },{ id: 22, label: '产品分类' },{ id: 23, label: '品牌管理' },{ id: 24, label: '计量单位' },{ id: 25, label: '职员管理' },{ id: 26, label: '仓库管理' }] },
-  { id: 3, label: '采购管理', children: [{ id: 31, label: '采购订单' },{ id: 32, label: '采购入库' },{ id: 33, label: '采购退货' }] },
-  { id: 4, label: '销售管理', children: [{ id: 41, label: '销售订单' },{ id: 42, label: '销售发货' },{ id: 43, label: '发货退货' }] },
+  { id: 3, label: '采购管理', children: [{ id: 31, label: '采购订单' },{ id: 32, label: '采购入库' },{ id: 33, label: '采购退货' },{ id: 34, label: '采购付款' }] },
+  { id: 4, label: '销售管理', children: [{ id: 41, label: '销售订单' },{ id: 42, label: '销售发货' },{ id: 43, label: '销售退货' },{ id: 44, label: '销售收款' }] },
   { id: 5, label: '库存管理', children: [{ id: 51, label: '库存查询' },{ id: 52, label: '其他入库' },{ id: 53, label: '其他出库' },{ id: 54, label: '库存盘点' },{ id: 55, label: '库存调拨' },{ id: 56, label: '库存日志' }] },
-  { id: 6, label: '资金账单', children: [{ id: 61, label: '采购付款' },{ id: 62, label: '销售收款' }] },
-  { id: 7, label: '数据报表', children: [{ id: 71, label: '产品库存' },{ id: 72, label: '销售发货' },{ id: 73, label: '采购入库' },{ id: 74, label: '采购订单' },{ id: 75, label: '销售订单' },{ id: 76, label: '销售收款' },{ id: 77, label: '采购付款' }] },
+  { id: 7, label: '资金账单', children: [{ id: 71, label: '采购付款单' },{ id: 72, label: '销售收款单' },{ id: 73, label: '资金流水' },{ id: 74, label: '资金统计' },{ id: 75, label: '发票管理' },{ id: 76, label: '对账管理' },{ id: 77, label: '资金报表' }] },
   { id: 8, label: '客商管理', children: [{ id: 81, label: '企业管理' },{ id: 82, label: '企业分类' }] },
-  { id: 9, label: '系统配置', children: [{ id: 91, label: '系统设置' },{ id: 92, label: '管理员' },{ id: 93, label: '角色管理' },{ id: 94, label: '打印模板' },{ id: 95, label: '操作日志' }] },
+  { id: 9, label: '数据报表', children: [{ id: 91, label: '产品库存' },{ id: 92, label: '销售报表' },{ id: 93, label: '采购报表' },{ id: 94, label: '库存报表' },{ id: 95, label: '财务报表' }] },
 ]
 
 function onCheck() { form.permissions = treeRef.value!.getCheckedKeys(false) as string[] }
@@ -68,7 +74,7 @@ function handleEdit(row: any) {
   const perms: string[] = typeof row.permissions === 'string' ? JSON.parse(row.permissions||'[]') : row.permissions || []
   Object.assign(form, { ...row, permissions: perms }); checkedKeys.value = perms.map(Number); dialogVisible.value = true
 }
-async function handleDelete(row: any) { await ElMessageBox.confirm('确认删除？', '提示', { type: 'warning' }); await deleteRole(row.id); ElMessage.success('已删除'); fetchData() }
+async function handleDelete(row: any) { await ElMessageBox.confirm('确认删除该角色？', '提示', { type: 'warning' }); await deleteRole(row.id); ElMessage.success('删除成功'); fetchData() }
 async function handleSubmit() {
   const valid = await formRef.value!.validate().catch(() => false); if (!valid) return
   if (form.id) { await updateRole(form.id, form) } else { await createRole(form) }

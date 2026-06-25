@@ -20,6 +20,18 @@
           </div>
         </el-form-item>
 
+        <el-divider content-position="left">编号公式配置</el-divider>
+        <el-alert
+          class="formula-tip"
+          type="info"
+          :closable="false"
+          show-icon
+          title="可用占位：{date}、{time}、{datetime}、{id}、{id:4}、{seq}、{seq:4}、{random:6}，也可以用 ****** 表示 6 位随机码。"
+        />
+        <el-form-item v-for="item in noFormulaItems" :key="item.key" :label="item.label">
+          <el-input v-model="form[item.key]" :placeholder="item.placeholder" />
+        </el-form-item>
+
         <el-form-item><el-button type="primary" @click="handleSave">保存设置</el-button></el-form-item>
       </el-form>
     </el-card>
@@ -38,6 +50,22 @@ const auditModules = [
   { key: 'audit_inventory_transfer_enabled', label: '库存调拨', description: '关闭后新增调拨单会直接完成跨仓库调拨。' }
 ] as const
 
+const noFormulaItems = [
+  { key: 'no_formula_purchase_order', label: '采购订单号', placeholder: 'P{date}{time}{id}{random:6}' },
+  { key: 'no_formula_purchase_inbound', label: '采购入库单号', placeholder: 'PE{date}{time}{id}{random:6}' },
+  { key: 'no_formula_purchase_return', label: '采购退货单号', placeholder: 'PR{date}{time}{id}{random:6}' },
+  { key: 'no_formula_sale_order', label: '销售订单号', placeholder: 'S{date}{time}{seq:4}{random:4}' },
+  { key: 'no_formula_sale_delivery', label: '销售发货单号', placeholder: 'FH{date}{time}{seq:4}{random:4}' },
+  { key: 'no_formula_sale_return', label: '销售退货单号', placeholder: 'XT{date}{time}{seq:4}{random:4}' },
+  { key: 'no_formula_inventory_check', label: '库存盘点单号', placeholder: 'PD{date}{time}{seq:4}{random:4}' },
+  { key: 'no_formula_inventory_transfer', label: '库存调拨单号', placeholder: 'DB{date}{time}{seq:4}{random:4}' },
+  { key: 'no_formula_other_inbound', label: '其他入库单号', placeholder: 'QT{date}{time}{seq:4}{random:4}' },
+  { key: 'no_formula_other_outbound', label: '其他出库单号', placeholder: 'QC{date}{time}{seq:4}{random:4}' },
+  { key: 'no_formula_finance_payment', label: '采购付款单号', placeholder: 'FK{date}{time}{id}{random:6}' },
+  { key: 'no_formula_finance_receipt', label: '销售收款单号', placeholder: 'SK{date}{time}{seq:4}{random:4}' },
+  { key: 'no_formula_herb_processing_order', label: '加工批次号', placeholder: 'JG{date}{time}{id}{random:4}' }
+] as const
+
 const form = reactive<Record<string, any>>({
   site_name: '进销存管理系统',
   logo_url: '',
@@ -47,7 +75,20 @@ const form = reactive<Record<string, any>>({
   audit_purchase_order_enabled: true,
   audit_sale_order_enabled: true,
   audit_inventory_check_enabled: true,
-  audit_inventory_transfer_enabled: false
+  audit_inventory_transfer_enabled: false,
+  no_formula_purchase_order: 'P{date}{time}{id}{random:6}',
+  no_formula_purchase_inbound: 'PE{date}{time}{id}{random:6}',
+  no_formula_purchase_return: 'PR{date}{time}{id}{random:6}',
+  no_formula_sale_order: 'S{date}{time}{seq:4}{random:4}',
+  no_formula_sale_delivery: 'FH{date}{time}{seq:4}{random:4}',
+  no_formula_sale_return: 'XT{date}{time}{seq:4}{random:4}',
+  no_formula_inventory_check: 'PD{date}{time}{seq:4}{random:4}',
+  no_formula_inventory_transfer: 'DB{date}{time}{seq:4}{random:4}',
+  no_formula_other_inbound: 'QT{date}{time}{seq:4}{random:4}',
+  no_formula_other_outbound: 'QC{date}{time}{seq:4}{random:4}',
+  no_formula_finance_payment: 'FK{date}{time}{id}{random:6}',
+  no_formula_finance_receipt: 'SK{date}{time}{seq:4}{random:4}',
+  no_formula_herb_processing_order: 'JG{date}{time}{id}{random:4}'
 })
 
 onMounted(async () => {
@@ -94,5 +135,8 @@ function toBoolean(value: any, defaultValue = true) {
 .audit-setting-desc {
   color: #606266;
   font-size: 13px;
+}
+.formula-tip {
+  margin-bottom: 16px;
 }
 </style>

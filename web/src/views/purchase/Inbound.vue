@@ -69,10 +69,17 @@
         <el-table-column label="更新时间" width="170">
           <template #default="{ row }">{{ formatDateTime(row.updated_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="140" fixed="right">
+        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link :icon="View" @click="handleView(row)">详情</el-button>
-            <el-button v-if="Number(row.status) === 0" type="success" link @click="handleComplete(row)">入库</el-button>
+            <el-button type="primary" link @click="handleView(row)">详情</el-button>
+            <el-dropdown v-if="Number(row.status) === 0" trigger="hover">
+              <el-button type="primary" link>更多</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="handleComplete(row)">入库</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -135,7 +142,6 @@
 import TableColumnTools from '@/components/TableColumnTools.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { View } from '@element-plus/icons-vue'
 import { completePurchaseInbound, getPurchaseInbound, getPurchaseInbounds } from '@/api/purchase'
 import { getSuppliers } from '@/api/supplier'
 import SearchForm from '@/components/SearchForm.vue'

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="check-add-page">
     <div class="page-title">
       <el-button link :icon="Back" @click="router.push('/inventory/check')" />
@@ -9,17 +9,17 @@
     <el-form ref="formRef" :model="form" :rules="rules" label-width="110px" class="check-form">
       <div class="form-grid">
         <el-form-item label="盘点单号" required>
-          <el-input v-model="form.check_no" disabled />
+          <el-input v-model="form.check_no" />
         </el-form-item>
         <el-form-item label="仓库" prop="warehouse_id">
           <el-select v-model="form.warehouse_id" placeholder="请选择..." filterable @change="handleWarehouseChange">
             <el-option v-for="item in warehouses" :key="item.id" :label="item.name" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="盘点状态" prop="status">
+        <el-form-item label="状态" prop="status">
           <el-select v-model="form.status" placeholder="请选择...">
-            <el-option label="待盘点" :value="0" />
-            <el-option label="审核中" :value="4" />
+            <el-option label="草稿" :value="0" />
+            <el-option label="待审核" :value="4" />
           </el-select>
         </el-form-item>
         <el-form-item label="盘点人员">
@@ -40,7 +40,7 @@
 
       <div class="product-toolbar">
         <el-button type="primary" plain @click="openProductDrawer">选择产品</el-button>
-        <el-input v-model="quickKeyword" clearable placeholder="产品ID/编码/条形码">
+        <el-input v-model="quickKeyword" clearable placeholder="??ID/??/???">
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
         <el-button type="primary" :icon="Plus" @click="addFirstQuickProduct">添加</el-button>
@@ -68,7 +68,7 @@
           <template #default="{ row }">{{ formatQuantity(row.book_quantity) }}</template>
         </el-table-column>
         <el-table-column label="盘点后库存" width="150" align="right">
-          <template #header><span>盘点后库存 <span class="edit-mark">✎</span></span></template>
+          <template #header><span>盘点后库存<span class="edit-mark">✏</span></span></template>
           <template #default="{ row }">
             <el-input-number
               v-model="row.actual_quantity"
@@ -88,7 +88,14 @@
         </el-table-column>
         <el-table-column label="操作" width="80" fixed="right">
           <template #default="{ $index }">
-            <el-button type="danger" link @click="form.items.splice($index, 1)">移除</el-button>
+            <el-dropdown trigger="hover">
+              <el-button type="primary" link>更多</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="form.items.splice($index, 1)">移除</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -115,7 +122,7 @@
         <el-select v-model="drawerFilters.brand_id" placeholder="品牌..." clearable filterable>
           <el-option v-for="item in brands" :key="item.id" :label="item.name" :value="item.id" />
         </el-select>
-        <el-input v-model="drawerFilters.keyword" clearable placeholder="产品名称/首字母/简述/编码">
+        <el-input v-model="drawerFilters.keyword" clearable placeholder="产品名称/首字母/简称/编码">
           <template #append>
             <el-button :icon="Search">搜索</el-button>
           </template>
@@ -145,7 +152,7 @@
                 <el-option :label="productUnitName(row)" :value="productUnitName(row)" />
               </el-select>
               <el-tooltip
-                :content="form.warehouse_id ? `当前仓库库存：${formatQuantity(stockQuantity(row.id))}` : '选择仓库后显示库存'"
+                :content="form.warehouse_id ? `当前库存${formatQuantity(stockQuantity(row.id))}` : '请先选择仓库'"
                 placement="top"
               >
                 <el-icon class="unit-cube"><Box /></el-icon>
@@ -162,8 +169,15 @@
         <el-table-column prop="code" label="编码" width="150" show-overflow-tooltip />
         <el-table-column label="操作" width="90" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="isProductAdded(row.id)" type="danger" link @click="removeProductById(row.id)">移除</el-button>
-            <el-button v-else type="primary" link @click="addProduct(row)">选择</el-button>
+            <el-dropdown trigger="hover">
+              <el-button type="primary" link>更多</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-if="isProductAdded(row.id)" @click="removeProductById(row.id)">移除</el-dropdown-item>
+                  <el-dropdown-item v-else @click="addProduct(row)">选择</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -233,7 +247,7 @@ const form = reactive({
 })
 const rules: FormRules = {
   warehouse_id: [{ required: true, message: '请选择仓库', trigger: 'change' }],
-  status: [{ required: true, message: '请选择盘点状态', trigger: 'change' }],
+  status: [{ required: true, message: '请选择状态', trigger: 'change' }],
   check_time: [{ required: true, message: '请选择盘点时间', trigger: 'change' }]
 }
 const stockMap = computed(() => {
@@ -335,7 +349,7 @@ async function submitForm(submit: boolean) {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   if (!form.items.length) {
-    ElMessage.warning('请至少选择一个产品')
+    ElMessage.warning('?????????')
     return
   }
   form.status = submit ? 4 : 0
@@ -354,7 +368,7 @@ async function submitForm(submit: boolean) {
         remark: item.remark
       }))
     })
-    ElMessage.success(submit ? '盘点单提交成功' : '盘点单保存成功')
+    ElMessage.success(submit ? '???????' : '???????')
     router.push('/inventory/check')
   } finally {
     submitting.value = false
@@ -464,7 +478,7 @@ function windowPrint() {
 }
 
 function printAsPdf() {
-  ElMessage.info('请在打印窗口中选择“另存为 PDF”')
+  ElMessage.info('???????????? PDF')
   window.print()
 }
 

@@ -10,9 +10,7 @@
         <el-form ref="formRef" :model="form" :rules="formRules" label-width="96px" :disabled="editorMode === 'view'" class="purchase-form">
           <div class="purchase-form-grid">
             <el-form-item label="采购单号" required>
-              <el-input v-model="form.order_no" placeholder="P{date}{time}{id}******" :disabled="editorMode !== 'add'">
-                <template v-if="editorMode !== 'add'" #append><CopyableNo :value="form.order_no" icon-only /></template>
-              </el-input>
+              <el-input v-model="form.order_no" placeholder="P{date}{time}{id}******" />
             </el-form-item>
             <el-form-item label="供应商" prop="supplier_id" required>
               <el-select v-model="form.supplier_id" placeholder="请选择..." clearable filterable @change="handleSupplierChange">
@@ -111,12 +109,20 @@
                 <el-input-number v-model="row.price" :min="0" :precision="2" :controls="false" @change="recalculateRow(row)" />
               </template>
             </el-table-column>
-            <el-table-column label="税金" width="120" align="right">
+            <el-table-column label="税率" width="110" align="right">
               <template #header>
-                <span>税金 <span class="edit-mark">✎</span> <span class="help-dot">?</span></span>
+                <span>税率 <span class="edit-mark">✎</span></span>
               </template>
               <template #default="{ row }">
-                <el-input-number v-model="row.tax" :min="0" :precision="2" :controls="false" @change="recalculateRow(row)" />
+                <el-input-number v-model="row.tax_rate" :min="0" :max="100" :precision="2" :controls="false" @change="recalculateRow(row)" />
+              </template>
+            </el-table-column>
+            <el-table-column label="税金" width="120" align="right">
+              <template #header>
+                <span>税金 <span class="edit-mark">✎</span></span>
+              </template>
+              <template #default="{ row }">
+                <el-input-number v-model="row.tax" :min="0" :precision="2" :controls="false" @change="recalculateRow(row, false)" />
               </template>
             </el-table-column>
             <el-table-column label="采购总价" width="130" align="right">
@@ -129,7 +135,14 @@
             </el-table-column>
             <el-table-column label="操作" width="90" fixed="right">
               <template #default="{ $index }">
-                <el-button type="danger" link @click="removeItem($index)">移除</el-button>
+                <el-dropdown trigger="hover">
+                  <el-button type="primary" link>更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item @click="removeItem($index)">移除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </template>
             </el-table-column>
           </el-table>
@@ -153,8 +166,15 @@
             </el-table-column>
             <el-table-column label="操作" width="90" fixed="right">
               <template #default="{ row }">
-                <el-button v-if="isProductAdded(row.id)" type="danger" link @click="removeProductById(row.id)">移除</el-button>
-                <el-button v-else type="primary" link @click="addProduct(row)">添加</el-button>
+                <el-dropdown trigger="hover">
+                  <el-button type="primary" link>更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item v-if="isProductAdded(row.id)" @click="removeProductById(row.id)">移除</el-dropdown-item>
+                      <el-dropdown-item v-else @click="addProduct(row)">添加</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </template>
             </el-table-column>
           </el-table>
@@ -223,8 +243,15 @@
           <el-table-column prop="code" label="编码" width="150" show-overflow-tooltip />
           <el-table-column label="操作" width="90" fixed="right">
             <template #default="{ row }">
-              <el-button v-if="isProductAdded(row.id)" type="danger" link @click="removeProductById(row.id)">移除</el-button>
-              <el-button v-else type="primary" link @click="addProduct(row, selectorState(row).quantity)">选择</el-button>
+              <el-dropdown trigger="hover">
+                <el-button type="primary" link>更多</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item v-if="isProductAdded(row.id)" @click="removeProductById(row.id)">移除</el-dropdown-item>
+                    <el-dropdown-item v-else @click="addProduct(row, selectorState(row).quantity)">选择</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </template>
           </el-table-column>
         </el-table>
@@ -248,9 +275,7 @@
         <el-form label-width="96px" class="purchase-form">
           <div class="purchase-form-grid confirm-form-grid">
             <el-form-item label="采购单号">
-              <el-input v-model="confirmForm.order_no" disabled>
-                <template #append><CopyableNo :value="confirmForm.order_no" icon-only /></template>
-              </el-input>
+              <el-input v-model="confirmForm.order_no" />
             </el-form-item>
             <el-form-item label="供应商">
               <el-select v-model="confirmForm.supplier_id" disabled>
@@ -338,9 +363,7 @@
         <el-form label-width="96px" class="purchase-form">
           <div class="purchase-form-grid confirm-form-grid">
             <el-form-item label="入库单号" required>
-              <el-input v-model="inboundForm.inbound_no" disabled>
-                <template #append><CopyableNo :value="inboundForm.inbound_no" icon-only /></template>
-              </el-input>
+              <el-input v-model="inboundForm.inbound_no" />
             </el-form-item>
             <el-form-item label="仓库" required>
               <el-select v-model="inboundForm.warehouse_id" placeholder="请选择..." clearable filterable>
@@ -421,9 +444,7 @@
         <el-form label-width="96px" class="purchase-form">
           <div class="purchase-form-grid confirm-form-grid">
             <el-form-item label="退货单号" required>
-              <el-input v-model="returnForm.return_no" disabled>
-                <template #append><CopyableNo :value="returnForm.return_no" icon-only /></template>
-              </el-input>
+              <el-input v-model="returnForm.return_no" />
             </el-form-item>
             <el-form-item label="退货状态" required>
               <el-select v-model="returnForm.return_status" placeholder="请选择..." clearable>
@@ -638,10 +659,8 @@
           <el-table-column label="操作" width="150" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" link @click="handleView(row)">详情</el-button>
-              <el-dropdown trigger="click" @command="handleOrderCommand(String($event), row)">
-                <el-button type="primary" link>
-                  操作<el-icon class="operation-more"><MoreFilled /></el-icon>
-                </el-button>
+              <el-dropdown trigger="hover" @command="handleOrderCommand(String($event), row)">
+                <el-button type="primary" link>更多</el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
                     <el-dropdown-item v-for="action in orderActions(row)" :key="action.command" :command="action.command">
@@ -735,7 +754,7 @@
 import TableColumnTools from '@/components/TableColumnTools.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
-import { Box, MoreFilled, Plus, Search } from '@element-plus/icons-vue'
+import { Box, Plus, Search } from '@element-plus/icons-vue'
 import {
   auditPurchaseOrder,
   cancelPurchaseOrder,
@@ -774,6 +793,7 @@ interface PurchaseItem {
   base_quantity: number
   quantity: number
   price: number
+  tax_rate: number
   tax: number
   amount: number
   remark: string
@@ -1022,6 +1042,7 @@ function normalizeOrderItems(items: any[]) {
     base_quantity: Number(item.base_quantity || 1),
     quantity: Number(item.quantity || 1),
     price: Number(item.price || 0),
+    tax_rate: Number(item.tax_rate ?? inferTaxRate(item)),
     tax: Number(item.tax || 0),
     amount: Number(item.amount || 0),
     remark: item.remark || '',
@@ -1052,6 +1073,7 @@ function createItem(partial: Partial<PurchaseItem> = {}): PurchaseItem {
     base_quantity: partial.base_quantity ?? 1,
     quantity: partial.quantity ?? 1,
     price: partial.price ?? 0,
+    tax_rate: partial.tax_rate ?? 13,
     tax: partial.tax ?? 0,
     amount: partial.amount ?? 0,
     remark: partial.remark ?? '',
@@ -1121,7 +1143,8 @@ function fillRowFromProduct(row: PurchaseItem, product: any, quantity = 1) {
   row.base_quantity = productBaseQuantity(product)
   row.quantity = Number(quantity || row.quantity || 1)
   row.price = productPrice(product)
-  row.tax = row.tax || 0
+  row.tax_rate = row.tax_rate ?? 13
+  row.tax = calculateTax(row.quantity, row.price, row.tax_rate)
   row.final_quantity = row.quantity
   row.final_price = row.price
   row.final_tax = row.tax
@@ -1131,8 +1154,10 @@ function fillRowFromProduct(row: PurchaseItem, product: any, quantity = 1) {
   row.return_amount = row.amount
 }
 
-function recalculateRow(row: PurchaseItem) {
-  row.amount = Number((Number(row.quantity || 0) * Number(row.price || 0) + Number(row.tax || 0)).toFixed(2))
+function recalculateRow(row: PurchaseItem, recalculateTax = true) {
+  row.tax_rate = row.tax_rate ?? 13
+  if (recalculateTax) row.tax = calculateTax(row.quantity, row.price, row.tax_rate)
+  row.amount = calculateLineAmount(row.quantity, row.price)
   row.final_quantity = row.final_quantity || row.quantity
   row.final_price = row.final_price || row.price
   row.final_tax = row.final_tax || row.tax
@@ -1140,7 +1165,24 @@ function recalculateRow(row: PurchaseItem) {
 }
 
 function recalculateFinalRow(row: PurchaseItem) {
-  row.final_amount = Number((Number(row.final_quantity || 0) * Number(row.final_price || 0) + Number(row.final_tax || 0)).toFixed(2))
+  row.final_amount = calculateLineAmount(row.final_quantity, row.final_price)
+}
+
+function calculateTax(quantity: any, price: any, taxRate: any) {
+  const grossAmount = calculateLineAmount(quantity, price)
+  const rate = Number(taxRate || 0)
+  return rate > 0 ? Number((grossAmount * rate / (100 + rate)).toFixed(2)) : 0
+}
+
+function calculateLineAmount(quantity: any, price: any) {
+  return Number((Number(quantity || 0) * Number(price || 0)).toFixed(2))
+}
+
+function inferTaxRate(item: any) {
+  const grossAmount = calculateLineAmount(item.quantity, item.price)
+  const tax = Number(item.tax || 0)
+  if (grossAmount <= 0 || tax <= 0 || tax >= grossAmount) return 13
+  return Number((tax / (grossAmount - tax) * 100).toFixed(2))
 }
 
 function recalculateReturnRow(row: PurchaseItem) {
@@ -1176,6 +1218,7 @@ async function handleSave() {
       base_quantity: Number(item.base_quantity || 1),
       quantity: Number(item.quantity || 0),
       price: Number(item.price || 0),
+      tax_rate: Number(item.tax_rate ?? 13),
       tax: Number(item.tax || 0),
       remark: item.remark || ''
     }))
@@ -1625,9 +1668,6 @@ onMounted(async () => {
   margin-bottom: 16px;
   display: flex;
   gap: 10px;
-}
-.operation-more {
-  margin-left: 4px;
 }
 .search-wide-select {
   width: 240px;

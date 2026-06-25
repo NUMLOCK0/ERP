@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <el-card>
       <div class="toolbar">
@@ -12,10 +12,17 @@
         <el-table-column label="状态" width="80">
           <template #default="{ row }"><el-tag :type="row.status===1?'success':'info'" size="small">{{ row.status===1?'启用':'禁用' }}</el-tag></template>
         </el-table-column>
-        <el-table-column label="操作" width="150">
+        <el-table-column label="操作" width="100">
           <template #default="{ row }">
-            <el-button type="primary" link :icon="Edit" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link :icon="Delete" @click="handleDelete(row)">删除</el-button>
+            <el-dropdown trigger="hover">
+              <el-button type="primary" link>更多</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="handleEdit(row)">编辑</el-dropdown-item>
+                  <el-dropdown-item @click="handleDelete(row)">删除</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -40,7 +47,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
-import { Plus, Edit, Delete } from '@element-plus/icons-vue'
+import { Plus } from '@element-plus/icons-vue'
 import { getWarehouses, createWarehouse, updateWarehouse, deleteWarehouse } from '@/api/warehouse'
 
 const loading = ref(false)
@@ -63,7 +70,7 @@ function handleEdit(row: any) {
   dialogVisible.value = true
 }
 async function handleDelete(row: any) {
-  await ElMessageBox.confirm('确认删除？', '提示', { type: 'warning' })
+  await ElMessageBox.confirm('确认删除该仓库？', '提示', { type: 'warning' })
   await deleteWarehouse(row.id); ElMessage.success('删除成功'); fetchData()
 }
 async function handleSubmit() {

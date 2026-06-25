@@ -98,14 +98,20 @@
         <el-table-column label="更新时间" width="170">
           <template #default="{ row }">{{ formatDateTime(row.updated_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="140" fixed="right">
           <template #default="{ row }">
-            <template v-if="Number(row.status) === 0">
-              <el-button type="success" link @click="openCompleteDialog(row)">退货</el-button>
-              <el-button type="danger" link @click="handleCancel(row)">取消</el-button>
-            </template>
-            <el-button v-else-if="Number(row.status) === 2" type="danger" link @click="handleDelete(row)">删除</el-button>
-            <span v-else>-</span>
+            <el-button type="primary" link @click="handleDetail(row)">详情</el-button>
+            <el-dropdown v-if="[0, 1, 2].includes(Number(row.status))" trigger="hover">
+              <el-button type="primary" link>更多</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-if="Number(row.status) === 0" @click="openCompleteDialog(row)">退货</el-dropdown-item>
+                  <el-dropdown-item v-if="Number(row.status) === 0" @click="handleCancel(row)">取消</el-dropdown-item>
+                  <el-dropdown-item v-if="Number(row.status) === 1" @click="handleRefund(row)">退款</el-dropdown-item>
+                  <el-dropdown-item v-if="Number(row.status) === 2" @click="handleDelete(row)">删除</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -152,12 +158,70 @@
         <el-button type="primary" :loading="completeSubmitting" @click="submitComplete">确认退货</el-button>
       </template>
     </el-dialog>
+
+    <el-drawer v-model="detailDrawerVisible" title="发货退货单详情" size="72%" direction="rtl">
+      <div v-loading="detailLoading" class="return-detail">
+        <el-descriptions title="基础信息" :column="2" border>
+          <el-descriptions-item label="退货单号"><CopyableNo :value="detailData.return_no" /></el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="returnOrderStatusTagType(detailData.status)" size="small">
+              {{ returnOrderStatusText(detailData.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="销售发货单号"><CopyableNo :value="detailData.delivery_no" /></el-descriptions-item>
+          <el-descriptions-item label="销售单号"><CopyableNo :value="detailData.order_no" /></el-descriptions-item>
+          <el-descriptions-item label="客户">{{ emptyText(detailData.customer_name) }}</el-descriptions-item>
+          <el-descriptions-item label="职员">{{ emptyText(detailData.employee_name) }}</el-descriptions-item>
+          <el-descriptions-item label="仓库">{{ emptyText(detailData.warehouse_name) }}</el-descriptions-item>
+          <el-descriptions-item label="退款总额">¥{{ formatMoney(detailTotalAmount) }}</el-descriptions-item>
+          <el-descriptions-item label="联系人">{{ emptyText(detailData.contact) }}</el-descriptions-item>
+          <el-descriptions-item label="联系电话">{{ emptyText(detailData.phone) }}</el-descriptions-item>
+          <el-descriptions-item label="收货地址" :span="2">{{ emptyText(detailData.address) }}</el-descriptions-item>
+          <el-descriptions-item label="快递名称">{{ emptyText(detailData.express_name) }}</el-descriptions-item>
+          <el-descriptions-item label="快递单号">{{ emptyText(detailData.express_no) }}</el-descriptions-item>
+          <el-descriptions-item label="完成时间">{{ formatDateTime(detailData.completed_time) }}</el-descriptions-item>
+          <el-descriptions-item label="取消时间">{{ formatDateTime(detailData.cancel_time) }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ formatDateTime(detailData.created_at) }}</el-descriptions-item>
+          <el-descriptions-item label="更新时间">{{ formatDateTime(detailData.updated_at) }}</el-descriptions-item>
+          <el-descriptions-item label="备注" :span="2">{{ emptyText(detailData.reason) }}</el-descriptions-item>
+        </el-descriptions>
+
+        <div class="detail-section-title">退货商品列表</div>
+        <el-table :data="detailData.items || []" border stripe class="detail-table">
+          <el-table-column type="index" label="#" width="60" />
+          <el-table-column prop="product_name" label="产品名称" min-width="160" show-overflow-tooltip>
+            <template #default="{ row }">{{ emptyText(row.product_name) }}</template>
+          </el-table-column>
+          <el-table-column prop="code" label="编码" width="130" show-overflow-tooltip>
+            <template #default="{ row }">{{ emptyText(row.code) }}</template>
+          </el-table-column>
+          <el-table-column prop="spec" label="规格" width="130" show-overflow-tooltip>
+            <template #default="{ row }">{{ emptyText(row.spec) }}</template>
+          </el-table-column>
+          <el-table-column label="退货数量" width="110" align="right">
+            <template #default="{ row }">{{ formatQuantity(row.quantity) }}</template>
+          </el-table-column>
+          <el-table-column label="单价" width="110" align="right">
+            <template #default="{ row }">¥{{ formatMoney(row.price) }}</template>
+          </el-table-column>
+          <el-table-column label="税金" width="110" align="right">
+            <template #default="{ row }">¥{{ formatMoney(row.tax) }}</template>
+          </el-table-column>
+          <el-table-column label="金额" width="120" align="right">
+            <template #default="{ row }">¥{{ formatMoney(row.amount) }}</template>
+          </el-table-column>
+          <el-table-column prop="remark" label="备注" min-width="160" show-overflow-tooltip>
+            <template #default="{ row }">{{ emptyText(row.remark) }}</template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
 import TableColumnTools from '@/components/TableColumnTools.vue'
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import { RefreshLeft } from '@element-plus/icons-vue'
@@ -166,6 +230,7 @@ import {
   completeSaleReturn,
   deleteSaleReturn,
   getSaleDeliveries,
+  getSaleReturn,
   getSaleReturns
 } from '@/api/sale'
 import { getSuppliers } from '@/api/supplier'
@@ -202,6 +267,14 @@ const completeForm = reactive({ express_name: '', express_no: '', reason: '' })
 const completeRules = {
   reason: [{ max: 200, message: '备注最多200个字符', trigger: 'blur' }]
 }
+
+const detailDrawerVisible = ref(false)
+const detailLoading = ref(false)
+const detailData = ref<any>({})
+const detailTotalAmount = computed(() => {
+  const itemTotal = (detailData.value.items || []).reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0)
+  return itemTotal || detailData.value.refund_total_amount || detailData.value.total_amount || 0
+})
 
 async function fetchData() {
   loading.value = true
@@ -299,6 +372,22 @@ function resetCompleteForm() {
   completeFormRef.value?.clearValidate()
 }
 
+async function handleDetail(row: any) {
+  detailDrawerVisible.value = true
+  detailLoading.value = true
+  detailData.value = {}
+  try {
+    const res: any = await getSaleReturn(row.id)
+    detailData.value = res.data || {}
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+function handleRefund(row: any) {
+  router.push({ name: 'FinanceReceiptCreate', query: { type: 'refund', orderNo: row.return_no, orderId: row.id } })
+}
+
 async function handleCancel(row: any) {
   await ElMessageBox.confirm(`确定取消退货单 ${row.return_no}？取消后将释放已占用的可退数量。`, '取消退货单', {
     type: 'warning',
@@ -372,5 +461,19 @@ onMounted(async () => {
 .complete-form {
   margin-top: 20px;
 }
-</style>
 
+.return-detail {
+  padding-bottom: 24px;
+}
+
+.detail-section-title {
+  margin: 20px 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.detail-table {
+  width: 100%;
+}
+</style>

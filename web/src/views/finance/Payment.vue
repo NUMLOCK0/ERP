@@ -51,6 +51,9 @@
         <el-table-column label="开票状态" width="100">
           <template #default="{ row }"><el-tag :type="invoiceStatusTagType(row.invoice_status)" size="small">{{ invoiceStatusText(row.invoice_status) }}</el-tag></template>
         </el-table-column>
+        <el-table-column label="已开票金额" width="130" align="right">
+          <template #default="{ row }">¥{{ formatMoney(row.invoice_total_amount) }}</template>
+        </el-table-column>
         <el-table-column label="采购总额" width="130" align="right">
           <template #default="{ row }">¥{{ formatMoney(row.purchase_total_amount) }}</template>
         </el-table-column>
@@ -102,12 +105,19 @@
         <el-table-column label="更新时间" width="170">
           <template #default="{ row }">{{ formatDateTime(row.updated_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="190" fixed="right">
+        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button type="info" link @click="openDetailDrawer(row)">查看</el-button>
-            <el-button type="primary" link :disabled="Number(row.status) >= 2" @click="openPayDrawer(row)">付款</el-button>
-            <el-button type="success" link :disabled="Number(row.invoice_status) === 1" @click="openInvoiceDialog(row)">开票</el-button>
-            <el-button v-if="Number(row.status) === 3" type="danger" link @click="handleDelete(row)">删除</el-button>
+            <el-button type="primary" link @click="openDetailDrawer(row)">详情</el-button>
+            <el-dropdown trigger="hover">
+              <el-button type="primary" link>更多</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item :disabled="Number(row.status) >= 2" @click="openPayDrawer(row)">付款</el-dropdown-item>
+                  <el-dropdown-item :disabled="Number(row.invoice_status) === 1" @click="openInvoiceDialog(row)">发票登记</el-dropdown-item>
+                  <el-dropdown-item v-if="Number(row.status) === 3" @click="handleDelete(row)">删除</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -190,7 +200,7 @@
     <el-drawer v-model="invoiceDialogVisible" size="560px" direction="rtl" class="payment-drawer" @close="resetInvoiceForm">
       <template #header>
         <div class="drawer-header">
-          <span>开票</span>
+          <span>采购发票登记</span>
           <el-button type="primary" link :disabled="!invoiceForm.order_id" @click="openPurchaseOrderDetail(invoiceForm.order_id)">查看采购单</el-button>
         </div>
       </template>
@@ -201,23 +211,39 @@
             <template #prefix>¥</template>
           </el-input>
         </el-form-item>
-        <el-form-item label="未付金额">
+        <el-form-item label="已开票金额">
+          <el-input :model-value="formatMoney(invoiceForm.invoiced_amount)" disabled>
+            <template #prefix>¥</template>
+          </el-input>
+        </el-form-item>
+        <el-form-item label="未开票金额">
           <el-input :model-value="formatMoney(invoiceForm.unpaid_amount)" disabled>
             <template #prefix>¥</template>
           </el-input>
         </el-form-item>
-        <el-form-item label="已付金额">
-          <el-input :model-value="formatMoney(invoiceForm.paid_amount)" disabled>
+        <el-form-item label="发票号码">
+          <el-input v-model="invoiceForm.external_invoice_no" maxlength="100" placeholder="请输入发票号码" />
+        </el-form-item>
+        <el-form-item label="开票日期">
+          <el-date-picker v-model="invoiceForm.invoice_date" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择开票日期" />
+        </el-form-item>
+        <el-form-item label="不含税金额" prop="amount">
+          <el-input :model-value="formatMoney(invoiceForm.amount)" disabled>
+            <template #prepend>¥</template>
+          </el-input>
+        </el-form-item>
+        <el-form-item label="税率" prop="tax_rate">
+          <el-input-number v-model="invoiceForm.tax_rate" :min="0" :max="100" :precision="2" :controls="false" @change="recalculateInvoiceTaxFromRate" />
+        </el-form-item>
+        <el-form-item label="税金">
+          <el-input v-model="invoiceForm.tax_amount" type="number" @input="recalculateInvoiceAmountFromTax">
             <template #prefix>¥</template>
           </el-input>
         </el-form-item>
-        <el-form-item label="状态" prop="invoice_status">
-          <el-select v-model="invoiceForm.invoice_status" placeholder="请选择">
-            <el-option label="未开票" :value="0" />
-            <el-option label="开票中" :value="2" />
-            <el-option label="已开票" :value="1" />
-            <el-option label="无需开票" :value="3" />
-          </el-select>
+        <el-form-item label="价税合计">
+          <el-input v-model="invoiceForm.total_amount" type="number" @input="recalculateInvoiceTaxFromRate">
+            <template #prefix>¥</template>
+          </el-input>
         </el-form-item>
         <el-form-item label="备注" prop="invoice_remark">
           <el-input v-model="invoiceForm.invoice_remark" type="textarea" :rows="3" maxlength="300" show-word-limit placeholder="请输入备注" />
@@ -245,7 +271,7 @@
       <template #footer>
         <div class="drawer-footer">
           <el-button @click="invoiceDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleInvoiceSubmit">确认开票</el-button>
+          <el-button type="primary" @click="handleInvoiceSubmit">确认登记</el-button>
         </div>
       </template>
     </el-drawer>
@@ -318,6 +344,24 @@
           </el-table>
         </el-tab-pane>
         <el-tab-pane label="开票附件" name="invoiceAttachments">
+          <el-table border :data="detailPurchaseInvoices" stripe class="detail-item-table invoice-table">
+            <el-table-column prop="invoice_no" label="登记单号" width="180" show-overflow-tooltip />
+            <el-table-column prop="external_invoice_no" label="发票号码" width="150" show-overflow-tooltip>
+              <template #default="{ row }">{{ emptyText(row.external_invoice_no) }}</template>
+            </el-table-column>
+            <el-table-column label="价税合计" width="120" align="right">
+              <template #default="{ row }">¥{{ formatMoney(row.total_amount) }}</template>
+            </el-table-column>
+            <el-table-column label="税金" width="110" align="right">
+              <template #default="{ row }">¥{{ formatMoney(row.tax_amount) }}</template>
+            </el-table-column>
+            <el-table-column label="开票日期" width="170">
+              <template #default="{ row }">{{ formatDateTime(row.invoice_date || row.created_at) }}</template>
+            </el-table-column>
+            <el-table-column prop="remark" label="备注" min-width="140" show-overflow-tooltip>
+              <template #default="{ row }">{{ emptyText(row.remark) }}</template>
+            </el-table-column>
+          </el-table>
           <div v-if="detailInvoiceAttachments.length" class="attachment-list attachment-list-large">
             <button
               v-for="url in detailInvoiceAttachments"
@@ -409,8 +453,8 @@
 import TableColumnTools from '@/components/TableColumnTools.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
-import { deletePayment, getPayment, getPayments, invoicePayment, payPayment } from '@/api/finance'
-import { getPurchaseOrder } from '@/api/purchase'
+import { deletePayment, getPayment, getPayments, payPayment } from '@/api/finance'
+import { createPurchaseInvoice, getPurchaseOrder } from '@/api/purchase'
 import { getSuppliers } from '@/api/supplier'
 import { uploadFile } from '@/api/upload'
 import SearchForm from '@/components/SearchForm.vue'
@@ -455,7 +499,13 @@ const invoiceForm = reactive({
   payable_amount: 0,
   unpaid_amount: 0,
   paid_amount: 0,
-  invoice_status: null as number | null,
+  invoiced_amount: 0,
+  external_invoice_no: '',
+  invoice_date: '',
+  amount: '',
+  tax_rate: 13,
+  tax_amount: 0,
+  total_amount: 0,
   invoice_remark: '',
   invoice_attachment_urls: [] as string[]
 })
@@ -472,12 +522,17 @@ const payRules = {
   remark: [{ max: 300, message: '备注最多300个字符', trigger: 'blur' }]
 }
 const invoiceRules = {
-  invoice_status: [{ required: true, message: '请选择状态', trigger: 'change' }],
+  amount: [{ required: true, message: '请输入不含税金额', trigger: 'blur' }],
+  tax_rate: [{ required: true, message: '请输入税率', trigger: 'blur' }],
   invoice_remark: [{ max: 300, message: '备注最多300个字符', trigger: 'blur' }]
 }
 const orderDetailFinalAmount = computed(() => (orderDetail.items || []).reduce((sum: number, item: any) => sum + Number(item.final_amount ?? item.amount ?? 0), 0))
 const detailPaymentRecords = computed(() => Array.isArray(detailData.payment_records) ? detailData.payment_records : [])
-const detailInvoiceAttachments = computed(() => normalizeAttachmentUrls(detailData.invoice_attachment_urls))
+const detailPurchaseInvoices = computed(() => Array.isArray(detailData.purchase_invoices) ? detailData.purchase_invoices : [])
+const detailInvoiceAttachments = computed(() => [
+  ...normalizeAttachmentUrls(detailData.invoice_attachment_urls),
+  ...detailPurchaseInvoices.value.flatMap((item: any) => normalizeAttachmentUrls(item.attachment_urls))
+])
 const detailUnpaidAmount = computed(() => {
   const payable = Number(detailData.receivable_total_amount ?? detailData.should_amount ?? detailData.purchase_total_amount ?? 0)
   const paid = Number(detailData.paid_total_amount ?? detailData.amount ?? 0)
@@ -548,17 +603,25 @@ function openPayDrawer(row: any) {
 }
 
 function openInvoiceDialog(row: any) {
-  const paid = Number(row.paid_total_amount ?? row.amount ?? 0)
   const payable = Number(row.receivable_total_amount || row.purchase_total_amount || 0)
-  const unpaid = Number(Math.max(payable - paid, 0).toFixed(2))
+  const invoiced = Number(row.invoice_total_amount || 0)
+  const unpaid = Number(Math.max(payable - invoiced, 0).toFixed(2))
   const attachmentUrls = normalizeAttachmentUrls(row.invoice_attachment_urls)
+  const taxAmount = calculateIncludedTax(unpaid, 13)
+  const amount = toMoney(unpaid - taxAmount)
   Object.assign(invoiceForm, {
     id: row.id,
     order_id: row.order_id || null,
     payable_amount: payable,
     unpaid_amount: unpaid,
-    paid_amount: paid,
-    invoice_status: Number(row.invoice_status ?? 0),
+    paid_amount: Number(row.paid_total_amount ?? row.amount ?? 0),
+    invoiced_amount: invoiced,
+    external_invoice_no: '',
+    invoice_date: formatInputDateTime(new Date()),
+    amount: amount > 0 ? amount.toFixed(2) : '',
+    tax_rate: 13,
+    tax_amount: taxAmount,
+    total_amount: unpaid,
     invoice_remark: row.invoice_remark || '',
     invoice_attachment_urls: [...attachmentUrls]
   })
@@ -591,7 +654,13 @@ function resetInvoiceForm() {
     payable_amount: 0,
     unpaid_amount: 0,
     paid_amount: 0,
-    invoice_status: null,
+    invoiced_amount: 0,
+    external_invoice_no: '',
+    invoice_date: '',
+    amount: '',
+    tax_rate: 13,
+    tax_amount: 0,
+    total_amount: 0,
     invoice_remark: '',
     invoice_attachment_urls: []
   })
@@ -630,15 +699,39 @@ async function handlePaySubmit() {
 
 async function handleInvoiceSubmit() {
   const valid = await invoiceFormRef.value?.validate().catch(() => false)
-  if (!valid || !invoiceForm.id) return
-  await invoicePayment(invoiceForm.id, {
-    invoice_status: invoiceForm.invoice_status,
-    invoice_remark: invoiceForm.invoice_remark,
-    invoice_attachment_urls: invoiceForm.invoice_attachment_urls
+  if (!valid || !invoiceForm.order_id) return
+  recalculateInvoiceAmountFromTax()
+  await createPurchaseInvoice({
+    order_id: invoiceForm.order_id,
+    external_invoice_no: invoiceForm.external_invoice_no,
+    invoice_date: invoiceForm.invoice_date,
+    amount: Number(invoiceForm.amount || 0),
+    tax_rate: Number(invoiceForm.tax_rate || 0),
+    tax_amount: invoiceForm.tax_amount,
+    total_amount: invoiceForm.total_amount,
+    remark: invoiceForm.invoice_remark,
+    attachment_urls: invoiceForm.invoice_attachment_urls
   })
-  ElMessage.success('开票成功')
+  ElMessage.success('发票登记成功')
   invoiceDialogVisible.value = false
   fetchData()
+}
+
+function recalculateInvoiceTaxFromRate() {
+  const totalAmount = toMoney(invoiceForm.total_amount)
+  const taxAmount = calculateIncludedTax(totalAmount, invoiceForm.tax_rate)
+  Object.assign(invoiceForm, {
+    amount: toMoney(Math.max(totalAmount - taxAmount, 0)).toFixed(2),
+    tax_amount: taxAmount,
+    total_amount: totalAmount
+  })
+}
+
+function recalculateInvoiceAmountFromTax() {
+  const totalAmount = toMoney(invoiceForm.total_amount)
+  const taxAmount = Math.min(Math.max(toMoney(invoiceForm.tax_amount), 0), totalAmount)
+  invoiceForm.tax_amount = taxAmount
+  invoiceForm.amount = toMoney(Math.max(totalAmount - taxAmount, 0)).toFixed(2)
 }
 
 async function handleDelete(row: any) {
@@ -836,6 +929,18 @@ function purchaseStatusTagType(status: any) {
 
 function formatMoney(value: any) {
   return Number(value || 0).toFixed(2)
+}
+
+function toMoney(value: any) {
+  const amount = Number(value || 0)
+  if (!Number.isFinite(amount)) return 0
+  return Math.round(amount * 100) / 100
+}
+
+function calculateIncludedTax(totalAmount: any, taxRate: any) {
+  const total = toMoney(totalAmount)
+  const rate = toMoney(taxRate)
+  return rate > 0 ? toMoney(total * rate / (100 + rate)) : 0
 }
 
 function formatQuantity(value: any) {

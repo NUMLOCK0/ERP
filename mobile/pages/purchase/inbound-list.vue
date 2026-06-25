@@ -1,52 +1,99 @@
 <template>
-  <view class="inbound-list">
-    <scroll-view
-      class="list-scroll"
-      scroll-y
-      @scrolltolower="loadMore"
-      :refresher-enabled="true"
-      :refresher-triggered="refreshing"
-      @refresherrefresh="onRefresh"
-    >
-      <view v-if="list.length > 0">
-        <view class="inbound-card" v-for="item in list" :key="item.id">
-          <view class="card-header">
-            <text class="inbound-no">{{ item.inbound_no }}</text>
-            <uni-tag :text="item.status === 'confirmed' ? '已确认' : '待确认'" size="small" :type="item.status === 'confirmed' ? 'success' : 'warning'" />
-          </view>
-          <view class="card-body">
-            <view class="body-item">
-              <text class="body-label">关联订单</text>
-              <text class="body-value">{{ item.order_no || '-' }}</text>
-            </view>
-            <view class="body-item">
-              <text class="body-label">供应商</text>
-              <text class="body-value">{{ item.supplier_name || '-' }}</text>
-            </view>
-            <view class="body-item">
-              <text class="body-label">金额</text>
-              <text class="body-value text-danger">¥{{ formatPrice(item.total_amount) }}</text>
-            </view>
-          </view>
-          <view class="card-footer">
-            <text class="footer-time">{{ item.created_at || item.createdAt }}</text>
-          </view>
+  <view class="list-page">
+    <view class="search-bar">
+      <view class="search-input-wrap">
+        <uni-icons type="search" size="20" color="#999999" />
+        <input v-model="keyword" class="search-input" placeholder="搜索入库单号/供应商/订单号" type="text" confirm-type="search" @confirm="onSearch" />
+      </view>
+      <view class="search-btn" @click="onSearch">搜索</view>
+    </view>
+
+    <view class="tab-bar">
+      <view v-for="tab in tabs" :key="tab.value" class="tab-item" :class="{ active: activeTab === tab.value }" @click="switchTab(tab.value)">
+        <text>{{ tab.label }}</text>
+        <view v-if="activeTab === tab.value" class="tab-line" />
+      </view>
+    </view>
+
+    <scroll-view class="list-scroll" scroll-y :refresher-enabled="true" :refresher-triggered="refreshing" @refresherrefresh="onRefresh" @scrolltolower="loadMore">
+      <view class="scroll-inner">
+        <view v-if="list.length > 0" class="card-list">
+          <BusinessListItem
+            v-for="item in list"
+            :key="item.id"
+            :meta="formatDate(item.created_at || item.createdAt) || '--'"
+            :title="item.inbound_no || '-'"
+            :tag-text="statusMap[item.status] || '未知'"
+            :tag-type="getStatusType(item.status)"
+            :expanded="!!expandedIds[item.id]"
+            :show-toggle="true"
+            @toggle="toggleCard(item.id)"
+          >
+            <template #summary>
+              <view class="summary-grid">
+                <view class="summary-item wide">
+                  <text class="summary-label">供应商</text>
+                  <text class="summary-value strong">{{ item.supplier_name || '-' }}</text>
+                </view>
+                <view class="summary-item">
+                  <text class="summary-label">关联订单</text>
+                  <text class="summary-value">{{ item.order_no || '-' }}</text>
+                </view>
+                <view class="summary-item">
+                  <text class="summary-label">入库仓库</text>
+                  <text class="summary-value">{{ item.warehouse_name || '-' }}</text>
+                </view>
+                <view class="summary-item">
+                  <text class="summary-label">入库数量</text>
+                  <text class="summary-value">{{ item.inbound_total_quantity || 0 }}</text>
+                </view>
+                <view class="summary-item">
+                  <text class="summary-label">总金额</text>
+                  <text class="summary-value amount">¥{{ formatPrice(item.total_amount) }}</text>
+                </view>
+              </view>
+            </template>
+            <template #detail>
+              <view class="detail-section">
+                <text class="detail-title">入库信息</text>
+                <view class="detail-grid">
+                  <view class="detail-row"><text class="detail-label">入库单号</text><text class="detail-value">{{ item.inbound_no || '-' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">状态</text><text class="detail-value">{{ statusMap[item.status] || '未知' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">关联订单</text><text class="detail-value">{{ item.order_no || '-' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">供应商</text><text class="detail-value">{{ item.supplier_name || '-' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">入库仓库</text><text class="detail-value">{{ item.warehouse_name || '-' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">入库数量</text><text class="detail-value">{{ item.inbound_total_quantity || 0 }}</text></view>
+                  <view class="detail-row"><text class="detail-label">总金额</text><text class="detail-value amount">¥{{ formatPrice(item.total_amount) }}</text></view>
+                  <view v-if="item.remark" class="detail-row"><text class="detail-label">备注</text><text class="detail-value multiline">{{ item.remark }}</text></view>
+                </view>
+              </view>
+            </template>
+            <template #actions>
+              <view class="action-btn primary" @click="goDetail(item.id)">详情</view>
+            </template>
+          </BusinessListItem>
         </view>
+
+        <view v-else-if="!loading" class="empty-state">
+          <uni-icons type="cart" size="60" color="#DCDFE6" />
+          <text class="empty-text">暂无采购入库单</text>
+        </view>
+
+        <view v-if="loading" class="loading-more"><uni-load-more status="loading" /></view>
+        <view v-if="noMore && list.length > 0" class="loading-more"><uni-load-more status="noMore" /></view>
       </view>
-      <view v-else-if="!loading" class="empty-state">
-        <uni-icons type="cart" size="60" color="#DCDFE6"></uni-icons>
-        <text class="empty-text">暂无入库单</text>
-      </view>
-      <view v-if="loading" class="loading-more"><uni-load-more status="loading"></uni-load-more></view>
-      <view v-if="noMore && list.length > 0" class="loading-more"><uni-load-more status="noMore"></uni-load-more></view>
     </scroll-view>
   </view>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { reactive, ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { purchaseApi } from '@/api/purchase'
+import BusinessListItem from '@/components/BusinessListItem.vue'
 
+const keyword = ref('')
+const activeTab = ref('')
 const list = ref([])
 const page = ref(1)
 const pageSize = 10
@@ -54,43 +101,88 @@ const total = ref(0)
 const loading = ref(false)
 const refreshing = ref(false)
 const noMore = ref(false)
+const expandedIds = reactive({})
 
-const formatPrice = (val) => {
-  if (val === null || val === undefined) return '0.00'
-  return Number(val).toFixed(2)
+const tabs = [
+  { label: '全部', value: '' },
+  { label: '待入库', value: '0' },
+  { label: '已入库', value: '1' }
+]
+
+const statusMap = { 0: '待入库', 1: '已入库' }
+const getStatusType = (status) => ({ 0: 'warning', 1: 'success' }[status] || 'info')
+const formatPrice = (val) => (val === null || val === undefined || val === '' ? '0.00' : Number(val).toFixed(2))
+const formatDate = (val) => {
+  if (!val) return ''
+  const d = new Date(val)
+  if (isNaN(d.getTime())) return val
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+const toggleCard = (id) => {
+  if (expandedIds[id]) delete expandedIds[id]
+  else expandedIds[id] = true
+}
+
+const switchTab = (value) => {
+  activeTab.value = value
+  page.value = 1
+  noMore.value = false
+  list.value = []
+  fetchList(true)
+}
+
+const onSearch = () => {
+  page.value = 1
+  noMore.value = false
+  list.value = []
+  fetchList(true)
 }
 
 const fetchList = async (isRefresh = false) => {
   if (loading.value) return
   loading.value = true
   try {
-    const res = await purchaseApi.getInbounds({ page: isRefresh ? 1 : page.value, pageSize })
+    const params = { page: isRefresh ? 1 : page.value, pageSize, keyword: keyword.value.trim() }
+    if (activeTab.value !== '') params.status = Number(activeTab.value)
+    const res = await purchaseApi.getInbounds(params)
     if (res.code === 0) {
       const data = res.data?.list || res.data || []
       total.value = res.data?.total || data.length
-      if (isRefresh) { list.value = data; page.value = 2 }
-      else { list.value = [...list.value, ...data]; page.value++ }
+      if (isRefresh) {
+        list.value = data
+        page.value = 2
+      } else {
+        list.value = [...list.value, ...data]
+        page.value += 1
+      }
       noMore.value = list.value.length >= total.value
     }
-  } catch (e) { uni.showToast({ title: '加载失败', icon: 'none' }) }
-  finally { loading.value = false; refreshing.value = false }
+  } finally {
+    loading.value = false
+    refreshing.value = false
+  }
 }
 
-const onRefresh = () => { refreshing.value = true; page.value = 1; noMore.value = false; fetchList(true) }
-const loadMore = () => { if (!noMore.value && !loading.value) fetchList() }
+const onRefresh = () => {
+  refreshing.value = true
+  page.value = 1
+  noMore.value = false
+  fetchList(true)
+}
 
-onMounted(() => fetchList(true))
+const loadMore = () => {
+  if (!noMore.value && !loading.value) fetchList()
+}
+
+const goDetail = (id) => uni.navigateTo({ url: `/pages/purchase/inbound-detail?id=${id}` })
+
+onShow(() => {
+  uni.hideTabBar()
+  fetchList(true)
+})
 </script>
 
-<style lang="scss" scoped>
-.inbound-list { height: 100vh; display: flex; flex-direction: column; background: #F5F7FA; }
-.list-scroll { flex: 1; padding: 10rpx 20rpx; }
-.inbound-card {
-  background: #FFFFFF; border-radius: 16rpx; margin-bottom: 16rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04); overflow: hidden;
-  .card-header { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 24rpx; border-bottom: 1rpx solid #F2F6FC; .inbound-no { font-size: 28rpx; font-weight: 600; color: #303133; } }
-  .card-body { padding: 16rpx 24rpx; .body-item { display: flex; justify-content: space-between; padding: 8rpx 0; .body-label { font-size: 24rpx; color: #909399; } .body-value { font-size: 24rpx; color: #303133; font-weight: 500; } } }
-  .card-footer { padding: 12rpx 24rpx; border-top: 1rpx solid #F2F6FC; .footer-time { font-size: 22rpx; color: #C0C4CC; } }
-}
-.empty-state { display: flex; flex-direction: column; align-items: center; padding-top: 200rpx; .empty-text { font-size: 28rpx; color: #C0C4CC; margin-top: 20rpx; } }
-.loading-more { padding: 20rpx 0; }
+<style scoped lang="scss">
+@import './shared-list.scss';
 </style>

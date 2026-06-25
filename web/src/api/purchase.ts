@@ -29,3 +29,8 @@ export function getPurchaseReturns(params?: any) { return get('/purchase/return'
 export function getPurchaseReturn(id: number) { return get(`/purchase/return/${id}`) }
 export function createPurchaseReturn(data: any) { return post('/purchase/return', data) }
 export function completePurchaseReturn(id: number, data?: any) { return post(`/purchase/return/${id}/complete`, data) }
+
+// 采购发票登记
+export function getPurchaseInvoices(params?: any) { return get('/purchase/invoice', params) }
+export function getPurchaseInvoice(id: number) { return get(`/purchase/invoice/${id}`) }
+export function createPurchaseInvoice(data: any) { return post('/purchase/invoice', data) }

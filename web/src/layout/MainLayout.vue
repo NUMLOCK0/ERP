@@ -41,6 +41,8 @@
           <el-menu-item index="/purchase/order">采购订单</el-menu-item>
           <el-menu-item index="/purchase/inbound">采购入库单</el-menu-item>
           <el-menu-item index="/purchase/return">采购退货单</el-menu-item>
+          <el-menu-item index="/purchase/payment">采购付款单</el-menu-item>
+          <el-menu-item index="/purchase/invoice">采购发票登记</el-menu-item>
         </el-sub-menu>
 
         <el-sub-menu index="sale">
@@ -51,6 +53,8 @@
           <el-menu-item index="/sale/order">销售订单</el-menu-item>
           <el-menu-item index="/sale/delivery">销售发货单</el-menu-item>
           <el-menu-item index="/sale/return">发货退货单</el-menu-item>
+          <el-menu-item index="/sale/receipt">销售收款单</el-menu-item>
+          <el-menu-item index="/sale/invoice">销售发票登记</el-menu-item>
         </el-sub-menu>
 
         <el-sub-menu index="processing">
@@ -72,29 +76,20 @@
           <el-menu-item index="/inventory/log">库存日志</el-menu-item>
         </el-sub-menu>
 
-        <el-sub-menu index="finance">
-          <template #title>
-            <el-icon><Money /></el-icon>
-            <span>资金账单</span>
-          </template>
-          <el-menu-item index="/finance/payment">采购付款单</el-menu-item>
-          <el-menu-item index="/finance/receipt">销售收款单</el-menu-item>
-        </el-sub-menu>
-
         <el-sub-menu index="report">
           <template #title>
             <el-icon><TrendCharts /></el-icon>
             <span>数据报表</span>
           </template>
           <el-menu-item index="/report/product-stock">产品库存</el-menu-item>
-          <el-menu-item index="/report/sale-delivery">销售发货</el-menu-item>
-          <el-menu-item index="/report/other-outbound">其他出库</el-menu-item>
-          <el-menu-item index="/report/other-inbound">其他入库</el-menu-item>
-          <el-menu-item index="/report/purchase-inbound">采购入库</el-menu-item>
           <el-menu-item index="/report/purchase-order">采购订单</el-menu-item>
-          <el-menu-item index="/report/sale-order">销售订单</el-menu-item>
-          <el-menu-item index="/report/sale-receipt">销售收款</el-menu-item>
+          <el-menu-item index="/report/purchase-inbound">采购入库</el-menu-item>
           <el-menu-item index="/report/purchase-payment">采购付款</el-menu-item>
+          <el-menu-item index="/report/other-inbound">其他入库</el-menu-item>
+          <el-menu-item index="/report/sale-order">销售订单</el-menu-item>
+          <el-menu-item index="/report/sale-delivery">销售发货</el-menu-item>
+          <el-menu-item index="/report/sale-receipt">销售收款</el-menu-item>
+          <el-menu-item index="/report/other-outbound">其他出库</el-menu-item>
         </el-sub-menu>
 
         <el-sub-menu index="supplier">
@@ -162,7 +157,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  DataBoard, Box, ShoppingCart, Sell, Coin, Money,
+  DataBoard, Box, ShoppingCart, Sell, Coin,
   TrendCharts, OfficeBuilding, Setting, Fold, Expand, ArrowDown, SetUp
 } from '@element-plus/icons-vue'
 import { useAppStore } from '@/stores/app'

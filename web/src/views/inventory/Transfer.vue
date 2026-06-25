@@ -27,7 +27,15 @@
         </el-table-column>
         <el-table-column label="操作" width="150">
           <template #default="{ row }">
-            <el-button v-if="Number(row.status) === 0" type="success" link @click="handleConfirm(row)">确认调拨</el-button>
+            <el-dropdown v-if="Number(row.status) === 0" trigger="hover">
+              <el-button type="primary" link>更多</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="handleConfirm(row)">确认调拨</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <span v-else>-</span>
           </template>
         </el-table-column>
       </el-table>

@@ -128,6 +128,7 @@ const businessTypeOptions = [
   { label: '其他入库', value: 'other_inbound' },
   { label: '其他出库', value: 'other_outbound' },
   { label: '加工领料', value: 'herb_processing_issue' },
+  { label: '加工退料', value: 'herb_processing_return' },
   { label: '加工产品入库', value: 'herb_processing_inbound' }
 ]
 
@@ -207,6 +208,7 @@ function businessTypeText(type: string) {
     transfer_in: '调拨入库',
     transfer_out: '调拨出库',
     herb_processing_issue: '加工领料',
+    herb_processing_return: '加工退料',
     herb_processing_inbound: '加工产品入库'
   }
   return businessTypeOptions.find(item => item.value === type)?.label || aliases[type] || emptyText(type)

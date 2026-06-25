@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <el-card v-if="mode === 'list'" class="list-card">
       <div class="toolbar">
@@ -10,7 +10,7 @@
         <div class="toolbar-right">
           <el-tooltip content="搜索" placement="top"><el-button :icon="Search" circle @click="fetchData" /></el-tooltip>
           <el-tooltip content="刷新" placement="top"><el-button :icon="Refresh" circle @click="handleReset" /></el-tooltip>
-          <el-tooltip content="列设置" placement="top"><el-button :icon="Setting" circle /></el-tooltip>
+          <el-tooltip content="设置" placement="top"><el-button :icon="Setting" circle /></el-tooltip>
         </div>
       </div>
 
@@ -70,10 +70,8 @@
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleDetail(row)">详情</el-button>
-            <el-dropdown trigger="click">
-              <el-button type="primary" link>
-                更多<el-icon class="el-icon--right"><MoreFilled /></el-icon>
-              </el-button>
+            <el-dropdown trigger="hover">
+              <el-button type="primary" link>更多</el-button>
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item @click="handleEdit(row)">编辑</el-dropdown-item>
@@ -138,7 +136,6 @@ import {
   Back,
   CircleCheck,
   CircleClose,
-  MoreFilled,
   Plus,
   QuestionFilled,
   Refresh,
@@ -187,9 +184,9 @@ const form = reactive({
 const rules = {
   name: [
     { required: true, message: '请输入名称', trigger: 'blur' },
-    { min: 1, max: 30, message: '名称格式1~30个字符', trigger: 'blur' }
+    { min: 1, max: 30, message: '名称长度为1~30个字符', trigger: 'blur' }
   ],
-  description: [{ max: 230, message: '描述最多230个字符', trigger: 'blur' }]
+  description: [{ max: 230, message: '描述不超过230个字符', trigger: 'blur' }]
 }
 
 const formTitle = computed(() => readonly.value ? '会员等级详情' : editId.value ? '会员等级编辑' : '会员等级添加')
@@ -202,9 +199,9 @@ function buildParams() {
     id: searchForm.id || undefined,
     name: searchForm.name || undefined,
     description: searchForm.description || undefined,
-    status: searchForm.status ?? '',
-    sort_min: searchForm.sort_min ?? '',
-    sort_max: searchForm.sort_max ?? '',
+    status: searchForm.status ?? undefined,
+    sort_min: searchForm.sort_min ?? undefined,
+    sort_max: searchForm.sort_max ?? undefined,
     created_start: searchForm.created_start || undefined,
     created_end: searchForm.created_end || undefined,
     updated_start: searchForm.updated_start || undefined,

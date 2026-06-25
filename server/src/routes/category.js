@@ -86,7 +86,7 @@ router.delete('/:id', async (req, res) => {
 
 function buildTree(list, parentId) {
   return list
-    .filter(item => item.parent_id === parentId)
+    .filter(item => Number(item.parent_id || 0) === Number(parentId || 0))
     .map(item => ({
       ...item,
       children: buildTree(list, item.id)

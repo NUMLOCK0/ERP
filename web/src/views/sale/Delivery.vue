@@ -107,18 +107,20 @@
         <el-table-column label="关闭时间" width="170">
           <template #default="{ row }">{{ formatDateTime(row.close_time) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleView(row)">详情</el-button>
-            <template v-if="Number(row.status) === 0">
-              <el-button type="danger" link @click="handleCancel(row)">取消</el-button>
-              <el-button type="success" link @click="openShipDialog(row)">发货</el-button>
-            </template>
-            <template v-if="Number(row.status) === 1">
-              <el-button type="success" link @click="handleReceive(row)">收货</el-button>
-              <el-button type="warning" link @click="handleReturn(row)">退货</el-button>
-            </template>
-            <el-button v-if="Number(row.status) === 2" type="warning" link @click="handleReturn(row)">退货</el-button>
+            <el-dropdown v-if="[0, 1, 2].includes(Number(row.status))" trigger="hover">
+              <el-button type="primary" link>更多</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-if="Number(row.status) === 0" @click="openShipDialog(row)">发货</el-dropdown-item>
+                  <el-dropdown-item v-if="Number(row.status) === 0" @click="handleCancel(row)">取消</el-dropdown-item>
+                  <el-dropdown-item v-if="Number(row.status) === 1" @click="handleReceive(row)">收货</el-dropdown-item>
+                  <el-dropdown-item v-if="[1, 2].includes(Number(row.status))" @click="handleReturn(row)">退货</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>

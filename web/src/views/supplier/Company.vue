@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <el-card>
       <SearchForm :model="searchForm" @search="handleSearch" @reset="handleReset">
@@ -14,10 +14,17 @@
         <el-table-column prop="phone" label="电话" width="120" />
         <el-table-column prop="email" label="邮箱" min-width="160" />
         <el-table-column label="状态" width="80"><template #default="{ row }"><el-tag :type="row.status===1?'success':'danger'" size="small">{{ row.status===1?'启用':'禁用' }}</el-tag></template></el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
+            <el-dropdown trigger="hover">
+              <el-button type="primary" link>更多</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="handleEdit(row)">编辑</el-dropdown-item>
+                  <el-dropdown-item @click="handleDelete(row)">删除</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -68,7 +75,7 @@ function handleSearch() { pagination.page = 1; fetchData() }
 function handleReset() { Object.assign(searchForm, { name: '', type: '' }); handleSearch() }
 function handleAdd() { dialogTitle.value = '新增'; Object.assign(form, { id: null, name: '', type: 'supplier', contact: '', phone: '', email: '', address: '', bank_name: '', bank_account: '', tax_no: '', status: 1 }); dialogVisible.value = true }
 function handleEdit(row: any) { dialogTitle.value = '编辑'; Object.assign(form, row); dialogVisible.value = true }
-async function handleDelete(row: any) { await ElMessageBox.confirm('确认删除？', '提示', { type: 'warning' }); await deleteSupplier(row.id); ElMessage.success('已删除'); fetchData() }
+async function handleDelete(row: any) { await ElMessageBox.confirm('确认删除该企业？', '提示', { type: 'warning' }); await deleteSupplier(row.id); ElMessage.success('删除成功'); fetchData() }
 async function handleSubmit() {
   const valid = await formRef.value!.validate().catch(() => false)
   if (!valid) return

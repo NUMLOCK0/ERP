@@ -12,8 +12,7 @@
     <el-form ref="formRef" :model="form" :rules="formRules" label-width="92px" class="return-form">
       <div class="form-grid">
         <el-form-item label="退货单号" required>
-          <el-input v-model="form.return_no" disabled placeholder="提交后自动生成">
-            <template #append><CopyableNo :value="form.return_no" icon-only /></template>
+          <el-input v-model="form.return_no" placeholder="提交后自动生成">
           </el-input>
         </el-form-item>
         <el-form-item label="职员">

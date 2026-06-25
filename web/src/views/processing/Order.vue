@@ -16,6 +16,7 @@
             <el-option label="待入库" :value="4" />
             <el-option label="已入库" :value="2" />
             <el-option label="已取消" :value="3" />
+            <el-option label="已关闭" :value="5" />
           </el-select>
         </el-form-item>
         <el-form-item label="原料仓">
@@ -62,13 +63,21 @@
         <el-table-column label="创建时间" width="170">
           <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="270" fixed="right">
+        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link :icon="View" @click="handleDetail(row)">工序台账</el-button>
-            <el-button v-if="Number(row.status) === 0" type="success" link :icon="VideoPlay" @click="handleStart(row)">开工</el-button>
-            <el-button v-if="Number(row.status) === 4" type="success" link :icon="Download" @click="handleInbound(row)">入库</el-button>
-            <el-button v-if="Number(row.status) === 0" type="danger" link @click="handleCancel(row)">取消</el-button>
-            <el-button v-if="Number(row.status) === 3" type="danger" link :icon="Delete" @click="handleDelete(row)">删除</el-button>
+            <el-button type="primary" link @click="handleDetail(row)">详情</el-button>
+            <el-dropdown v-if="[0, 1, 3, 4].includes(Number(row.status))" trigger="hover">
+              <el-button type="primary" link>更多</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-if="Number(row.status) === 0" @click="handleStart(row)">开工</el-dropdown-item>
+                  <el-dropdown-item v-if="Number(row.status) === 4" @click="handleInbound(row)">入库</el-dropdown-item>
+                  <el-dropdown-item v-if="Number(row.status) === 0" @click="handleCancel(row)">取消</el-dropdown-item>
+                  <el-dropdown-item v-if="Number(row.status) === 1" @click="handleClose(row)">关闭</el-dropdown-item>
+                  <el-dropdown-item v-if="Number(row.status) === 3" @click="handleDelete(row)">删除</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -268,20 +277,16 @@
             </el-table-column>
             <el-table-column label="操作" width="165" fixed="right">
               <template #default="{ row, $index }">
-                <el-button type="primary" link :disabled="!canEditStage($index)" @click="handleStageSave(row, $index)">保存</el-button>
-                <el-button
-                  v-if="canSkipStage(row)"
-                  type="warning"
-                  link
-                  :disabled="!canEditStage($index)"
-                  @click="handleStageSkip(row)"
-                >跳过</el-button>
-                <el-button
-                  v-if="canDeleteStage(row)"
-                  type="danger"
-                  link
-                  @click="handleStageDelete(row)"
-                >删除</el-button>
+                <el-dropdown trigger="hover">
+                  <el-button type="primary" link>更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item :disabled="!canEditStage($index)" @click="handleStageSave(row, $index)">保存</el-dropdown-item>
+                      <el-dropdown-item v-if="canSkipStage(row)" :disabled="!canEditStage($index)" @click="handleStageSkip(row)">跳过</el-dropdown-item>
+                      <el-dropdown-item v-if="canDeleteStage(row)" @click="handleStageDelete(row)">删除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </template>
             </el-table-column>
           </el-table>
@@ -294,6 +299,7 @@
               <strong>预计入库金额：{{ formatMoney(generatedAmount) }}</strong>
             </div>
             <div>
+              <el-button v-if="Number(detailData.status) === 1" type="danger" @click="handleClose(detailData)">关闭批次并退回库存</el-button>
               <el-button v-if="Number(detailData.status) === 1" type="primary" :icon="CircleCheck" @click="handleComplete(detailData)">加工完成，提交入库</el-button>
               <el-button v-if="Number(detailData.status) === 4" type="success" :icon="Download" @click="handleInbound(detailData)">确认全部产品入库</el-button>
             </div>
@@ -347,7 +353,7 @@
 import TableColumnTools from '@/components/TableColumnTools.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { CircleCheck, Delete, Download, Plus, VideoPlay, View } from '@element-plus/icons-vue'
+import { CircleCheck, Download, Plus } from '@element-plus/icons-vue'
 import { getProducts } from '@/api/product'
 import { getWarehouses } from '@/api/warehouse'
 import { getSuppliers } from '@/api/supplier'
@@ -356,6 +362,7 @@ import { useUserStore } from '@/stores/user'
 import {
   addProcessingStage,
   cancelProcessingOrder,
+  closeProcessingOrder,
   completeProcessingOrder,
   createProcessingOrder,
   deleteProcessingOrder,
@@ -641,6 +648,21 @@ async function handleCancel(row: any) {
   ElMessage.success('已取消')
   fetchData()
 }
+async function handleClose(row: any) {
+  await ElMessageBox.confirm(
+    `确认关闭加工批次 ${row.batch_no}？关闭后将把原包货数量 ${formatQuantity(row.source_quantity)} 退回原料仓，工序数据将锁定。`,
+    '关闭加工批次',
+    {
+      type: 'warning',
+      confirmButtonText: '确认关闭',
+      cancelButtonText: '继续加工'
+    }
+  )
+  await closeProcessingOrder(row.id)
+  ElMessage.success('加工批次已关闭，原包货已退回库存')
+  fetchData()
+  if (detailData.id === row.id) handleDetail(row)
+}
 async function handleDelete(row: any) {
   await ElMessageBox.confirm(`删除后无法恢复，确认删除加工批次 ${row.batch_no}？`, '删除已取消批次', {
     type: 'warning',
@@ -693,14 +715,15 @@ function currentStageText(row: any) {
   if (status === 4) return '产品入库'
   if (status === 2) return '已入库'
   if (status === 3) return '已取消'
+  if (status === 5) return '已关闭'
   if (!Number(row.total_stage_count || 0)) return '待添加步骤'
   return row.current_stage_name || '加工完成'
 }
 function statusText(status: any) {
-  return ({ 0: '待开工', 1: '加工中', 2: '已入库', 3: '已取消', 4: '待入库' } as Record<number, string>)[Number(status)] || '未知'
+  return ({ 0: '待开工', 1: '加工中', 2: '已入库', 3: '已取消', 4: '待入库', 5: '已关闭' } as Record<number, string>)[Number(status)] || '未知'
 }
 function statusType(status: any) {
-  return ({ 0: 'info', 1: 'warning', 2: 'success', 3: 'danger', 4: 'primary' } as Record<number, any>)[Number(status)] || 'info'
+  return ({ 0: 'info', 1: 'warning', 2: 'success', 3: 'danger', 4: 'primary', 5: 'info' } as Record<number, any>)[Number(status)] || 'info'
 }
 function stageName(key: string) {
   return ({ raw_package: '原包货', screening: '过筛', color_sorting: '色选', general_sorting: '普选', fine_sorting: '精选' } as Record<string, string>)[key] || key

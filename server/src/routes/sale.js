@@ -235,6 +235,11 @@ router.get('/order/:id', async (req, res) => {
     );
     if (!rows.length) return res.json(Response.error('订单不存在'));
     const order = rows[0];
+    try {
+      order.image_urls = JSON.parse(order.image_urls || '[]');
+    } catch (e) {
+      order.image_urls = [];
+    }
     const [items] = await pool.execute(
       `SELECT soi.*, p.name AS product_name, p.code, p.spec, p.image_urls, u.name AS unit_name,
               COALESCE(pu.base_quantity, 1) AS base_quantity,
@@ -286,14 +291,26 @@ router.post('/order', async (req, res) => {
       auditor_id = 0,
       create_delivery = false,
       ship = false,
-      auto_restock = false
+      auto_restock = false,
+      order_no,
+      image_urls
     } = req.body;
     if (!customer_id) return res.json(Response.error('客户不能为空'));
     if (!warehouse_id) return res.json(Response.error('仓库不能为空'));
     if (!items || !items.length) return res.json(Response.error('明细不能为空'));
     if (ship && !create_delivery) return res.json(Response.error('发货前请先勾选创建发货单'));
 
-    const orderNo = await generateNo(pool, 'XS');
+    let orderNo = order_no ? String(order_no).trim() : '';
+    const isCustom = isCustomNo(orderNo);
+    if (isCustom) {
+      const [existing] = await pool.execute('SELECT id FROM sale_order WHERE order_no = ? LIMIT 1', [orderNo]);
+      if (existing.length) {
+        return res.json(Response.error(`销售单号 [${orderNo}] 已存在`));
+      }
+    } else {
+      const generatedNo = await generateNo(pool, 'XS');
+      orderNo = generatedNo;
+    }
     let totalAmount = 0;
     for (const item of items) {
       totalAmount += calculateLineAmount(item);
@@ -306,11 +323,11 @@ router.post('/order', async (req, res) => {
       const [result] = await conn.execute(
         `INSERT INTO sale_order
          (order_no, customer_id, employee_id, warehouse_id, payment_method, total_amount, admin_remark, sale_remark,
-          customer_contact, customer_phone, detail_address, create_delivery, ship, status, auditor_id, creator_id)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          customer_contact, customer_phone, detail_address, create_delivery, ship, status, auditor_id, creator_id, image_urls)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
           orderNo, customer_id, employee_id, warehouse_id, payment_method, totalAmount, admin_remark, sale_remark,
-          customer_contact, customer_phone, detail_address, create_delivery ? 1 : 0, ship ? 1 : 0, 0, 0, req.user.id
+          customer_contact, customer_phone, detail_address, create_delivery ? 1 : 0, ship ? 1 : 0, 0, 0, req.user.id, JSON.stringify(image_urls || [])
         ]
       );
       const orderId = result.insertId;
@@ -380,7 +397,8 @@ router.put('/order/:id', async (req, res) => {
       detail_address = '',
       create_delivery = true,
       ship = false,
-      items
+      items,
+      image_urls
     } = req.body;
     if (ship && !create_delivery) return res.json(Response.error('发货前请先勾选创建发货单'));
 
@@ -404,11 +422,11 @@ router.put('/order/:id', async (req, res) => {
       await conn.execute(
         `UPDATE sale_order
          SET customer_id=?, employee_id=?, warehouse_id=?, payment_method=?, total_amount=?, admin_remark=?, sale_remark=?,
-             customer_contact=?, customer_phone=?, detail_address=?, create_delivery=?, ship=?
+             customer_contact=?, customer_phone=?, detail_address=?, create_delivery=?, ship=?, image_urls=?
          WHERE id=?`,
         [
           customer_id, employee_id, warehouse_id, payment_method, totalAmount, admin_remark, sale_remark,
-          customer_contact, customer_phone, detail_address, create_delivery ? 1 : 0, ship ? 1 : 0, req.params.id
+          customer_contact, customer_phone, detail_address, create_delivery ? 1 : 0, ship ? 1 : 0, JSON.stringify(image_urls || []), req.params.id
         ]
       );
 
@@ -635,6 +653,7 @@ router.post('/delivery', async (req, res) => {
   try {
     await conn.beginTransaction();
     const orderNo = String(req.body?.order_no || '').trim();
+    const deliveryNo = String(req.body?.delivery_no || '').trim();
     if (!orderNo) throw new Error('请输入销售订单号');
 
     const [orderRows] = await conn.execute(
@@ -653,7 +672,7 @@ router.post('/delivery', async (req, res) => {
       throw new Error(`该销售订单已存在发货单 ${deliveryRows[0].delivery_no}`);
     }
 
-    const result = await createPendingSaleDelivery(conn, order, req.user.id);
+    const result = await createPendingSaleDelivery(conn, order, req.user.id, deliveryNo);
     await conn.execute(
       'UPDATE sale_order SET create_delivery = 1, ship = 0 WHERE id = ?',
       [order.id]
@@ -996,7 +1015,8 @@ router.post('/return', async (req, res) => {
       phone = '',
       address = '',
       reason = '',
-      items
+      items,
+      return_no
     } = req.body;
     if (!delivery_id) throw new Error('发货单不能为空');
     if (status === undefined || status === null || status === '' || ![0, 1].includes(Number(status))) {
@@ -1057,7 +1077,15 @@ router.post('/return', async (req, res) => {
       totalAmount += refundAmount;
     }
 
-    const returnNo = await generateNo(conn, 'XT');
+    let returnNo = return_no ? String(return_no).trim() : '';
+    const isCustom = isCustomNo(returnNo);
+    if (isCustom) {
+      const [existing] = await conn.execute('SELECT id FROM sale_return WHERE return_no = ? LIMIT 1', [returnNo]);
+      if (existing.length) throw new Error(`退货单号 [${returnNo}] 已存在`);
+    } else {
+      returnNo = await generateNo(conn, 'XT');
+    }
+
     const [result] = await conn.execute(
       `INSERT INTO sale_return
        (return_no, delivery_id, customer_id, employee_id, total_amount, status, express_name, express_no,
@@ -1238,14 +1266,22 @@ async function updateStock(conn, productId, warehouseId, quantity, changeType, r
   );
 }
 
-async function createPendingSaleDelivery(conn, order, userId) {
+async function createPendingSaleDelivery(conn, order, userId, customDeliveryNo = '') {
   const [itemRows] = await conn.execute(
     'SELECT * FROM sale_order_item WHERE order_id = ?',
     [order.id]
   );
   if (!itemRows.length) throw new Error('销售订单明细不能为空');
 
-  const deliveryNo = await generateNo(conn, 'FH');
+  let deliveryNo = customDeliveryNo ? String(customDeliveryNo).trim() : '';
+  const isCustom = isCustomNo(deliveryNo);
+  if (isCustom) {
+    const [existing] = await conn.execute('SELECT id FROM sale_delivery WHERE delivery_no = ? LIMIT 1', [deliveryNo]);
+    if (existing.length) throw new Error(`发货单号 [${deliveryNo}] 已存在`);
+  } else {
+    deliveryNo = await generateNo(conn, 'FH');
+  }
+
   const [result] = await conn.execute(
     `INSERT INTO sale_delivery
      (delivery_no, order_id, customer_id, warehouse_id, total_amount, status, creator_id)
@@ -1320,7 +1356,15 @@ async function approveSaleOrder(conn, orderId, userId, options = {}) {
     }
   }
 
-  const deliveryNo = await generateNo(conn, 'FH');
+  let deliveryNo = options.delivery_no ? String(options.delivery_no).trim() : '';
+  const isCustom = isCustomNo(deliveryNo);
+  if (isCustom) {
+    const [existing] = await conn.execute('SELECT id FROM sale_delivery WHERE delivery_no = ? LIMIT 1', [deliveryNo]);
+    if (existing.length) throw new Error(`发货单号 [${deliveryNo}] 已存在`);
+  } else {
+    deliveryNo = await generateNo(conn, 'FH');
+  }
+
   const { logistics_company = '', logistics_no = '', delivery_remark = '' } = options;
   const [result] = await conn.execute(
     `INSERT INTO sale_delivery

@@ -3,7 +3,7 @@
     <!-- 搜索栏 -->
     <view class="search-bar">
       <view class="search-input-wrap">
-        <uni-icons type="search" size="20" color="#999"></uni-icons>
+        <u-icon name="search" size="20" color="#999"></u-icon>
         <input class="search-input" v-model="keyword" placeholder="登记单号/发票号/订单/供应商" type="text" @confirm="onSearch" />
       </view>
       <view class="search-btn" @click="onSearch">搜索</view>
@@ -18,11 +18,11 @@
             <text class="picker-value" :class="{ placeholder: supplierIndex === -1 }">
               {{ suppliers[supplierIndex]?.name || '全部供应商' }}
             </text>
-            <uni-icons type="arrowdown" size="12" color="#909399"></uni-icons>
+            <u-icon name="arrow-down" size="12" color="#909399"></u-icon>
           </view>
         </picker>
         <view class="clear-filter" v-if="supplierIndex !== -1" @click.stop="clearSupplierFilter">
-          <uni-icons type="clear" size="16" color="#C0C4CC"></uni-icons>
+          <u-icon name="close-circle" size="16" color="#C0C4CC"></u-icon>
         </view>
       </view>
     </view>
@@ -87,7 +87,7 @@
           </view>
         </view>
         <view v-else-if="!loading" class="empty-state">
-          <uni-icons type="wallet" size="60" color="#DCDFE6"></uni-icons>
+          <u-icon name="rmb-circle" size="60" color="#DCDFE6"></u-icon>
           <text class="empty-text">暂无发票登记记录</text>
         </view>
 
@@ -102,7 +102,7 @@
 
     <!-- 浮动新增按钮 -->
     <view class="floating-btn" @click="goCreate">
-      <uni-icons type="plus" size="24" color="#FFFFFF"></uni-icons>
+      <u-icon name="plus" size="24" color="#FFFFFF"></u-icon>
     </view>
   </view>
 </template>

@@ -2,20 +2,40 @@
   <view class="list-page">
     <view class="search-bar">
       <view class="search-input-wrap">
-        <uni-icons type="search" size="20" color="#999999" />
-        <input v-model="keyword" class="search-input" placeholder="搜索退货单号/订单号/供应商" type="text" confirm-type="search" @confirm="onSearch" />
+        <u-icon name="search" size="20" color="#999999"  />
+        <input
+          v-model="keyword"
+          class="search-input"
+          placeholder="搜索退货单号/订单号/供应商"
+          type="text"
+          confirm-type="search"
+          @confirm="onSearch"
+        />
       </view>
       <view class="search-btn" @click="onSearch">搜索</view>
     </view>
 
     <view class="tab-bar">
-      <view v-for="tab in tabs" :key="tab.value" class="tab-item" :class="{ active: activeTab === tab.value }" @click="switchTab(tab.value)">
+      <view
+        v-for="tab in tabs"
+        :key="tab.value"
+        class="tab-item"
+        :class="{ active: activeTab === tab.value }"
+        @click="switchTab(tab.value)"
+      >
         <text>{{ tab.label }}</text>
         <view v-if="activeTab === tab.value" class="tab-line" />
       </view>
     </view>
 
-    <scroll-view class="list-scroll" scroll-y :refresher-enabled="true" :refresher-triggered="refreshing" @refresherrefresh="onRefresh" @scrolltolower="loadMore">
+    <scroll-view
+      class="list-scroll"
+      scroll-y
+      :refresher-enabled="true"
+      :refresher-triggered="refreshing"
+      @refresherrefresh="onRefresh"
+      @scrolltolower="loadMore"
+    >
       <view class="scroll-inner">
         <view v-if="list.length > 0" class="card-list">
           <BusinessListItem
@@ -41,7 +61,7 @@
                 </view>
                 <view class="summary-item">
                   <text class="summary-label">退货金额</text>
-                  <text class="summary-value amount">¥{{ formatPrice(item.total_amount) }}</text>
+                  <text class="summary-value amount">￥{{ formatPrice(item.total_amount) }}</text>
                 </view>
                 <view class="summary-item wide">
                   <text class="summary-label">退货原因</text>
@@ -49,6 +69,7 @@
                 </view>
               </view>
             </template>
+
             <template #detail>
               <view class="detail-section">
                 <text class="detail-title">退货信息</text>
@@ -57,19 +78,21 @@
                   <view class="detail-row"><text class="detail-label">状态</text><text class="detail-value">{{ statusMap[item.status] || '未知' }}</text></view>
                   <view class="detail-row"><text class="detail-label">关联订单</text><text class="detail-value">{{ item.order_no || '-' }}</text></view>
                   <view class="detail-row"><text class="detail-label">供应商</text><text class="detail-value">{{ item.supplier_name || '-' }}</text></view>
-                  <view class="detail-row"><text class="detail-label">退货金额</text><text class="detail-value amount">¥{{ formatPrice(item.total_amount) }}</text></view>
+                  <view class="detail-row"><text class="detail-label">退货金额</text><text class="detail-value amount">￥{{ formatPrice(item.total_amount) }}</text></view>
                   <view class="detail-row"><text class="detail-label">退货原因</text><text class="detail-value multiline">{{ item.reason || '-' }}</text></view>
                 </view>
               </view>
             </template>
+
             <template #actions>
               <view class="action-btn primary" @click="goDetail(item.id)">详情</view>
+              <view v-if="Number(item.status) === 0" class="action-btn outline-primary" @click="goDetail(item.id)">退货</view>
             </template>
           </BusinessListItem>
         </view>
 
         <view v-else-if="!loading" class="empty-state">
-          <uni-icons type="undo" size="60" color="#DCDFE6" />
+          <u-icon name="rewind-left" size="60" color="#DCDFE6"  />
           <text class="empty-text">暂无采购退货单</text>
         </view>
 
@@ -78,7 +101,7 @@
       </view>
     </scroll-view>
 
-    <view class="floating-btn" @click="goCreate"><uni-icons type="plus" size="24" color="#FFFFFF" /></view>
+    <view class="floating-btn" @click="goCreate"><u-icon name="plus" size="24" color="#FFFFFF"  /></view>
   </view>
 </template>
 
@@ -111,7 +134,7 @@ const formatPrice = (val) => (val === null || val === undefined || val === '' ? 
 const formatDate = (val) => {
   if (!val) return ''
   const d = new Date(val)
-  if (isNaN(d.getTime())) return val
+  if (Number.isNaN(d.getTime())) return val
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
@@ -120,19 +143,20 @@ const toggleCard = (id) => {
   else expandedIds[id] = true
 }
 
+const resetAndFetch = () => {
+  page.value = 1
+  noMore.value = false
+  list.value = []
+  fetchList(true)
+}
+
 const switchTab = (value) => {
   activeTab.value = value
-  page.value = 1
-  noMore.value = false
-  list.value = []
-  fetchList(true)
+  resetAndFetch()
 }
-const onSearch = () => {
-  page.value = 1
-  noMore.value = false
-  list.value = []
-  fetchList(true)
-}
+
+const onSearch = () => resetAndFetch()
+
 const fetchList = async (isRefresh = false) => {
   if (loading.value) return
   loading.value = true
@@ -157,11 +181,25 @@ const fetchList = async (isRefresh = false) => {
     refreshing.value = false
   }
 }
-const onRefresh = () => { refreshing.value = true; page.value = 1; noMore.value = false; fetchList(true) }
-const loadMore = () => { if (!noMore.value && !loading.value) fetchList() }
+
+const onRefresh = () => {
+  refreshing.value = true
+  page.value = 1
+  noMore.value = false
+  fetchList(true)
+}
+
+const loadMore = () => {
+  if (!noMore.value && !loading.value) fetchList()
+}
+
 const goDetail = (id) => uni.navigateTo({ url: `/pages/purchase/return-detail?id=${id}` })
 const goCreate = () => uni.navigateTo({ url: '/pages/purchase/return-edit' })
-onShow(() => { uni.hideTabBar(); fetchList(true) })
+
+onShow(() => {
+  uni.hideTabBar()
+  resetAndFetch()
+})
 </script>
 
 <style scoped lang="scss">

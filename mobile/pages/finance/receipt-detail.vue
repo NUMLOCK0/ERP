@@ -1,44 +1,191 @@
 <template>
   <view class="receipt-detail">
     <view v-if="ret.id" class="detail-content">
-      <!-- 基本信息 -->
+      <!-- 收款单基本信息 -->
       <view class="card">
-        <view class="card-title">收款单信息</view>
+        <view class="card-title">基本信息</view>
         <view class="info-grid">
           <view class="info-item">
-            <text class="info-label">收款单号</text>
-            <text class="info-value font-bold">{{ ret.receipt_no }}</text>
+            <text class="info-label">收款单id</text>
+            <text class="info-value">{{ ret.id }}</text>
           </view>
+          
+          <view class="info-item order-no-item">
+            <text class="info-label">收款单号</text>
+            <view class="info-value-copy">
+              <text class="info-value">{{ ret.receipt_no }}</text>
+              <u-icon name="file-text" size="14" color="#1890FF" class="copy-icon" @click="copyReceiptNo"  />
+            </view>
+          </view>
+          
+          <view class="info-item order-no-item">
+            <text class="info-label">销售单号</text>
+            <view class="info-value-copy">
+              <text class="info-value text-link" @click="goOrderDetail">{{ ret.order_no || '-' }}</text>
+              <u-icon v-if="ret.order_no" name="file-text" size="14" color="#1890FF" class="copy-icon" @click="copyOrderNo"  />
+            </view>
+          </view>
+          
           <view class="info-item">
             <text class="info-label">收款状态</text>
             <view class="info-value">
               <uni-tag :text="statusMap[ret.status] || '未知'" size="small" :type="getStatusType(ret.status)" />
             </view>
           </view>
-          <view class="info-item">
-            <text class="info-label">关联销售单</text>
-            <text class="info-value text-link" @click="goOrderDetail">{{ ret.order_no || '-' }}</text>
-          </view>
-          <view class="info-item">
-            <text class="info-label">客户</text>
-            <text class="info-value">{{ ret.customer_name || '-' }}</text>
-          </view>
-          <view class="info-item">
-            <text class="info-label">应收总额</text>
-            <text class="info-value font-bold">¥{{ formatPrice(ret.receivable_amount) }}</text>
-          </view>
-          <view class="info-item">
-            <text class="info-label">已收金额</text>
-            <text class="info-value text-success font-bold">¥{{ formatPrice(ret.amount) }}</text>
-          </view>
-          <view class="info-item">
-            <text class="info-label">未收金额</text>
-            <text class="info-value text-danger font-bold">¥{{ formatPrice(ret.unreceived_amount) }}</text>
-          </view>
+          
           <view class="info-item">
             <text class="info-label">收款方式</text>
             <text class="info-value">{{ payMethodMap[ret.receipt_method] || ret.receipt_method || '-' }}</text>
           </view>
+          
+          <view class="info-item">
+            <text class="info-label">仓库</text>
+            <text class="info-value">{{ ret.warehouse_name || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">客户</text>
+            <text class="info-value">{{ ret.customer_name || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">收款人</text>
+            <text class="info-value">{{ ret.receiver_name || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">应收金额</text>
+            <text class="info-value font-bold">¥{{ formatPrice(ret.receivable_amount) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">已收金额</text>
+            <text class="info-value text-success font-bold">¥{{ formatPrice(ret.amount) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">未收金额</text>
+            <text class="info-value text-danger font-bold">¥{{ formatPrice(ret.unreceived_amount) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">销售产品总数量</text>
+            <text class="info-value">{{ formatQuantity(ret.sale_total_quantity) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">销售退款金额</text>
+            <text class="info-value">¥{{ formatPrice(ret.sale_refund_amount) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">销售退货数量</text>
+            <text class="info-value">{{ formatQuantity(ret.sale_return_quantity) }}</text>
+          </view>
+          
+          <view class="info-item" style="width: 100%;">
+            <text class="info-label">备注说明</text>
+            <text class="info-value remarks-value">{{ ret.detail_remark || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">收款开始时间</text>
+            <text class="info-value date-text">{{ formatDate(ret.payment_start_time) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">收款完成时间</text>
+            <text class="info-value date-text">{{ formatDate(ret.payment_completed_time) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">收款时间</text>
+            <text class="info-value date-text">{{ formatDate(ret.receipt_time) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">关闭时间</text>
+            <text class="info-value date-text">{{ formatDate(ret.close_time) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">创建时间</text>
+            <text class="info-value date-text">{{ formatDate(ret.created_at || ret.createdAt) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">更新时间</text>
+            <text class="info-value date-text">{{ formatDate(ret.updated_at || ret.updatedAt) }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 开票与发票登记 -->
+      <view class="card">
+        <view class="card-title">发票登记信息</view>
+        <view class="info-grid" style="margin-bottom: 20rpx;">
+          <view class="info-item">
+            <text class="info-label">开票状态</text>
+            <view class="info-value">
+              <uni-tag :text="invoiceStatusMap[ret.invoice_status] || '未开票'" size="small" :type="getInvoiceStatusType(ret.invoice_status)" />
+            </view>
+          </view>
+          <view class="info-item">
+            <text class="info-label">已开票金额</text>
+            <text class="info-value font-bold text-danger">¥{{ formatPrice(ret.invoice_total_amount) }}</text>
+          </view>
+          <view class="info-item">
+            <text class="info-label">开票时间</text>
+            <text class="info-value date-text">{{ formatDate(ret.invoice_time) }}</text>
+          </view>
+        </view>
+        
+        <!-- 关联发票列表 -->
+        <view v-if="ret.sale_invoices && ret.sale_invoices.length > 0" class="invoices-section">
+          <view class="product-item-list">
+            <view class="product-item-card" v-for="(invoice, index) in ret.sale_invoices" :key="index">
+              <!-- 头部：发票号 -->
+              <view class="prod-header">
+                <text class="prod-title">#{{ index + 1 }} 发票号：{{ invoice.invoice_no || invoice.external_invoice_no || '-' }}</text>
+                <uni-tag text="已登记" size="small" type="success" />
+              </view>
+              
+              <!-- 详情网格 -->
+              <view class="prod-details-grid">
+                <!-- 第一行：价税合计、开票日期 -->
+                <view class="grid-row">
+                  <view class="grid-cell"><text class="cell-lbl">价税合计：</text><text class="cell-val danger-text">¥{{ formatPrice(invoice.total_amount) }}</text></view>
+                  <view class="grid-cell"><text class="cell-lbl">开票日期：</text><text class="cell-val date-text">{{ formatDate(invoice.invoice_date || invoice.created_at).split(' ')[0] }}</text></view>
+                </view>
+                <!-- 第二行：不含税金额、税金/税率 -->
+                <view class="grid-row">
+                  <view class="grid-cell"><text class="cell-lbl">不含税额：</text><text class="cell-val">¥{{ formatPrice(invoice.amount) }}</text></view>
+                  <view class="grid-cell"><text class="cell-lbl">税金/税率：</text><text class="cell-val">¥{{ formatPrice(invoice.tax_amount) }} ({{ invoice.tax_rate }}%)</text></view>
+                </view>
+                <!-- 第三行：备注 -->
+                <view class="grid-row" v-if="invoice.remark">
+                  <view class="grid-cell" style="width: 100%;"><text class="cell-lbl">备注：</text><text class="cell-val remark-text">{{ invoice.remark }}</text></view>
+                </view>
+              </view>
+              
+              <!-- 凭证附件 -->
+              <view v-if="normalizeAttachmentUrls(invoice.attachment_urls).length > 0" style="margin-top: 14rpx;">
+                <text class="cell-lbl">附件图片：</text>
+                <view class="voucher-grid" style="margin-top: 8rpx;">
+                  <view class="voucher-item" style="width: 100rpx; height: 100rpx;" v-for="(url, idx) in normalizeAttachmentUrls(invoice.attachment_urls)" :key="idx">
+                    <image :src="url" mode="aspectFill" style="width: 100%; height: 100%;" @click="previewVoucher(url)" />
+                  </view>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 联系人与开户信息 -->
+      <view class="card">
+        <view class="card-title">联系与结算信息</view>
+        <view class="info-grid">
           <view class="info-item">
             <text class="info-label">联系人</text>
             <text class="info-value">{{ ret.contact || '-' }}</text>
@@ -47,76 +194,42 @@
             <text class="info-label">联系电话</text>
             <text class="info-value">{{ ret.phone || '-' }}</text>
           </view>
-          <view class="info-item">
-            <text class="info-label">创建时间</text>
-            <text class="info-value date-text">{{ formatDate(ret.created_at || ret.createdAt) }}</text>
+          <view class="info-item" style="width: 100%;">
+            <text class="info-label">详细地址</text>
+            <text class="info-value">{{ ret.detail_address || '-' }}</text>
           </view>
-          <view class="info-item" v-if="ret.receipt_time">
-            <text class="info-label">收款登记时间</text>
-            <text class="info-value date-text">{{ formatDate(ret.receipt_time) }}</text>
-          </view>
-          <view class="info-item" style="width: 100%;" v-if="ret.detail_remark">
-            <text class="info-label">备注说明</text>
-            <text class="info-value">{{ ret.detail_remark }}</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- 客户开户信息 -->
-      <view class="card" v-if="ret.bank_name || ret.bank_account">
-        <view class="card-title">客户结算账户</view>
-        <view class="info-grid">
           <view class="info-item" style="width: 100%;">
             <text class="info-label">开户银行</text>
             <text class="info-value">{{ ret.bank_name || '-' }}</text>
           </view>
           <view class="info-item" style="width: 100%;">
-            <text class="info-label">账户账号</text>
-            <text class="info-value">{{ ret.bank_account || '-' }}</text>
+            <text class="info-label">开户地址</text>
+            <text class="info-value">{{ ret.bank_address || '-' }}</text>
           </view>
           <view class="info-item" style="width: 100%;">
             <text class="info-label">开户户名</text>
             <text class="info-value">{{ ret.bank_account_name || '-' }}</text>
           </view>
-        </view>
-      </view>
-
-      <!-- 收款凭证展示 -->
-      <view class="card" v-if="getVoucherList(ret.voucher_urls).length > 0">
-        <view class="card-title">收款凭证附件</view>
-        <view class="voucher-grid">
-          <view class="voucher-item" v-for="(url, index) in getVoucherList(ret.voucher_urls)" :key="index">
-            <image :src="url" mode="aspectFill" class="voucher-img" @click="previewVoucher(url)" />
+          <view class="info-item" style="width: 100%;">
+            <text class="info-label">开户户号</text>
+            <text class="info-value">{{ ret.bank_account || '-' }}</text>
           </view>
         </view>
       </view>
 
-      <!-- 销售发票明细 -->
-      <view class="card" v-if="ret.sale_invoices && ret.sale_invoices.length > 0">
-        <view class="card-title">关联销售发票</view>
-        <view class="invoices-list">
-          <view class="invoice-item-card" v-for="invoice in ret.sale_invoices" :key="invoice.id">
-            <view class="invoice-header">
-              <text class="invoice-no">发票号: {{ invoice.invoice_no || invoice.external_invoice_no || '-' }}</text>
-              <text class="invoice-amount">¥{{ formatPrice(invoice.total_amount) }}</text>
-            </view>
-            <view class="invoice-body">
-              <view class="invoice-row">
-                <text class="invoice-label">开票日期：</text>
-                <text class="invoice-val">{{ formatDate(invoice.invoice_date).split(' ')[0] }}</text>
-              </view>
-              <view class="invoice-row" v-if="invoice.remark">
-                <text class="invoice-label">备注：</text>
-                <text class="invoice-val">{{ invoice.remark }}</text>
-              </view>
-            </view>
+      <!-- 收款凭证附件 -->
+      <view class="card" v-if="normalizeAttachmentUrls(ret.voucher_urls).length > 0">
+        <view class="card-title">收款凭证附件</view>
+        <view class="voucher-grid">
+          <view class="voucher-item" v-for="(url, index) in normalizeAttachmentUrls(ret.voucher_urls)" :key="index">
+            <image :src="url" mode="aspectFill" class="voucher-img" @click="previewVoucher(url)" />
           </view>
         </view>
       </view>
     </view>
 
     <view v-else-if="!loading" class="empty-state">
-      <text class="empty-text">收款单不存在</text>
+      <text class="empty-text">收款单不存在或已被删除</text>
     </view>
 
     <view v-if="loading" class="loading-state">
@@ -125,10 +238,10 @@
 
     <!-- 底部操作栏 -->
     <view v-if="ret.id" class="bottom-bar safe-bottom">
-      <view class="action-btn-group">
-        <button class="btn-back" @click="goBack">返回</button>
-        <button v-if="Number(ret.status) < 2" class="btn-primary" @click="openConfirmPopup">确认收款</button>
-      </view>
+      <button v-if="Number(ret.status) < 2" class="btn-primary" @click="openConfirmPopup">登记收款</button>
+      
+      <button class="btn-more outline" @click="showMore">更 多</button>
+      <button class="btn-back" @click="goBack">返回</button>
     </view>
 
     <!-- 确认收款弹窗 -->
@@ -137,7 +250,7 @@
         <view class="sheet-header">
           <text class="sheet-title">登记收款</text>
           <view class="close-btn" @click="closePopup">
-            <uni-icons type="closeempty" size="20" color="#999"></uni-icons>
+            <u-icon name="close" size="20" color="#999"></u-icon>
           </view>
         </view>
 
@@ -158,20 +271,13 @@
                   <text class="picker-value">
                     {{ payDate || '请选择收款日期' }}
                   </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                  <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
                 </view>
               </picker>
             </view>
             <view class="form-item">
               <text class="form-label required">收款方式</text>
-              <picker class="form-picker" @change="onPayMethodChange" :value="payMethodIndex" :range="payMethods">
-                <view class="picker-inner">
-                  <text class="picker-value" :class="{ placeholder: payMethodIndex === -1 }">
-                    {{ payMethods[payMethodIndex] || '请选择收款方式' }}
-                  </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
-                </view>
-              </picker>
+              <input class="form-input" v-model="form.pay_method" placeholder="请输入收款方式" maxlength="50" />
             </view>
             <view class="form-item">
               <text class="form-label">备注说明</text>
@@ -185,7 +291,7 @@
                   <view class="remove-icon" @click="removeVoucher(idx)">×</view>
                 </view>
                 <view class="uploader-btn" v-if="uploadVouchers.length < 10" @click="chooseVoucher">
-                  <uni-icons type="plusempty" size="24" color="#909399"></uni-icons>
+                  <u-icon name="plus" size="24" color="#909399"></u-icon>
                   <text class="uploader-btn-text">上传图片</text>
                 </view>
               </view>
@@ -203,7 +309,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { financeApi } from '@/api/finance'
 import { useUserStore } from '@/store/user'
@@ -232,6 +338,13 @@ const statusMap = {
   3: '已关闭'
 }
 
+const invoiceStatusMap = {
+  0: '未开票',
+  1: '已开票',
+  2: '开票中',
+  3: '无需开票'
+}
+
 const payMethodMap = {
   cash: '现金',
   bank: '银行转账',
@@ -250,13 +363,29 @@ const getStatusType = (status) => {
   return map[status] || 'info'
 }
 
+const getInvoiceStatusType = (status) => {
+  const map = {
+    0: 'info',
+    1: 'success',
+    2: 'warning',
+    3: 'info'
+  }
+  return map[status] || 'info'
+}
+
 const formatPrice = (val) => {
   if (val === null || val === undefined) return '0.00'
   return Number(val).toFixed(2)
 }
 
+const formatQuantity = (val) => {
+  if (val === null || val === undefined) return '0'
+  const qty = Number(val)
+  return Number.isInteger(qty) ? String(qty) : qty.toFixed(2)
+}
+
 const formatDate = (val) => {
-  if (!val) return ''
+  if (!val) return '-'
   const d = new Date(val)
   if (isNaN(d.getTime())) return val
   const y = d.getFullYear()
@@ -267,14 +396,38 @@ const formatDate = (val) => {
   return `${y}-${m}-${day} ${h}:${min}`
 }
 
-const getVoucherList = (val) => {
-  if (!val) return []
-  if (Array.isArray(val)) return val
-  try {
-    return JSON.parse(val)
-  } catch (e) {
-    return []
+const normalizeAttachmentUrls = (value) => {
+  if (Array.isArray(value)) return value.filter(Boolean)
+  if (!value) return []
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : []
+    } catch {
+      return value ? [value] : []
+    }
   }
+  return []
+}
+
+const copyReceiptNo = () => {
+  if (!ret.value.receipt_no) return
+  uni.setClipboardData({
+    data: ret.value.receipt_no,
+    success: () => {
+      uni.showToast({ title: '复制收款单号成功', icon: 'none' })
+    }
+  })
+}
+
+const copyOrderNo = () => {
+  if (!ret.value.order_no) return
+  uni.setClipboardData({
+    data: ret.value.order_no,
+    success: () => {
+      uni.showToast({ title: '复制销售单号成功', icon: 'none' })
+    }
+  })
 }
 
 const loadDetail = async () => {
@@ -316,7 +469,7 @@ const openConfirmPopup = () => {
     remark: ''
   }
 
-  uploadVouchers.value = getVoucherList(ret.value.voucher_urls)
+  uploadVouchers.value = normalizeAttachmentUrls(ret.value.voucher_urls)
 
   if (ret.value.receipt_method) {
     payMethodIndex.value = payMethods.indexOf(ret.value.receipt_method)
@@ -414,7 +567,7 @@ const submitConfirm = async () => {
     return
   }
   if (!form.value.pay_method) {
-    uni.showToast({ title: '请选择收款方式', icon: 'none' })
+    uni.showToast({ title: '请输入收款方式', icon: 'none' })
     return
   }
 
@@ -430,7 +583,9 @@ const submitConfirm = async () => {
     if (res.code === 0) {
       uni.showToast({ title: '登记收款成功', icon: 'success' })
       closePopup()
-      loadDetail()
+      setTimeout(() => {
+        loadDetail()
+      }, 1000)
     }
   } catch (e) {
     // handled
@@ -449,6 +604,53 @@ const goOrderDetail = () => {
   }
 }
 
+const handleInvoiceRegister = () => {
+  uni.navigateTo({
+    url: `/pages/sale/invoice-edit?order_id=${ret.value.sale_order_id || ret.value.order_id}`
+  })
+}
+
+const showMore = () => {
+  const status = Number(ret.value.status)
+  const invoiceStatus = Number(ret.value.invoice_status)
+  
+  const menu = []
+  const actions = []
+
+  if (status < 2) {
+    actions.push({ command: 'receive', label: '登记收款' })
+  }
+  if (invoiceStatus !== 1) {
+    actions.push({ command: 'invoice', label: '发票登记' })
+  }
+
+  actions.forEach(act => {
+    menu.push(act.label)
+  })
+  
+  menu.push('复制收款单号')
+  menu.push('复制销售单号')
+
+  uni.showActionSheet({
+    itemList: menu,
+    success: ({ tapIndex }) => {
+      const actionLabel = menu[tapIndex]
+      if (actionLabel === '复制收款单号') {
+        copyReceiptNo()
+      } else if (actionLabel === '复制销售单号') {
+        copyOrderNo()
+      } else {
+        const clickedAction = actions.find(act => act.label === actionLabel)
+        if (clickedAction) {
+          const cmd = clickedAction.command
+          if (cmd === 'receive') openConfirmPopup()
+          else if (cmd === 'invoice') handleInvoiceRegister()
+        }
+      }
+    }
+  })
+}
+
 onShow(() => {
   uni.hideTabBar()
   loadDetail()
@@ -460,8 +662,8 @@ onShow(() => {
   min-height: 100vh;
   background: #F5F7FA;
   box-sizing: border-box;
-  padding-bottom: calc(120rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(140rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
 }
 
 .detail-content {
@@ -488,24 +690,183 @@ onShow(() => {
 .info-grid {
   display: flex;
   flex-wrap: wrap;
+  
   .info-item {
     width: 50%;
-    padding: 10rpx 0;
+    padding: 12rpx 8rpx;
     box-sizing: border-box;
-    .info-label { font-size: 22rpx; color: #909399; display: block; margin-bottom: 4rpx; }
-    .info-value { font-size: 26rpx; color: #303133; display: block; font-weight: 500; word-break: break-all; }
-    .date-text { color: #909399; font-size: 24rpx; }
-    .font-bold { font-weight: 700; }
+    display: flex;
+    flex-direction: column;
+    
+    .info-label {
+      font-size: 22rpx;
+      color: #909399;
+      display: block;
+      margin-bottom: 6rpx;
+    }
+    
+    .info-value {
+      font-size: 26rpx;
+      color: #303133;
+      display: block;
+      font-weight: 600;
+      word-break: break-all;
+    }
+    
+    .date-text {
+      color: #909399;
+      font-size: 24rpx;
+    }
+    
+    &.order-no-item {
+      .info-value-copy {
+        display: flex;
+        align-items: center;
+        gap: 8rpx;
+      }
+      .copy-icon {
+        flex-shrink: 0;
+        cursor: pointer;
+        
+        &:active {
+          opacity: 0.6;
+        }
+      }
+    }
+    
     .text-success { color: #67C23A; }
     .text-danger { color: #F56C6C; }
     .text-link { color: #1890FF; font-weight: 600; text-decoration: underline; }
   }
 }
 
+.remarks-value {
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+.product-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.product-item-card {
+  background: #F8FAFC;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  border: 1rpx solid #EEF2F6;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.prod-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  border-bottom: 1rpx solid #EEF2F6;
+  padding-bottom: 8rpx;
+}
+
+.prod-title {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #303133;
+  flex: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.prod-spec {
+  font-size: 20rpx;
+  background: #E8F4FF;
+  color: #1890FF;
+  padding: 2rpx 8rpx;
+  border-radius: 6rpx;
+  max-width: 180rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.prod-code-row {
+  display: flex;
+  align-items: center;
+  font-size: 20rpx;
+  color: #909399;
+}
+
+.prod-code-val {
+  font-family: monospace;
+}
+
+.prod-details-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.grid-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.grid-cell {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-size: 22rpx;
+  color: #606266;
+  min-width: 0;
+}
+
+.cell-lbl {
+  color: #909399;
+  flex-shrink: 0;
+}
+
+.cell-val {
+  font-weight: 600;
+  color: #303133;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  
+  &.primary {
+    color: #1890FF;
+  }
+  
+  &.success {
+    color: #67C23A;
+  }
+  
+  &.warning {
+    color: #E6A23C;
+  }
+  
+  &.danger-text {
+    color: #F56C6C;
+  }
+}
+
+.remark-text {
+  font-size: 20rpx;
+  color: #909399;
+  font-weight: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
 .voucher-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 16rpx;
+  width: 100%;
   
   .voucher-item {
     width: calc(25% - 12rpx);
@@ -514,59 +875,9 @@ onShow(() => {
     overflow: hidden;
     background: #F2F6FC;
     
-    .voucher-img {
+    image {
       width: 100%;
       height: 100%;
-    }
-  }
-}
-
-.invoices-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
-.invoice-item-card {
-  background: #F8FAFC;
-  border-radius: 12rpx;
-  padding: 18rpx 20rpx;
-  border: 1rpx solid #EBEEF5;
-
-  .invoice-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1rpx solid #EBEEF5;
-    padding-bottom: 10rpx;
-    margin-bottom: 10rpx;
-
-    .invoice-no {
-      font-size: 24rpx;
-      font-weight: 600;
-      color: #909399;
-    }
-    .invoice-amount {
-      font-size: 28rpx;
-      font-weight: 700;
-      color: #F56C6C;
-    }
-  }
-
-  .invoice-body {
-    .invoice-row {
-      display: flex;
-      padding: 4rpx 0;
-      font-size: 22rpx;
-      .invoice-label {
-        color: #909399;
-        width: 130rpx;
-        flex-shrink: 0;
-      }
-      .invoice-val {
-        color: #303133;
-        font-weight: 500;
-      }
     }
   }
 }
@@ -587,29 +898,45 @@ onShow(() => {
   box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.05);
   z-index: 99;
 
-  .action-btn-group {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 16rpx;
-    width: 100%;
-  }
-
   button {
     height: 76rpx;
     line-height: 76rpx;
-    padding: 0 40rpx;
+    padding: 0 32rpx;
     font-size: 26rpx;
-    border-radius: 38rpx;
+    border-radius: 16rpx;
     font-weight: 600;
     margin: 0;
     
     &::after { border: none; }
+    
+    &.outline {
+      background: #FFFFFF;
+      color: #909399;
+      border: 1rpx solid #DCDFE6;
+    }
+    
+    &.warning {
+      background: #FF9800;
+      color: #FFFFFF;
+      box-shadow: 0 4rpx 12rpx rgba(255, 152, 0, 0.2);
+    }
 
-    &.btn-primary {
+    &.primary {
       background: #1890FF;
       color: #FFFFFF;
       box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.2);
+    }
+    
+    &.btn-primary {
+      background: #67C23A;
+      color: #FFFFFF;
+      box-shadow: 0 4rpx 12rpx rgba(103, 194, 58, 0.2);
+    }
+    
+    &.btn-danger {
+      background: #F56C6C;
+      color: #FFFFFF;
+      box-shadow: 0 4rpx 12rpx rgba(245, 108, 108, 0.2);
     }
     
     &.btn-back {
@@ -617,6 +944,13 @@ onShow(() => {
       color: #909399;
     }
   }
+}
+
+.empty-state, .loading-state {
+  display: flex;
+  justify-content: center;
+  padding-top: 200rpx;
+  .empty-text { font-size: 26rpx; color: #C0C4CC; }
 }
 
 /* 弹出层 */
@@ -854,12 +1188,5 @@ onShow(() => {
       box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.2);
     }
   }
-}
-
-.empty-state, .loading-state {
-  display: flex;
-  justify-content: center;
-  padding-top: 200rpx;
-  .empty-text { font-size: 26rpx; color: #C0C4CC; }
 }
 </style>

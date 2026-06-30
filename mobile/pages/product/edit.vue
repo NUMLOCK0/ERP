@@ -23,7 +23,7 @@
                   <text class="picker-value" :class="{ placeholder: categoryIndex === -1 }">
                     {{ categories[categoryIndex]?.name || '请选择分类' }}
                   </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                  <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
                 </view>
               </picker>
             </view>
@@ -34,7 +34,7 @@
                   <text class="picker-value" :class="{ placeholder: brandIndex === -1 }">
                     {{ brands[brandIndex]?.name || '请选择品牌' }}
                   </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                  <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
                 </view>
               </picker>
             </view>
@@ -45,7 +45,7 @@
                   <text class="picker-value" :class="{ placeholder: supplierIndex === -1 }">
                     {{ suppliers[supplierIndex]?.name || '请选择供应商' }}
                   </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                  <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
                 </view>
               </picker>
             </view>
@@ -59,7 +59,7 @@
                 <view class="image-uploader" @click="chooseAndUploadImage">
                   <image v-if="form.image_urls && form.image_urls[0]" :src="form.image_urls[0]" mode="aspectFill" class="uploader-img" />
                   <view v-else class="uploader-placeholder">
-                    <uni-icons type="plus" size="24" color="#909399"></uni-icons>
+                    <u-icon name="plus" size="24" color="#909399"></u-icon>
                     <text class="placeholder-text">选择图片</text>
                   </view>
                 </view>
@@ -91,7 +91,7 @@
                   <text class="picker-value" :class="{ placeholder: warehouseIndex === -1 }">
                     {{ warehouses[warehouseIndex]?.name || '请选择仓库' }}
                   </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                  <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
                 </view>
               </picker>
             </view>
@@ -115,7 +115,7 @@
           <view class="section-header list-title-row">
             <text class="section-title">计量单位列表</text>
             <view class="add-row-btn" @click="addUnitRow">
-              <uni-icons type="plus" size="14" color="#1890FF"></uni-icons>
+              <u-icon name="plus" size="14" color="#1890FF"></u-icon>
               <text class="add-row-text">新增单位</text>
             </view>
           </view>
@@ -135,7 +135,7 @@
                     <text class="picker-value" :class="{ placeholder: !row.unit_id }">
                       {{ getUnitNameById(row.unit_id) || '选择单位' }}
                     </text>
-                    <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                    <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
                   </view>
                 </picker>
               </view>

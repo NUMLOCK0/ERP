@@ -8,6 +8,14 @@
             <text class="section-title">基本信息</text>
           </view>
           <view class="form-group">
+            <view class="form-item" v-if="editId">
+              <text class="form-label">采购单号</text>
+              <text class="info-value">{{ form.order_no || '-' }}</text>
+            </view>
+            <view class="form-item" v-else>
+              <text class="form-label">采购单号</text>
+              <input class="form-input" v-model="form.order_no" placeholder="自定义单号(留空自动生成)" />
+            </view>
             <view class="form-item">
               <text class="form-label required">供应商</text>
               <picker class="form-picker" @change="onSupplierChange" :value="supplierIndex" :range="suppliers" range-key="name">
@@ -15,7 +23,7 @@
                   <text class="picker-value" :class="{ placeholder: supplierIndex === -1 }">
                     {{ suppliers[supplierIndex]?.name || '请选择供应商' }}
                   </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                  <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
                 </view>
               </picker>
             </view>
@@ -26,20 +34,13 @@
                   <text class="picker-value" :class="{ placeholder: warehouseIndex === -1 }">
                     {{ warehouses[warehouseIndex]?.name || '请选择仓库' }}
                   </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                  <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
                 </view>
               </picker>
             </view>
             <view class="form-item">
               <text class="form-label">付款方式</text>
-              <picker class="form-picker" @change="onPaymentChange" :value="paymentIndex" :range="paymentMethods">
-                <view class="picker-inner">
-                  <text class="picker-value" :class="{ placeholder: paymentIndex === -1 }">
-                    {{ paymentMethods[paymentIndex] || '请选择付款方式' }}
-                  </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
-                </view>
-              </picker>
+              <input class="form-input" v-model="form.payment_method" placeholder="请输入付款方式" maxlength="50" />
             </view>
             <view class="form-item">
               <text class="form-label">管理备注</text>
@@ -57,7 +58,7 @@
           <view class="section-header list-title-row">
             <text class="section-title">采购商品明细</text>
             <view class="add-row-btn" @click="openProductSelector">
-              <uni-icons type="plus" size="14" color="#1890FF"></uni-icons>
+              <u-icon name="plus" size="14" color="#1890FF"></u-icon>
               <text class="add-row-text">选择商品</text>
             </view>
           </view>
@@ -112,8 +113,28 @@
           </view>
 
           <view v-else class="empty-items-state">
-            <uni-icons type="cart" size="48" color="#DCDFE6"></uni-icons>
+            <u-icon name="shopping-cart" size="48" color="#DCDFE6"></u-icon>
             <text class="empty-items-text">尚未选择采购商品，请点击右上角添加商品</text>
+          </view>
+          
+          <!-- ===== 订单图片留痕 ===== -->
+          <view class="section">
+            <view class="section-header flex-row">
+              <text class="section-title">订单图片留痕</text>
+              <text class="section-subtitle">{{ (form.image_urls || []).length }} / 10</text>
+            </view>
+            <view class="attachment-upload-grid">
+              <view class="attachment-upload-item" v-for="(url, idx) in form.image_urls" :key="idx">
+                <image :src="url" mode="aspectFill" class="attachment-upload-img" @click="previewUploadImage(idx)" />
+                <view class="remove-btn" @click.stop="removeImage(idx)">
+                  <u-icon name="close" size="12" color="#FFFFFF"></u-icon>
+                </view>
+              </view>
+              <view class="uploader-box" v-if="(form.image_urls || []).length < 10" @click="chooseAndUploadImages">
+                <u-icon name="plus" size="28" color="#909399"></u-icon>
+                <text class="uploader-text">上传图片</text>
+              </view>
+            </view>
           </view>
         </view>
       </view>
@@ -126,49 +147,13 @@
     </view>
 
     <!-- 商品选择弹窗 -->
-    <view v-if="renderProductPopup" class="dialog-overlay" :class="{ show: showProductPopup }" @click="closeProductSelector">
-      <view class="dialog-content" @click.stop>
-        <view class="dialog-header">
-          <text class="dialog-title">选择采购商品</text>
-          <text class="dialog-close" @click="closeProductSelector">×</text>
-        </view>
-        <view class="popup-search-bar">
-          <view class="popup-search-input-wrap">
-            <uni-icons type="search" size="18" color="#999"></uni-icons>
-            <input class="popup-search-input" v-model="productKeyword" placeholder="搜索商品名称/编码" type="text" @confirm="onProductSearch" />
-          </view>
-          <view class="popup-search-btn" @click="onProductSearch">搜索</view>
-        </view>
-        <scroll-view class="dialog-body-scroll" scroll-y @scrolltolower="loadMoreProducts">
-          <view class="popup-product-list">
-            <view v-if="products.length > 0">
-              <view class="product-select-card" v-for="item in products" :key="item.id" @click="selectProduct(item)">
-                <view class="prod-left">
-                  <image v-if="item.image" :src="item.image" mode="aspectFill" class="prod-img" />
-                  <view v-else class="prod-img-placeholder">
-                    <uni-icons type="gift" size="20" color="#C0C4CC"></uni-icons>
-                  </view>
-                  <view class="prod-info">
-                    <text class="prod-name">{{ item.name }}</text>
-                    <text class="prod-code" v-if="item.code">编码: {{ item.code }}</text>
-                    <text class="prod-spec" v-if="item.spec">规格: {{ item.spec }}</text>
-                  </view>
-                </view>
-                <view class="prod-right">
-                  <uni-icons type="plus-filled" size="22" color="#1890FF"></uni-icons>
-                </view>
-              </view>
-            </view>
-            <view v-else-if="!productsLoading" class="popup-empty">
-              <text class="popup-empty-text">未找到相关商品</text>
-            </view>
-            <view v-if="productsLoading" class="popup-loading">
-              <uni-load-more status="loading"></uni-load-more>
-            </view>
-          </view>
-        </scroll-view>
-      </view>
-    </view>
+    <product-select-popup
+      v-model:show="showProductPopup"
+      :multiple="true"
+      priceType="cost_price"
+      :selectedProducts="form.items"
+      @confirm="handleProductSelectConfirm"
+    />
   </view>
 </template>
 
@@ -177,6 +162,8 @@ import { ref, reactive, onMounted } from 'vue'
 import { purchaseApi } from '@/api/purchase'
 import { commonApi } from '@/api/common'
 import { productApi } from '@/api/product'
+import http from '@/api/request'
+import ProductSelectPopup from '@/components/ProductSelectPopup.vue'
 
 const editId = ref(null)
 
@@ -192,25 +179,20 @@ const paymentIndex = ref(-1)
 
 // Form State
 const form = reactive({
+  order_no: '',
   supplier_id: null,
   warehouse_id: null,
   payment_method: '',
   admin_remark: '',
   purchase_remark: '',
-  items: []
+  items: [],
+  image_urls: []
 })
 
 const totalOrderAmount = ref(0)
 
 // Product Selector State
-const renderProductPopup = ref(false)
 const showProductPopup = ref(false)
-const productKeyword = ref('')
-const products = ref([])
-const productsPage = ref(1)
-const productsPageSize = 20
-const productsNoMore = ref(false)
-const productsLoading = ref(false)
 
 const loadOptions = async () => {
   try {
@@ -230,11 +212,13 @@ const loadDetail = async (id) => {
     const res = await purchaseApi.getOrderDetail(id)
     if (res.code === 0) {
       const data = res.data || {}
+      form.order_no = data.order_no || ''
       form.admin_remark = data.admin_remark || ''
       form.purchase_remark = data.purchase_remark || ''
       form.supplier_id = data.supplier_id || null
       form.warehouse_id = data.warehouse_id || null
       form.payment_method = data.payment_method || ''
+      form.image_urls = data.image_urls || []
       
       // Populate items list
       form.items = (data.items || []).map(item => ({
@@ -303,90 +287,69 @@ const removeItemRow = (index) => {
 
 // Product Selector Handlers
 const openProductSelector = () => {
-  productKeyword.value = ''
-  products.value = []
-  productsPage.value = 1
-  productsNoMore.value = false
-  fetchProducts(true)
-  renderProductPopup.value = true
-  setTimeout(() => {
-    showProductPopup.value = true
-  }, 30)
+  showProductPopup.value = true
 }
 
-const closeProductSelector = () => {
-  showProductPopup.value = false
-  setTimeout(() => {
-    renderProductPopup.value = false
-  }, 280)
-}
-
-const onProductSearch = () => {
-  productsPage.value = 1
-  productsNoMore.value = false
-  products.value = []
-  fetchProducts(true)
-}
-
-const fetchProducts = async (isRefresh = false) => {
-  if (productsLoading.value) return
-  productsLoading.value = true
-  
-  try {
-    const params = {
-      page: isRefresh ? 1 : productsPage.value,
-      pageSize: productsPageSize,
-      keyword: productKeyword.value.trim(),
-      status: 1
-    }
-    const res = await productApi.getList(params)
-    if (res.code === 0) {
-      const data = res.data?.list || res.data || []
-      const total = res.data?.total || data.length
-      if (isRefresh) {
-        products.value = data
-        productsPage.value = 2
-      } else {
-        products.value = [...products.value, ...data]
-        productsPage.value++
-      }
-      productsNoMore.value = products.value.length >= total
-    }
-  } catch (e) {
-    // handled
-  } finally {
-    productsLoading.value = false
-  }
-}
-
-const loadMoreProducts = () => {
-  if (!productsNoMore.value && !productsLoading.value) {
-    fetchProducts()
-  }
-}
-
-const selectProduct = (item) => {
-  // Check if product is already added
-  const existingIdx = form.items.findIndex(it => it.product_id === item.id)
-  if (existingIdx !== -1) {
-    uni.showToast({ title: '该商品已在采购明细中', icon: 'none' })
-    return
-  }
-  
-  form.items.push({
-    product_id: item.id,
-    name: item.name,
-    spec: item.spec || '',
-    unit_name: item.unit_name || item.unit || '',
-    quantity: 1,
-    price: item.cost_price || 0,
-    tax_rate: 13,
-    remark: ''
+const handleProductSelectConfirm = (selectedList) => {
+  // Build a map of existing items to preserve user inputs like tax_rate or remark
+  const existingMap = {}
+  form.items.forEach(item => {
+    existingMap[item.product_id] = item
   })
   
-  uni.showToast({ title: '添加明细成功', icon: 'success' })
+  form.items = selectedList.map(item => {
+    const id = item.product_id
+    const existing = existingMap[id]
+    
+    return {
+      product_id: id,
+      name: item.name || item.product_name,
+      spec: item.spec || '',
+      unit_name: item.unit_name || item.unit || '',
+      quantity: item.quantity || 1,
+      price: item.price ?? item.cost_price ?? 0,
+      tax_rate: existing ? (existing.tax_rate ?? 13) : 13,
+      remark: existing ? (existing.remark || '') : ''
+    }
+  })
+  
   calcTotalAmount()
-  closeProductSelector()
+}
+
+const chooseAndUploadImages = () => {
+  const limit = 10 - (form.image_urls || []).length;
+  if (limit <= 0) return;
+
+  uni.chooseImage({
+    count: limit,
+    success: async (chooseRes) => {
+      uni.showLoading({ title: '上传中...' });
+      try {
+        for (const filePath of chooseRes.tempFilePaths) {
+          const res = await http.upload('/upload/file', filePath);
+          if (res.code === 0 && res.data?.url) {
+            form.image_urls.push(res.data.url);
+          }
+        }
+        uni.showToast({ title: '上传成功', icon: 'success' });
+      } catch (err) {
+        uni.showToast({ title: err.message || '上传失败', icon: 'none' });
+      } finally {
+        uni.hideLoading();
+      }
+    }
+  });
+}
+
+const removeImage = (idx) => {
+  form.image_urls.splice(idx, 1);
+}
+
+const previewUploadImage = (idx) => {
+  uni.previewImage({
+    urls: form.image_urls,
+    current: form.image_urls[idx]
+  });
 }
 
 const goCancel = () => {
@@ -421,11 +384,13 @@ const handleSave = async () => {
   }
   
   const payload = {
+    order_no: form.order_no.trim() || undefined,
     supplier_id: Number(form.supplier_id),
     warehouse_id: Number(form.warehouse_id),
     payment_method: form.payment_method,
     admin_remark: form.admin_remark.trim(),
     purchase_remark: form.purchase_remark.trim(),
+    image_urls: form.image_urls,
     items: form.items.map(it => ({
       product_id: Number(it.product_id),
       quantity: Number(it.quantity),
@@ -923,5 +888,68 @@ onMounted(async () => {
 
 .popup-loading {
   padding: 10rpx 0;
+}
+
+.section-subtitle {
+  font-size: 24rpx;
+  color: #909399;
+}
+
+.attachment-upload-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
+  padding: 10rpx 0;
+}
+
+.attachment-upload-item {
+  position: relative;
+  width: 150rpx;
+  height: 150rpx;
+  border-radius: 12rpx;
+  overflow: hidden;
+  border: 1rpx solid #EBEEF5;
+  background: #F8FAFC;
+}
+
+.attachment-upload-img {
+  width: 100%;
+  height: 100%;
+}
+
+.remove-btn {
+  position: absolute;
+  top: 6rpx;
+  right: 6rpx;
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.uploader-box {
+  width: 150rpx;
+  height: 150rpx;
+  border-radius: 12rpx;
+  border: 2rpx dashed #DCDFE6;
+  background: #FAFAFA;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+
+  &:active {
+    background: #F2F6FC;
+  }
+
+  .uploader-text {
+    font-size: 20rpx;
+    color: #909399;
+  }
 }
 </style>

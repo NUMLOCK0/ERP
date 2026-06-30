@@ -2,7 +2,7 @@
   <view class="stock-page">
     <view class="search-bar">
       <view class="search-input-wrap">
-        <uni-icons type="search" size="20" color="#999" />
+        <u-icon name="search" size="20" color="#999"  />
         <input
           v-model="keyword"
           class="search-input"
@@ -19,7 +19,7 @@
       <picker mode="selector" :range="warehouseLabels" @change="onWarehousePick">
         <view class="filter-box">
           <text class="filter-text">{{ warehouseLabels[warehouseIndex] || '全部仓库' }}</text>
-          <uni-icons type="arrowdown" size="14" color="#909399" />
+          <u-icon name="arrow-down" size="14" color="#909399"  />
         </view>
       </picker>
     </view>
@@ -54,7 +54,7 @@
           </view>
         </view>
         <view v-else-if="!loading" class="empty-state">
-          <uni-icons type="box" size="60" color="#DCDFE6" />
+          <u-icon name="grid" size="60" color="#DCDFE6"  />
           <text class="empty-text">暂无库存数据</text>
         </view>
         <view v-if="loading" class="loading-more">

@@ -2,7 +2,7 @@
   <view class="warehouse-page">
     <view class="search-bar">
       <view class="search-input-wrap">
-        <uni-icons type="search" size="20" color="#999" />
+        <u-icon name="search" size="20" color="#999"  />
         <input
           v-model="keyword"
           class="search-input"
@@ -22,7 +22,7 @@
             <view class="card-main">
               <view class="card-left">
                 <view class="avatar-box">
-                  <uni-icons type="home-filled" size="24" color="#FFFFFF" />
+                  <u-icon name="home-fill" size="24" color="#FFFFFF"  />
                 </view>
                 <view class="info-box">
                   <text class="wh-name">{{ item.name }}</text>
@@ -39,11 +39,11 @@
 
             <view class="card-footer">
               <view class="action-btn edit" @click.stop="handleEdit(item)">
-                <uni-icons type="compose" size="16" color="#1890FF" />
+                <u-icon name="edit-pen" size="16" color="#1890FF"  />
                 <text>编辑</text>
               </view>
               <view class="action-btn delete" @click.stop="handleDelete(item)">
-                <uni-icons type="trash" size="16" color="#F56C6C" />
+                <u-icon name="trash" size="16" color="#F56C6C"  />
                 <text>删除</text>
               </view>
             </view>
@@ -51,7 +51,7 @@
         </view>
 
         <view v-else-if="!loading" class="empty-state">
-          <uni-icons type="box" size="60" color="#DCDFE6" />
+          <u-icon name="grid" size="60" color="#DCDFE6"  />
           <text class="empty-text">暂无仓库数据</text>
         </view>
 
@@ -62,7 +62,7 @@
     </scroll-view>
 
     <view class="floating-btn" @click="handleAdd">
-      <uni-icons type="plus" size="24" color="#FFFFFF" />
+      <u-icon name="plus" size="24" color="#FFFFFF"  />
     </view>
 
     <view v-if="renderDialog" class="dialog-overlay" :class="{ show: showDialog }" @click="closeDialog">

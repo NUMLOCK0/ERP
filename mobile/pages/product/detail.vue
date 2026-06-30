@@ -6,14 +6,14 @@
         <view class="section">
           <view class="section-header" @click="toggleBasicExpanded">
             <text class="section-title">基础信息</text>
-            <uni-icons :type="basicExpanded ? 'arrowup' : 'arrowdown'" size="16" color="#999"></uni-icons>
+            <u-icon :name="basicExpanded ? 'arrow-up' : 'arrow-down'" size="16" color="#999"></u-icon>
           </view>
           <view class="info-grid" v-if="basicExpanded">
             <view class="info-row">
               <text class="info-label">产品ID</text>
               <view class="info-right">
                 <text class="info-value">{{ product.id }}</text>
-                <uni-icons type="copy" size="14" color="#409EFF" @click="copyText(String(product.id))"></uni-icons>
+                <u-icon name="file-text" size="14" color="#409EFF" @click="copyText(String(product.id))"></u-icon>
               </view>
             </view>
             <view class="info-row">
@@ -41,7 +41,7 @@
               <text class="info-label">编码</text>
               <view class="info-right">
                 <text class="info-value">{{ product.code || '--' }}</text>
-                <uni-icons v-if="product.code" type="copy" size="14" color="#409EFF" @click="copyText(product.code)"></uni-icons>
+                <u-icon v-if="product.code" name="file-text" size="14" color="#409EFF" @click="copyText(product.code)"></u-icon>
               </view>
             </view>
             <view class="info-row">
@@ -96,7 +96,7 @@
           <!-- 收起 -->
           <view v-if="basicExpanded" class="collapse-btn" @click="basicExpanded = false">
             <text class="collapse-text">收起</text>
-            <uni-icons type="arrowup" size="14" color="#999"></uni-icons>
+            <u-icon name="arrow-up" size="14" color="#999"></u-icon>
           </view>
         </view>
 
@@ -104,7 +104,7 @@
         <view class="section">
           <view class="section-header" @click="toggleSpecExpanded">
             <text class="section-title">规格/计量单位</text>
-            <uni-icons :type="specExpanded ? 'arrowup' : 'arrowdown'" size="16" color="#999"></uni-icons>
+            <u-icon :name="specExpanded ? 'arrow-up' : 'arrow-down'" size="16" color="#999"></u-icon>
           </view>
           <view v-if="specExpanded">
             <scroll-view class="spec-scroll-wrap" scroll-x="true" v-if="units.length > 0">

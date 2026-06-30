@@ -22,7 +22,7 @@ export function createPurchaseOrderReturn(id: number, data: any) { return post(`
 export function getPurchaseInbounds(params?: any) { return get('/purchase/inbound', params) }
 export function getPurchaseInbound(id: number) { return get(`/purchase/inbound/${id}`) }
 export function createPurchaseInbound(data: any) { return post('/purchase/inbound', data) }
-export function completePurchaseInbound(id: number) { return post(`/purchase/inbound/${id}/complete`) }
+export function completePurchaseInbound(id: number, data?: any) { return post(`/purchase/inbound/${id}/complete`, data) }
 
 // 采购退货单
 export function getPurchaseReturns(params?: any) { return get('/purchase/return', params) }

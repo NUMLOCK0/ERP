@@ -1,104 +1,233 @@
 <template>
   <view class="order-detail">
     <view v-if="order.id" class="detail-content">
-      <!-- 基础信息卡片 -->
+      <!-- 销售订单基本信息 -->
       <view class="card">
-        <view class="card-title">订单基础信息</view>
+        <view class="card-title">基本信息</view>
         <view class="info-grid">
           <view class="info-item">
-            <text class="info-label">订单号</text>
-            <text class="info-value font-bold">{{ order.order_no }}</text>
+            <text class="info-label">销售单id</text>
+            <text class="info-value">{{ order.id }}</text>
           </view>
+          
+          <view class="info-item order-no-item">
+            <text class="info-label">销售单号</text>
+            <view class="info-value-copy">
+              <text class="info-value">{{ order.order_no }}</text>
+              <u-icon name="file-text" size="14" color="#1890FF" class="copy-icon" @click="copyOrderNo"  />
+            </view>
+          </view>
+          
           <view class="info-item">
-            <text class="info-label">订单状态</text>
+            <text class="info-label">客户</text>
+            <text class="info-value">{{ order.customer_name || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">职员</text>
+            <text class="info-value">{{ order.employee_name || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">销售状态</text>
             <view class="info-value">
               <uni-tag :text="statusMap[order.status] || '未知'" size="small" :type="getStatusType(order.status)" />
             </view>
           </view>
+          
           <view class="info-item">
-            <text class="info-label">销售客户</text>
-            <text class="info-value">{{ order.customer_name || '-' }}</text>
+            <text class="info-label">付款状态</text>
+            <view class="info-value">
+              <uni-tag :text="paymentStatusMap[order.payment_status] || '未付款'" size="small" :type="getPaymentStatusType(order.payment_status)" />
+            </view>
           </view>
+          
           <view class="info-item">
-            <text class="info-label">出库仓库</text>
-            <text class="info-value">{{ order.warehouse_name || '-' }}</text>
+            <text class="info-label">退货状态</text>
+            <view class="info-value">
+              <uni-tag :text="returnStatusMap[order.return_status] || '无退货'" size="small" :type="getReturnStatusType(order.return_status)" />
+            </view>
           </view>
-          <view class="info-item">
-            <text class="info-label">销售员</text>
-            <text class="info-value">{{ order.employee_name || '-' }}</text>
-          </view>
+          
           <view class="info-item">
             <text class="info-label">付款方式</text>
-            <text class="info-value">{{ order.payment_method || '未确定' }}</text>
+            <text class="info-value">{{ order.payment_method || '-' }}</text>
           </view>
+          
           <view class="info-item">
-            <text class="info-label">下单时间</text>
-            <text class="info-value date-text">{{ formatDate(order.created_at || order.createdAt) }}</text>
+            <text class="info-label">付款总额</text>
+            <text class="info-value">¥{{ formatPrice(order.payment_total_amount) }}</text>
           </view>
+          
           <view class="info-item">
-            <text class="info-label">创建人</text>
-            <text class="info-value">{{ order.creator_name || '-' }}</text>
+            <text class="info-label">单价</text>
+            <text class="info-value">
+              {{ order.unit_price === null || order.unit_price === undefined ? (order.items?.length > 1 ? '多产品' : '-') : `¥${formatPrice(order.unit_price)}` }}
+            </text>
           </view>
-        </view>
-      </view>
-
-      <!-- 收货信息卡片 -->
-      <view class="card">
-        <view class="card-title">收货及备注信息</view>
-        <view class="info-grid">
+          
           <view class="info-item">
-            <text class="info-label">收货人</text>
+            <text class="info-label">税金</text>
+            <text class="info-value">¥{{ formatPrice(order.total_tax) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">总价</text>
+            <text class="info-value text-danger font-bold">¥{{ formatPrice(order.total_amount) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">产品总数量</text>
+            <text class="info-value">{{ order.product_total_quantity || 0 }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">退款金额</text>
+            <text class="info-value">¥{{ formatPrice(order.refund_amount) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">退货数量</text>
+            <text class="info-value">{{ order.return_quantity || 0 }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">联系人</text>
             <text class="info-value">{{ order.contact || '-' }}</text>
           </view>
+          
           <view class="info-item">
             <text class="info-label">联系电话</text>
             <text class="info-value">{{ order.phone || '-' }}</text>
           </view>
+          
+          <view class="info-item">
+            <text class="info-label">开户银行</text>
+            <text class="info-value">{{ order.bank_name || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">开户地址</text>
+            <text class="info-value">{{ order.bank_address || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">开户户名</text>
+            <text class="info-value">{{ order.bank_account_name || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">开户户号</text>
+            <text class="info-value">{{ order.bank_account || '-' }}</text>
+          </view>
+
+          <view class="info-item">
+            <text class="info-label">创建人</text>
+            <text class="info-value">{{ order.creator_name || '-' }}</text>
+          </view>
+
           <view class="info-item" style="width: 100%;">
-            <text class="info-label">收货地址</text>
+            <text class="info-label">详细地址</text>
             <text class="info-value">{{ order.detail_address || '-' }}</text>
           </view>
-          <view class="info-item" style="width: 100%;" v-if="order.sale_remark">
-            <text class="info-label">单据备注</text>
-            <text class="info-value">{{ order.sale_remark }}</text>
+          
+          <view class="info-item" style="width: 100%;">
+            <text class="info-label">销售单备注信息</text>
+            <text class="info-value remarks-value">{{ order.sale_remark || '-' }}</text>
           </view>
+
           <view class="info-item" style="width: 100%;" v-if="order.admin_remark">
             <text class="info-label">管理备注</text>
-            <text class="info-value">{{ order.admin_remark }}</text>
+            <text class="info-value remarks-value">{{ order.admin_remark }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">完成时间</text>
+            <text class="info-value date-text">{{ formatDate(order.completed_time) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">发货完成时间</text>
+            <text class="info-value date-text">{{ formatDate(order.delivery_completed_time) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">审核时间</text>
+            <text class="info-value date-text">{{ formatDate(order.audit_time) }}</text>
+          </view>
+
+          <view class="info-item">
+            <text class="info-label">提审时间</text>
+            <text class="info-value date-text">{{ formatDate(order.submit_time) }}</text>
+          </view>
+
+          <view class="info-item">
+            <text class="info-label">取消时间</text>
+            <text class="info-value date-text">{{ formatDate(order.cancel_time) }}</text>
+          </view>
+
+          <view class="info-item">
+            <text class="info-label">关闭时间</text>
+            <text class="info-value date-text">{{ formatDate(order.close_time) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">创建时间</text>
+            <text class="info-value date-text">{{ formatDate(order.created_at || order.createdAt) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">更新时间</text>
+            <text class="info-value date-text">{{ formatDate(order.updated_at || order.updatedAt) }}</text>
           </view>
         </view>
       </view>
 
-      <!-- 商品明细卡片 -->
+      <!-- 商品明细 -->
       <view class="card">
-        <view class="card-title">商品明细</view>
-        <view class="item-list">
-          <view class="item-header">
-            <text class="col-name">商品标题/规格</text>
-            <text class="col-qty">数量</text>
-            <text class="col-price">单价</text>
-            <text class="col-amount">销售总价</text>
-          </view>
-          <view class="item-row" v-for="(item, index) in order.items" :key="index">
-            <view class="col-name-box">
-              <text class="product-title">{{ item.product_name || '-' }}</text>
-              <text class="product-spec" v-if="item.spec || item.code">{{ item.spec || '' }} {{ item.code || '' }}</text>
+        <view class="card-title">商品明细 ({{ order.items?.length || 0 }} 项)</view>
+        <view class="product-item-list">
+          <view class="product-item-card" v-for="(item, index) in order.items" :key="index">
+            <!-- 头部：商品名称与规格 -->
+            <view class="prod-header">
+              <text class="prod-title">#{{ index + 1 }} {{ item.product_name || '-' }}</text>
+              <text class="prod-spec" v-if="item.spec">{{ item.spec }}</text>
             </view>
-            <text class="col-qty">{{ item.quantity }}{{ item.unit_name || '' }}</text>
-            <text class="col-price">¥{{ formatPrice(item.price) }}</text>
-            <text class="col-amount">¥{{ formatPrice(item.amount) }}</text>
-          </view>
-        </view>
-
-        <!-- 金额统计 -->
-        <view class="amount-total-bar">
-          <view class="total-row">
-            <text class="total-label">税金合计：</text>
-            <text class="total-val">¥{{ formatPrice(order.total_tax) }}</text>
-          </view>
-          <view class="total-row">
-            <text class="total-label">应收总额：</text>
-            <text class="total-val text-danger font-bold">¥{{ formatPrice(order.total_amount) }}</text>
+            
+            <!-- 编码 -->
+            <view class="prod-code-row" v-if="item.code">
+              <text class="prod-code-label">编码：</text>
+              <text class="prod-code-val">{{ item.code }}</text>
+            </view>
+            
+            <!-- 紧凑网格详情 -->
+            <view class="prod-details-grid">
+              <!-- 第一行：单位、单价 -->
+              <view class="grid-row">
+                <view class="grid-cell"><text class="cell-lbl">单位：</text><text class="cell-val">{{ item.unit_name || '-' }}</text></view>
+                <view class="grid-cell"><text class="cell-lbl">销售单价：</text><text class="cell-val">¥{{ formatPrice(item.price) }}</text></view>
+              </view>
+              <!-- 第二行：数量、税额/税率 -->
+              <view class="grid-row">
+                <view class="grid-cell"><text class="cell-lbl">销售数量：</text><text class="cell-val">{{ item.quantity }}</text></view>
+                <view class="grid-cell"><text class="cell-lbl">税额/率：</text><text class="cell-val">¥{{ formatPrice(item.tax) }} ({{ item.tax_rate }}%)</text></view>
+              </view>
+              <!-- 第三行：销售金额 -->
+              <view class="grid-row">
+                <view class="grid-cell"><text class="cell-lbl">销售金额：</text><text class="cell-val danger-text">¥{{ formatPrice(item.amount) }}</text></view>
+                <view class="grid-cell" v-if="item.final_quantity !== null"><text class="cell-lbl">最终数量：</text><text class="cell-val">{{ item.final_quantity }}</text></view>
+              </view>
+              <!-- 第四行：最终单价、最终金额 -->
+              <view class="grid-row" v-if="item.final_quantity !== null">
+                <view class="grid-cell"><text class="cell-lbl">最终单价：</text><text class="cell-val">¥{{ formatPrice(item.final_price) }}</text></view>
+                <view class="grid-cell"><text class="cell-lbl">最终金额：</text><text class="cell-val danger-text">¥{{ formatPrice(item.final_amount) }}</text></view>
+              </view>
+              <!-- 第五行：已退货 -->
+              <view class="grid-row">
+                <view class="grid-cell"><text class="cell-lbl">已退货：</text><text class="cell-val warning">{{ item.return_quantity || 0 }}</text></view>
+                <view class="grid-cell" v-if="item.remark"><text class="cell-lbl">备注：</text><text class="cell-val remark-text">{{ item.remark }}</text></view>
+              </view>
+            </view>
           </view>
         </view>
       </view>
@@ -107,32 +236,24 @@
     <view v-else-if="!loading" class="empty-state">
       <text class="empty-text">订单不存在或已被删除</text>
     </view>
+    
     <view v-if="loading" class="loading-state">
       <uni-load-more status="loading"></uni-load-more>
     </view>
 
     <!-- 底部操作栏 -->
     <view v-if="order.id" class="bottom-bar safe-bottom">
-      <view class="action-btn-group">
-        <button class="btn-action outline" @click="goBack">返回</button>
-        <!-- Draft (0) actions -->
-        <button v-if="Number(order.status) === 0" class="btn-action warning" @click="goEdit">编辑</button>
-        <button v-if="Number(order.status) === 0" class="btn-action primary" @click="handleSubmit">提交审核</button>
-        <button v-if="Number(order.status) === 0" class="btn-action danger" @click="handleDelete">删除</button>
-        
-        <!-- Pending Audit (2) actions -->
-        <button v-if="Number(order.status) === 2" class="btn-action danger" @click="handleCancel">取消订单</button>
-        <button v-if="Number(order.status) === 2" class="btn-action primary" @click="handleAudit">审核通过</button>
-
-        <!-- Audited/In Progress (1) actions -->
-        <button v-if="Number(order.status) === 1" class="btn-action danger" @click="handleClose">关闭订单</button>
-      </view>
+      <button v-if="Number(order.status) === 0" class="btn-submit primary" @click="handleSubmit">提 审</button>
+      <button v-if="Number(order.status) === 2" class="btn-primary" @click="handleAudit">审核通过</button>
+      
+      <button class="btn-more outline" @click="showMore">更 多</button>
+      <button class="btn-back" @click="goBack">返回</button>
     </view>
   </view>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { saleApi } from '@/api/sale'
 
@@ -141,8 +262,8 @@ const loading = ref(true)
 
 const statusMap = {
   0: '草稿',
-  2: '待审核',
   1: '进行中',
+  2: '待审核',
   3: '已取消',
   4: '已关闭'
 }
@@ -150,10 +271,38 @@ const statusMap = {
 const getStatusType = (status) => {
   const map = {
     0: 'info',
-    2: 'warning',
     1: 'success',
+    2: 'warning',
     3: 'error',
     4: 'default'
+  }
+  return map[status] || 'info'
+}
+
+const paymentStatusMap = {
+  0: '未付款',
+  1: '付款中',
+  2: '已付款'
+}
+
+const getPaymentStatusType = (status) => {
+  const map = {
+    0: 'info',
+    1: 'warning',
+    2: 'success'
+  }
+  return map[status] || 'info'
+}
+
+const returnStatusMap = {
+  0: '无退货',
+  1: '有退货'
+}
+
+const getReturnStatusType = (status) => {
+  const map = {
+    0: 'info',
+    1: 'warning'
   }
   return map[status] || 'info'
 }
@@ -164,7 +313,7 @@ const formatPrice = (val) => {
 }
 
 const formatDate = (val) => {
-  if (!val) return ''
+  if (!val) return '-'
   const d = new Date(val)
   if (isNaN(d.getTime())) return val
   const y = d.getFullYear()
@@ -173,6 +322,16 @@ const formatDate = (val) => {
   const h = String(d.getHours()).padStart(2, '0')
   const min = String(d.getMinutes()).padStart(2, '0')
   return `${y}-${m}-${day} ${h}:${min}`
+}
+
+const copyOrderNo = () => {
+  if (!order.value.order_no) return
+  uni.setClipboardData({
+    data: order.value.order_no,
+    success: () => {
+      uni.showToast({ title: '复制订单号成功', icon: 'none' })
+    }
+  })
 }
 
 const loadDetail = async () => {
@@ -306,7 +465,7 @@ const handleClose = () => {
 const handleDelete = () => {
   uni.showModal({
     title: '确认删除',
-    content: '删除后数据将无法恢复，确定要删除此草稿订单吗？',
+    content: '删除后数据将无法恢复，确定要删除此订单吗？',
     success: async (res) => {
       if (res.confirm) {
         uni.showLoading({ title: '删除中...' })
@@ -328,7 +487,65 @@ const handleDelete = () => {
   })
 }
 
+const showMore = () => {
+  const status = Number(order.value.status)
+  const menu = []
+  const actions = []
+
+  if (status === 0) {
+    actions.push(
+      { command: 'edit', label: '编辑' },
+      { command: 'submit', label: '提交审核' },
+      { command: 'cancel', label: '取消订单' },
+      { command: 'delete', label: '删除订单' }
+    )
+  }
+  if (status === 2) {
+    actions.push(
+      { command: 'audit', label: '审核通过' },
+      { command: 'cancel', label: '取消订单' }
+    )
+  }
+  if (status === 1) {
+    actions.push(
+      { command: 'close', label: '关闭订单' }
+    )
+  }
+  if ([3, 4].includes(status)) {
+    actions.push(
+      { command: 'delete', label: '删除订单' }
+    )
+  }
+
+  actions.forEach(act => {
+    menu.push(act.label)
+  })
+  menu.push('复制单号')
+
+  uni.showActionSheet({
+    itemList: menu,
+    success: ({ tapIndex }) => {
+      const actionLabel = menu[tapIndex]
+      if (actionLabel === '复制单号') {
+        copyOrderNo()
+      } else {
+        const clickedAction = actions.find(act => act.label === actionLabel)
+        if (clickedAction) {
+          const cmd = clickedAction.command
+          if (cmd === 'edit') goEdit()
+          else if (cmd === 'submit') handleSubmit()
+          else if (cmd === 'cancel') handleCancel()
+          else if (cmd === 'delete') handleDelete()
+          else if (cmd === 'audit') handleAudit()
+          else if (cmd === 'close') handleClose()
+        }
+      }
+    }
+  })
+}
+
 onShow(() => {
+  uni.hideTabBar()
   loadDetail()
 })
 </script>
@@ -338,8 +555,8 @@ onShow(() => {
   min-height: 100vh;
   background: #F5F7FA;
   box-sizing: border-box;
-  padding-bottom: calc(120rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(140rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
 }
 
 .detail-content {
@@ -366,130 +583,155 @@ onShow(() => {
 .info-grid {
   display: flex;
   flex-wrap: wrap;
-
   .info-item {
     width: 50%;
-    padding: 12rpx 0;
+    padding: 12rpx 8rpx;
     box-sizing: border-box;
-
-    .info-label {
-      font-size: 22rpx;
-      color: #909399;
-      display: block;
-      margin-bottom: 4rpx;
-    }
-
-    .info-value {
-      font-size: 26rpx;
-      color: #303133;
-      display: block;
-      font-weight: 500;
-      word-break: break-all;
-    }
-
-    .date-text {
-      color: #909399;
-      font-size: 24rpx;
-    }
-  }
-}
-
-.item-list {
-  .item-header {
-    display: flex;
-    background: #F8FAFC;
-    border-radius: 8rpx;
-    padding: 16rpx 12rpx;
-    margin-bottom: 8rpx;
-  }
-
-  .item-row {
-    display: flex;
-    align-items: center;
-    padding: 20rpx 12rpx;
-    border-bottom: 1rpx solid #F2F6FC;
-
-    &:last-child {
-      border-bottom: none;
-    }
-  }
-
-  .col-name {
-    flex: 2;
-    font-size: 24rpx;
-    color: #303133;
-    font-weight: 600;
-  }
-
-  .col-name-box {
-    flex: 2;
     display: flex;
     flex-direction: column;
-    gap: 4rpx;
-
-    .product-title {
-      font-size: 24rpx;
-      color: #303133;
-      font-weight: 600;
+    
+    .info-label { font-size: 22rpx; color: #909399; display: block; margin-bottom: 6rpx; }
+    .info-value { font-size: 26rpx; color: #303133; display: block; font-weight: 600; word-break: break-all; }
+    .date-text { color: #909399; font-size: 24rpx; }
+    
+    &.order-no-item {
+      .info-value-copy {
+        display: flex;
+        align-items: center;
+        gap: 8rpx;
+      }
+      .copy-icon {
+        flex-shrink: 0;
+        cursor: pointer;
+        
+        &:active {
+          opacity: 0.6;
+        }
+      }
     }
-
-    .product-spec {
-      font-size: 20rpx;
-      color: #909399;
-    }
-  }
-
-  .col-qty {
-    flex: 1;
-    text-align: center;
-    font-size: 24rpx;
-    color: #606266;
-  }
-
-  .col-price {
-    flex: 1.2;
-    text-align: right;
-    font-size: 24rpx;
-    color: #606266;
-  }
-
-  .col-amount {
-    flex: 1.3;
-    text-align: right;
-    font-size: 24rpx;
-    color: #F56C6C;
-    font-weight: 600;
   }
 }
 
-.amount-total-bar {
-  margin-top: 24rpx;
-  padding-top: 20rpx;
-  border-top: 1rpx solid #F2F6FC;
+.remarks-value {
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+.product-item-list {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  gap: 16rpx;
+}
+
+.product-item-card {
+  background: #F8FAFC;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  border: 1rpx solid #EEF2F6;
+  display: flex;
+  flex-direction: column;
   gap: 8rpx;
+}
 
-  .total-row {
-    display: flex;
-    align-items: center;
-    font-size: 24rpx;
+.prod-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  border-bottom: 1rpx solid #EEF2F6;
+  padding-bottom: 8rpx;
+}
 
-    .total-label {
-      color: #909399;
-    }
+.prod-title {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #303133;
+  flex: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
 
-    .total-val {
-      color: #303133;
-      font-weight: 600;
-    }
+.prod-spec {
+  font-size: 20rpx;
+  background: #E8F4FF;
+  color: #1890FF;
+  padding: 2rpx 8rpx;
+  border-radius: 6rpx;
+  max-width: 180rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
 
-    .text-danger {
-      color: #F56C6C;
-      font-size: 28rpx;
-    }
+.prod-code-row {
+  display: flex;
+  align-items: center;
+  font-size: 20rpx;
+  color: #909399;
+}
+
+.prod-code-val {
+  font-family: monospace;
+}
+
+.prod-details-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.grid-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.grid-cell {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-size: 22rpx;
+  color: #606266;
+  min-width: 0;
+}
+
+.cell-lbl {
+  color: #909399;
+  flex-shrink: 0;
+}
+
+.cell-val {
+  font-weight: 600;
+  color: #303133;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  
+  &.primary {
+    color: #1890FF;
   }
+  
+  &.success {
+    color: #67C23A;
+  }
+  
+  &.warning {
+    color: #E6A23C;
+  }
+  
+  &.danger-text {
+    color: #F56C6C;
+  }
+}
+
+.remark-text {
+  font-size: 20rpx;
+  color: #909399;
+  font-weight: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .bottom-bar {
@@ -497,37 +739,38 @@ onShow(() => {
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10rpx);
-  padding: 16rpx 24rpx;
-  padding-bottom: calc(16rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  background: #FFFFFF;
+  padding: 20rpx 24rpx;
+  padding-bottom: calc(20rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 16rpx;
   box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.05);
   z-index: 99;
 
-  .action-btn-group {
-    display: flex;
-    justify-content: flex-end;
-    gap: 16rpx;
-    width: 100%;
-  }
-
-  .btn-action {
+  button {
     height: 76rpx;
     line-height: 76rpx;
-    padding: 0 36rpx;
+    padding: 0 32rpx;
     font-size: 26rpx;
+    border-radius: 16rpx;
     font-weight: 600;
-    border-radius: 38rpx;
     margin: 0;
-
-    &::after {
-      border: none;
-    }
-
+    
+    &::after { border: none; }
+    
     &.outline {
-      background: #F4F4F5;
+      background: #FFFFFF;
       color: #909399;
+      border: 1rpx solid #DCDFE6;
+    }
+    
+    &.warning {
+      background: #FF9800;
+      color: #FFFFFF;
+      box-shadow: 0 4rpx 12rpx rgba(255, 152, 0, 0.2);
     }
 
     &.primary {
@@ -535,34 +778,30 @@ onShow(() => {
       color: #FFFFFF;
       box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.2);
     }
-
-    &.warning {
-      background: #E6A23C;
+    
+    &.btn-primary {
+      background: #67C23A;
       color: #FFFFFF;
-      box-shadow: 0 4rpx 12rpx rgba(230, 162, 60, 0.2);
+      box-shadow: 0 4rpx 12rpx rgba(103, 194, 58, 0.2);
     }
-
-    &.danger {
+    
+    &.btn-danger {
       background: #F56C6C;
       color: #FFFFFF;
       box-shadow: 0 4rpx 12rpx rgba(245, 108, 108, 0.2);
     }
-
-    &:active {
-      opacity: 0.85;
+    
+    &.btn-back {
+      background: #F4F4F5;
+      color: #909399;
     }
   }
 }
 
 .empty-state, .loading-state {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  justify-content: center;
   padding-top: 200rpx;
-
-  .empty-text {
-    font-size: 28rpx;
-    color: #C0C4CC;
-  }
+  .empty-text { font-size: 26rpx; color: #C0C4CC; }
 }
 </style>

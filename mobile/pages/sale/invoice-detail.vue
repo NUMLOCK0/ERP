@@ -67,7 +67,7 @@
           <view class="attachment-item" v-for="(url, idx) in attachments" :key="idx" @click="previewImage(url)">
             <image v-if="isImageUrl(url)" :src="url" mode="aspectFill" class="attachment-img" />
             <view v-else class="attachment-file-box">
-              <uni-icons type="paperclip" size="24" color="#909399"></uni-icons>
+              <u-icon name="attach" size="24" color="#909399"></u-icon>
               <text class="attachment-file-text">文件附件</text>
             </view>
           </view>

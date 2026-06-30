@@ -15,7 +15,7 @@
                   <text class="picker-value" :class="{ placeholder: orderIndex === -1 }">
                     {{ orders[orderIndex]?.label || '请选择销售订单' }}
                   </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                  <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
                 </view>
               </picker>
             </view>
@@ -34,7 +34,7 @@
                   <text class="picker-value" :class="{ placeholder: !invoiceDate }">
                     {{ invoiceDate || '请选择开票日期' }}
                   </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                  <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
                 </view>
               </picker>
             </view>
@@ -71,11 +71,11 @@
             <view class="attachment-upload-item" v-for="(url, idx) in form.attachment_urls" :key="idx">
               <image :src="url" mode="aspectFill" class="attachment-upload-img" @click="previewUploadImage(idx)" />
               <view class="remove-btn" @click.stop="removeAttachment(idx)">
-                <uni-icons type="closeempty" size="12" color="#FFFFFF"></uni-icons>
+                <u-icon name="close" size="12" color="#FFFFFF"></u-icon>
               </view>
             </view>
             <view class="uploader-box" v-if="form.attachment_urls.length < 10" @click="chooseAndUploadAttachments">
-              <uni-icons type="plus" size="28" color="#909399"></uni-icons>
+              <u-icon name="plus" size="28" color="#909399"></u-icon>
               <text class="uploader-text">上传发票</text>
             </view>
           </view>
@@ -92,7 +92,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { saleApi } from '@/api/sale'
 import http from '@/api/request'
 
@@ -114,15 +115,28 @@ const form = reactive({
   attachment_urls: []
 })
 
-const loadOptions = async () => {
+const loadOptions = async (targetOrderId) => {
   try {
     const oRes = await saleApi.getOrders({ page: 1, pageSize: 1000 })
     if (oRes.code === 0) {
       const listData = oRes.data?.list || oRes.data || []
       orders.value = listData.map(item => ({
         ...item,
-        label: `${item.order_no} (${item.customer_name || ''})`
+        label: item.order_no + ' (' + (item.customer_name || '') + ')'
       }))
+
+      if (targetOrderId) {
+        const idx = orders.value.findIndex(item => Number(item.id) === Number(targetOrderId))
+        if (idx > -1) {
+          orderIndex.value = idx
+          const selected = orders.value[idx]
+          form.order_id = selected.id
+          customerName.value = selected.customer_name || ''
+          const totalAmount = Number(selected.total_price || selected.total_amount || 0)
+          form.total_amount = totalAmount > 0 ? totalAmount.toFixed(2) : ''
+          recalculateTaxFromRate()
+        }
+      }
     }
   } catch (e) {
     // handled
@@ -268,8 +282,9 @@ const previewUploadImage = (idx) => {
   })
 }
 
-onMounted(() => {
-  loadOptions()
+onLoad((options) => {
+  const orderId = options?.order_id
+  loadOptions(orderId)
   
   const now = new Date()
   const y = now.getFullYear()

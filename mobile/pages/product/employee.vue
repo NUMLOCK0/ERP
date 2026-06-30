@@ -3,7 +3,7 @@
     <!-- 搜索栏 -->
     <view class="search-bar">
       <view class="search-input-wrap">
-        <uni-icons type="search" size="20" color="#999"></uni-icons>
+        <u-icon name="search" size="20" color="#999"></u-icon>
         <input class="search-input" v-model="keyword" placeholder="搜索姓名/账号/电话" type="text" @confirm="onSearch" />
       </view>
       <view class="search-btn" @click="onSearch">搜索</view>
@@ -38,10 +38,10 @@
                 </text>
                 <view class="action-icons">
                   <view class="icon-btn edit" @click.stop="handleEdit(item)">
-                    <uni-icons type="compose" size="16" color="#1890FF"></uni-icons>
+                    <u-icon name="edit-pen" size="16" color="#1890FF"></u-icon>
                   </view>
                   <view class="icon-btn delete" @click.stop="handleDelete(item)">
-                    <uni-icons type="trash" size="16" color="#F56C6C"></uni-icons>
+                    <u-icon name="trash" size="16" color="#F56C6C"></u-icon>
                   </view>
                 </view>
               </view>
@@ -50,7 +50,7 @@
         </view>
 
         <view v-else-if="!loading" class="empty-state">
-          <uni-icons type="box" size="60" color="#DCDFE6"></uni-icons>
+          <u-icon name="grid" size="60" color="#DCDFE6"></u-icon>
           <text class="empty-text">暂无职员数据</text>
         </view>
 
@@ -63,7 +63,7 @@
     <!-- 底部固定操作栏 -->
     <view class="bottom-bar">
       <view class="add-btn" @click="handleAdd">
-        <uni-icons type="plus-filled" size="24" color="#FFFFFF"></uni-icons>
+        <u-icon name="plus-circle-fill" size="24" color="#FFFFFF"></u-icon>
         <text class="add-text">新增职员</text>
       </view>
     </view>

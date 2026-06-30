@@ -2,14 +2,27 @@
   <view class="list-page">
     <view class="search-bar">
       <view class="search-input-wrap">
-        <uni-icons type="search" size="20" color="#999999" />
-        <input v-model="keyword" class="search-input" placeholder="搜索订单号/客户" type="text" confirm-type="search" @confirm="onSearch" />
+        <u-icon name="search" size="20" color="#999999"  />
+        <input
+          v-model="keyword"
+          class="search-input"
+          placeholder="搜索订单号/客户"
+          type="text"
+          confirm-type="search"
+          @confirm="onSearch"
+        />
       </view>
       <view class="search-btn" @click="onSearch">搜索</view>
     </view>
 
     <view class="tab-bar">
-      <view v-for="tab in tabs" :key="tab.value" class="tab-item" :class="{ active: activeTab === tab.value }" @click="switchTab(tab.value)">
+      <view
+        v-for="tab in tabs"
+        :key="tab.value"
+        class="tab-item"
+        :class="{ active: activeTab === tab.value }"
+        @click="switchTab(tab.value)"
+      >
         <text>{{ tab.label }}</text>
         <view v-if="activeTab === tab.value" class="tab-line" />
       </view>
@@ -32,10 +45,12 @@
             <template #summary>
               <view class="summary-grid">
                 <view class="summary-item wide"><text class="summary-label">客户</text><text class="summary-value strong">{{ item.customer_name || '-' }}</text></view>
-                <view class="summary-item"><text class="summary-label">金额</text><text class="summary-value amount">¥{{ formatPrice(item.total_amount) }}</text></view>
+                <view class="summary-item"><text class="summary-label">金额</text><text class="summary-value amount">￥{{ formatPrice(item.total_amount) }}</text></view>
+                <view class="summary-item"><text class="summary-label">商品数</text><text class="summary-value">{{ getItemCount(item) }}</text></view>
                 <view class="summary-item"><text class="summary-label">下单时间</text><text class="summary-value">{{ formatDate(item.created_at || item.createdAt) || '--' }}</text></view>
               </view>
             </template>
+
             <template #detail>
               <view class="detail-section">
                 <text class="detail-title">订单信息</text>
@@ -43,20 +58,23 @@
                   <view class="detail-row"><text class="detail-label">订单编号</text><text class="detail-value">{{ item.order_no || '-' }}</text></view>
                   <view class="detail-row"><text class="detail-label">状态</text><text class="detail-value">{{ statusMap[item.status] || '未知' }}</text></view>
                   <view class="detail-row"><text class="detail-label">客户</text><text class="detail-value">{{ item.customer_name || '-' }}</text></view>
-                  <view class="detail-row"><text class="detail-label">金额</text><text class="detail-value amount">¥{{ formatPrice(item.total_amount) }}</text></view>
-                  <view class="detail-row"><text class="detail-label">下单时间</text><text class="detail-value">{{ formatDate(item.created_at || item.createdAt) || '--' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">金额</text><text class="detail-value amount">￥{{ formatPrice(item.total_amount) }}</text></view>
+                  <view class="detail-row"><text class="detail-label">商品数</text><text class="detail-value">{{ getItemCount(item) }}</text></view>
+                  <view class="detail-row"><text class="detail-label">创建时间</text><text class="detail-value">{{ formatDate(item.created_at || item.createdAt) || '--' }}</text></view>
                   <view v-if="item.remark" class="detail-row"><text class="detail-label">备注</text><text class="detail-value multiline">{{ item.remark }}</text></view>
                 </view>
               </view>
             </template>
+
             <template #actions>
               <view class="action-btn primary" @click="goDetail(item.id)">详情</view>
+              <view class="action-btn outline" @click="showMore(item)">更多</view>
             </template>
           </BusinessListItem>
         </view>
 
         <view v-else-if="!loading" class="empty-state">
-          <uni-icons type="wallet" size="60" color="#DCDFE6" />
+          <u-icon name="rmb-circle" size="60" color="#DCDFE6"  />
           <text class="empty-text">暂无销售订单</text>
         </view>
 
@@ -65,7 +83,7 @@
       </view>
     </scroll-view>
 
-    <view class="floating-btn" @click="goCreate"><uni-icons type="plus" size="24" color="#FFFFFF" /></view>
+    <view class="floating-btn" @click="goCreate"><u-icon name="plus" size="24" color="#FFFFFF"  /></view>
   </view>
 </template>
 
@@ -101,12 +119,34 @@ const formatPrice = (val) => (val === null || val === undefined || val === '' ? 
 const formatDate = (val) => {
   if (!val) return ''
   const d = new Date(val)
-  if (isNaN(d.getTime())) return val
+  if (Number.isNaN(d.getTime())) return val
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
-const toggleCard = (id) => { if (expandedIds[id]) delete expandedIds[id]; else expandedIds[id] = true }
-const switchTab = (value) => { activeTab.value = value; onSearch() }
-const onSearch = () => { page.value = 1; noMore.value = false; list.value = []; fetchList(true) }
+
+const getItemCount = (item) => {
+  if (Array.isArray(item.items)) return item.items.length
+  return item.item_count ?? item.product_count ?? item.total_items ?? '-'
+}
+
+const toggleCard = (id) => {
+  if (expandedIds[id]) delete expandedIds[id]
+  else expandedIds[id] = true
+}
+
+const resetAndFetch = () => {
+  page.value = 1
+  noMore.value = false
+  list.value = []
+  fetchList(true)
+}
+
+const switchTab = (value) => {
+  activeTab.value = value
+  resetAndFetch()
+}
+
+const onSearch = () => resetAndFetch()
+
 const fetchList = async (isRefresh = false) => {
   if (loading.value) return
   loading.value = true
@@ -116,7 +156,13 @@ const fetchList = async (isRefresh = false) => {
     if (res.code === 0) {
       const data = res.data?.list || res.data || []
       total.value = res.data?.total || data.length
-      if (isRefresh) { list.value = data; page.value = 2 } else { list.value = [...list.value, ...data]; page.value += 1 }
+      if (isRefresh) {
+        list.value = data
+        page.value = 2
+      } else {
+        list.value = [...list.value, ...data]
+        page.value += 1
+      }
       noMore.value = list.value.length >= total.value
     }
   } finally {
@@ -124,11 +170,183 @@ const fetchList = async (isRefresh = false) => {
     refreshing.value = false
   }
 }
-const onRefresh = () => { refreshing.value = true; page.value = 1; noMore.value = false; fetchList(true) }
-const loadMore = () => { if (!noMore.value && !loading.value) fetchList() }
+
+const onRefresh = () => {
+  refreshing.value = true
+  page.value = 1
+  noMore.value = false
+  fetchList(true)
+}
+
+const loadMore = () => {
+  if (!noMore.value && !loading.value) fetchList()
+}
+
 const goDetail = (id) => uni.navigateTo({ url: `/pages/sale/order-detail?id=${id}` })
+const goEdit = (id) => uni.navigateTo({ url: `/pages/sale/order-edit?id=${id}` })
 const goCreate = () => uni.navigateTo({ url: '/pages/sale/order-edit' })
-onShow(() => { uni.hideTabBar(); fetchList(true) })
+
+const refreshAfterAction = () => {
+  page.value = 1
+  noMore.value = false
+  fetchList(true)
+}
+
+const submitOrder = (item) => {
+  uni.showModal({
+    title: '确认提交',
+    content: `确认提交销售订单 ${item.order_no || ''} 吗？`,
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        const ret = await saleApi.submitOrder(item.id)
+        if (ret.code === 0) {
+          uni.showToast({ title: ret.data?.auto_approved ? '已提交并通过审核' : '提交成功', icon: 'success' })
+          refreshAfterAction()
+        }
+      } catch (error) {
+        // request interceptor handles toast
+      }
+    }
+  })
+}
+
+const auditOrder = (item) => {
+  uni.showModal({
+    title: '确认审核',
+    content: `确认审核通过销售订单 ${item.order_no || ''} 吗？`,
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        const ret = await saleApi.auditOrder(item.id)
+        if (ret.code === 0) {
+          uni.showToast({ title: '审核通过', icon: 'success' })
+          refreshAfterAction()
+        }
+      } catch (error) {
+        // request interceptor handles toast
+      }
+    }
+  })
+}
+
+const cancelOrder = (item) => {
+  uni.showModal({
+    title: '确认取消',
+    content: `确认取消销售订单 ${item.order_no || ''} 吗？`,
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        const ret = Number(item.status) === 0 ? await saleApi.deleteOrder(item.id) : await saleApi.cancelOrder(item.id)
+        if (ret.code === 0) {
+          uni.showToast({ title: Number(item.status) === 0 ? '已删除' : '已取消', icon: 'success' })
+          refreshAfterAction()
+        }
+      } catch (error) {
+        // request interceptor handles toast
+      }
+    }
+  })
+}
+
+const closeOrder = (item) => {
+  uni.showModal({
+    title: '确认关闭',
+    content: `确认关闭销售订单 ${item.order_no || ''} 吗？`,
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        const ret = await saleApi.closeOrder(item.id)
+        if (ret.code === 0) {
+          uni.showToast({ title: '已关闭', icon: 'success' })
+          refreshAfterAction()
+        }
+      } catch (error) {
+        // request interceptor handles toast
+      }
+    }
+  })
+}
+
+const deleteOrder = (item) => {
+  uni.showModal({
+    title: '确认删除',
+    content: `确认删除销售订单 ${item.order_no || ''} 吗？`,
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        const ret = await saleApi.deleteOrder(item.id)
+        if (ret.code === 0) {
+          uni.showToast({ title: '删除成功', icon: 'success' })
+          refreshAfterAction()
+        }
+      } catch (error) {
+        // request interceptor handles toast
+      }
+    }
+  })
+}
+
+const showMore = (item) => {
+  const status = Number(item.status)
+  const menu = []
+  const actions = []
+
+  actions.push({ command: 'detail', label: '详情' })
+  if (status === 0) {
+    actions.push({ command: 'edit', label: '编辑' })
+    actions.push({ command: 'submit', label: '提交审核' })
+  }
+  if (status === 2) {
+    actions.push({ command: 'audit', label: '审核通过' })
+  }
+  if ([0, 2].includes(status)) {
+    actions.push({ command: 'cancel', label: '取消订单' })
+  }
+  if (status === 1) {
+    actions.push({ command: 'close', label: '关闭订单' })
+  }
+  if ([3, 4].includes(status)) {
+    actions.push({ command: 'delete', label: '删除订单' })
+  }
+
+  actions.forEach(act => {
+    menu.push(act.label)
+  })
+  menu.push('复制单号')
+
+  uni.showActionSheet({
+    itemList: menu,
+    success: ({ tapIndex }) => {
+      const actionLabel = menu[tapIndex]
+      if (actionLabel === '复制单号') {
+        uni.setClipboardData({
+          data: item.order_no || '',
+          success: () => {
+            uni.showToast({ title: '复制单号成功', icon: 'none' })
+          }
+        })
+      } else {
+        const clickedAction = actions.find(act => act.label === actionLabel)
+        if (clickedAction) {
+          const cmd = clickedAction.command
+          if (cmd === 'detail') goDetail(item.id)
+          else if (cmd === 'edit') goEdit(item.id)
+          else if (cmd === 'submit') submitOrder(item)
+          else if (cmd === 'audit') auditOrder(item)
+          else if (cmd === 'cancel') cancelOrder(item)
+          else if (cmd === 'close') closeOrder(item)
+          else if (cmd === 'delete') deleteOrder(item)
+        }
+      }
+    }
+  })
+}
+
+onShow(() => {
+  uni.hideTabBar()
+  resetAndFetch()
+})
 </script>
 
 <style scoped lang="scss">

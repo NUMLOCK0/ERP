@@ -1,6 +1,6 @@
 {
     "name" : "mobile",
-    "appid" : "",
+    "appid" : "__UNI__C650738",
     "description" : "",
     "versionName" : "1.0.0",
     "versionCode" : "100",
@@ -65,21 +65,20 @@
     "mp-toutiao" : {
         "usingComponents" : true
     },
-    "h5" : {
-        // "devServer" : {
-        //     "port" : 8080,
-        //     "proxy" : {
-        //         "/api" : {
-        //             "target" : "http://localhost:3000",
-        //             "changeOrigin" : true
-        //         },
-        //         "/uploads" : {
-        //             "target" : "http://localhost:3000",
-        //             "changeOrigin" : true
-        //         }
-        //     }
-        // }
-    },
+    "h5" : {},
+    // "devServer" : {
+    //     "port" : 8080,
+    //     "proxy" : {
+    //         "/api" : {
+    //             "target" : "http://localhost:3000",
+    //             "changeOrigin" : true
+    //         },
+    //         "/uploads" : {
+    //             "target" : "http://localhost:3000",
+    //             "changeOrigin" : true
+    //         }
+    //     }
+    // }
     "uniStatistics" : {
         "enable" : false
     },

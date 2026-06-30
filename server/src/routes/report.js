@@ -89,7 +89,7 @@ router.get('/dashboard', async (req, res) => {
   }
 });
 
-router.get('/stock', async (req, res) => {
+router.get(['/stock', '/product-stock'], async (req, res) => {
   try {
     const pool = getPool();
     const { page = 1, pageSize = 20, keyword = '', warehouse_id = '' } = req.query;
@@ -154,6 +154,7 @@ router.get('/purchase-inbound', async (req, res) => {
       `SELECT pii.id,
               pii.inbound_id,
               pi.inbound_no,
+              pi.status AS status,
               pi.order_id,
               pii.product_id,
               p.image_urls AS product_image_urls,
@@ -341,6 +342,7 @@ router.get('/sale-delivery', async (req, res) => {
       `SELECT sdi.id,
               sdi.delivery_id,
               sd.delivery_no,
+              sd.status AS status,
               sdi.product_id,
               p.image_urls AS product_image_urls,
               p.name AS product_name,
@@ -770,6 +772,7 @@ router.get('/purchase-order', async (req, res) => {
       `SELECT poi.id,
               poi.order_id,
               po.order_no,
+              po.status AS status,
               poi.product_id,
               p.image_urls AS product_image_urls,
               p.name AS product_name,
@@ -1012,6 +1015,7 @@ router.get('/sale-order', async (req, res) => {
       `SELECT soi.id,
               soi.order_id,
               so.order_no,
+              so.status AS status,
               soi.product_id,
               p.image_urls AS product_image_urls,
               p.name AS product_name,
@@ -1423,6 +1427,58 @@ router.get('/outbound-summary', async (req, res) => {
        GROUP BY sdi.product_id, p.name, p.code ORDER BY total_amount DESC`, params
     );
     res.json(Response.success(list));
+  } catch (err) {
+    res.json(Response.error(err.message));
+  }
+});
+
+// ==================== 移动端主页统计数据 ====================
+
+router.get('/home-summary', async (req, res) => {
+  try {
+    const pool = getPool();
+    
+    // Top 4 stats
+    const [pendingOutboundRow] = await pool.execute('SELECT COUNT(*) AS cnt FROM sale_delivery WHERE status = 0');
+    const [pendingInboundRow] = await pool.execute('SELECT COUNT(*) AS cnt FROM purchase_inbound WHERE status = 0');
+    const [activeProductsRow] = await pool.execute('SELECT COUNT(*) AS cnt FROM product WHERE status = 1');
+    const [inactiveProductsRow] = await pool.execute('SELECT COUNT(*) AS cnt FROM product WHERE status = 0');
+
+    const getTableStats = async (table, dateField = 'created_at') => {
+      const [totalRow] = await pool.execute(`SELECT COUNT(*) AS cnt FROM ${table}`);
+      const [todayRow] = await pool.execute(`SELECT COUNT(*) AS cnt FROM ${table} WHERE ${dateField} >= CURDATE()`);
+      const [yesterdayRow] = await pool.execute(
+        `SELECT COUNT(*) AS cnt FROM ${table} WHERE ${dateField} >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND ${dateField} < CURDATE()`
+      );
+      return {
+        total: Number(totalRow[0].cnt),
+        today: Number(todayRow[0].cnt),
+        yesterday: Number(yesterdayRow[0].cnt)
+      };
+    };
+
+    const statCards = [
+      { title: '产品总量', ...(await getTableStats('product')) },
+      { title: '客商总量', ...(await getTableStats('supplier_customer')) },
+      { title: '采购订单', ...(await getTableStats('purchase_order')) },
+      { title: '采购入库', ...(await getTableStats('purchase_inbound')) },
+      { title: '采购退货', ...(await getTableStats('purchase_return')) },
+      { title: '销售订单', ...(await getTableStats('sale_order')) },
+      { label: '销售发货', title: '销售发货', ...(await getTableStats('sale_delivery')) },
+      { title: '销售退货', ...(await getTableStats('sale_return')) },
+      { title: '其他入库', ...(await getTableStats('other_inbound')) },
+      { title: '其他出库', ...(await getTableStats('other_outbound')) },
+      { title: '采购付款', ...(await getTableStats('finance_payment')) },
+      { title: '销售收款', ...(await getTableStats('finance_receipt')) }
+    ];
+
+    res.json(Response.success({
+      pendingOutbound: Number(pendingOutboundRow[0].cnt),
+      pendingInbound: Number(pendingInboundRow[0].cnt),
+      activeProducts: Number(activeProductsRow[0].cnt),
+      inactiveProducts: Number(inactiveProductsRow[0].cnt),
+      statCards
+    }));
   } catch (err) {
     res.json(Response.error(err.message));
   }

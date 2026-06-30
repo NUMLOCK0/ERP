@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="page-container">
     <el-card>
       <SearchForm :model="searchForm" @search="handleSearch" @reset="handleReset">
@@ -162,9 +162,7 @@
           <el-date-picker v-model="payForm.pay_time" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择付款时间" />
         </el-form-item>
         <el-form-item label="付款方式" prop="pay_method">
-          <el-select v-model="payForm.pay_method" placeholder="请选择付款方式" clearable>
-            <el-option v-for="method in paymentMethodOptions" :key="method" :label="method" :value="method" />
-          </el-select>
+          <el-input v-model="payForm.pay_method" placeholder="请输入付款方式" maxlength="50" show-word-limit />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="payForm.remark" type="textarea" :rows="3" maxlength="300" show-word-limit placeholder="请输入备注" />
@@ -518,7 +516,7 @@ const payRules = {
     { max: 30, message: '付款人最多30个字符', trigger: 'blur' }
   ],
   pay_time: [{ required: true, message: '请选择付款时间', trigger: 'change' }],
-  pay_method: [{ required: true, message: '请选择付款方式', trigger: 'change' }],
+  pay_method: [{ required: true, message: '请输入付款方式', trigger: 'blur' }],
   remark: [{ max: 300, message: '备注最多300个字符', trigger: 'blur' }]
 }
 const invoiceRules = {

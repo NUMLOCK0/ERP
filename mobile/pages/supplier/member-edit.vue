@@ -36,7 +36,7 @@
             <view class="uploader-box" @click="chooseAndUploadIcon">
               <image v-if="form.icon_url" :src="getAssetUrl(form.icon_url)" mode="aspectFit" class="upload-preview" />
               <view v-else class="upload-placeholder">
-                <uni-icons type="plus" size="32" color="#909399"></uni-icons>
+                <u-icon name="plus" size="32" color="#909399"></u-icon>
                 <text class="uploader-text">选择图标</text>
               </view>
             </view>

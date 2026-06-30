@@ -9,28 +9,24 @@
           </view>
           <text class="shop-name">{{ userStore.userName || '测试商户11' }}</text>
         </view>
-        <view class="header-right">
-          <text class="brand-text">ShopXO&Devil</text>
-          <uni-icons type="staff-filled" size="20" color="#FFFFFF"></uni-icons>
-        </view>
       </view>
 
       <!-- 4 个数字卡片 -->
       <view class="stats-row">
         <view class="stat-card">
-          <text class="stat-num">43</text>
+          <text class="stat-num">{{ pendingOutbound }}</text>
           <text class="stat-label">待出库</text>
         </view>
         <view class="stat-card">
-          <text class="stat-num">20</text>
+          <text class="stat-num">{{ pendingInbound }}</text>
           <text class="stat-label">待入库</text>
         </view>
         <view class="stat-card">
-          <text class="stat-num">79</text>
+          <text class="stat-num">{{ activeProducts }}</text>
           <text class="stat-label">有效产品</text>
         </view>
         <view class="stat-card">
-          <text class="stat-num">7</text>
+          <text class="stat-num">{{ inactiveProducts }}</text>
           <text class="stat-label">无效产品</text>
         </view>
       </view>
@@ -43,7 +39,7 @@
         <view class="section-right">
           <view class="dropdown" @click="showDatePopup = !showDatePopup">
             <text class="dropdown-text">{{ dateRangeLabel }}</text>
-            <uni-icons :type="showDatePopup ? 'arrowup' : 'arrowdown'" size="12" color="#606266"></uni-icons>
+            <u-icon :name="showDatePopup ? 'arrow-up' : 'arrow-down'" size="12" color="#606266"></u-icon>
           </view>
           <text class="view-all" @click="viewAllStats">查看全部</text>
         </view>
@@ -81,7 +77,7 @@
           @click="navigateTo(item.url)"
         >
           <view class="data-icon" :style="{ backgroundColor: item.bgColor }">
-            <uni-icons :type="item.icon" size="22" color="#FFFFFF"></uni-icons>
+            <u-icon :name="item.icon" size="22" color="#FFFFFF"></u-icon>
           </view>
           <text class="data-label">{{ item.label }}</text>
         </view>
@@ -102,7 +98,7 @@
           @click="navigateTo(item.url)"
         >
           <view class="data-icon" :style="{ backgroundColor: item.bgColor }">
-            <uni-icons :type="item.icon" size="22" color="#FFFFFF"></uni-icons>
+            <u-icon :name="item.icon" size="22" color="#FFFFFF"></u-icon>
           </view>
           <text class="data-label">{{ item.label }}</text>
         </view>
@@ -123,7 +119,7 @@
           @click="navigateTo(item.url)"
         >
           <view class="data-icon" :style="{ backgroundColor: item.bgColor }">
-            <uni-icons :type="item.icon" size="22" color="#FFFFFF"></uni-icons>
+            <u-icon :name="item.icon" size="22" color="#FFFFFF"></u-icon>
           </view>
           <text class="data-label">{{ item.label }}</text>
         </view>
@@ -144,7 +140,7 @@
           @click="navigateTo(item.url)"
         >
           <view class="data-icon" :style="{ backgroundColor: item.bgColor }">
-            <uni-icons :type="item.icon" size="22" color="#FFFFFF"></uni-icons>
+            <u-icon :name="item.icon" size="22" color="#FFFFFF"></u-icon>
           </view>
           <text class="data-label">{{ item.label }}</text>
         </view>
@@ -164,7 +160,7 @@
           @click="navigateTo(item.url)"
         >
           <view class="data-icon" :style="{ backgroundColor: item.bgColor }">
-            <uni-icons :type="item.icon" size="22" color="#FFFFFF"></uni-icons>
+            <u-icon :name="item.icon" size="22" color="#FFFFFF"></u-icon>
           </view>
           <text class="data-label">{{ item.label }}</text>
         </view>
@@ -184,7 +180,7 @@
           @click="navigateTo(item.url)"
         >
           <view class="data-icon" :style="{ backgroundColor: item.bgColor }">
-            <uni-icons :type="item.icon" size="22" color="#FFFFFF"></uni-icons>
+            <u-icon :name="item.icon" size="22" color="#FFFFFF"></u-icon>
           </view>
           <text class="data-label">{{ item.label }}</text>
         </view>
@@ -204,7 +200,7 @@
           @click="navigateTo(item.url)"
         >
           <view class="data-icon" :style="{ backgroundColor: item.bgColor }">
-            <uni-icons :type="item.icon" size="22" color="#FFFFFF"></uni-icons>
+            <u-icon :name="item.icon" size="22" color="#FFFFFF"></u-icon>
           </view>
           <text class="data-label">{{ item.label }}</text>
         </view>
@@ -224,7 +220,7 @@
           @click="navigateTo(item.url)"
         >
           <view class="data-icon" :style="{ backgroundColor: item.bgColor }">
-            <uni-icons :type="item.icon" size="22" color="#FFFFFF"></uni-icons>
+            <u-icon :name="item.icon" size="22" color="#FFFFFF"></u-icon>
           </view>
           <text class="data-label">{{ item.label }}</text>
         </view>
@@ -247,13 +243,52 @@ import { useUserStore } from '@/store/user'
 import CustomTabbar from '@/components/CustomTabbar.vue'
 import KaidenPopup from '@/components/KaidenPopup.vue'
 import DateRangePopup from '@/components/DateRangePopup.vue'
+import { reportApi } from '@/api/report'
 
 const showKaidenPopup = ref(false)
 const showDatePopup = ref(false)
 const dateRangeLabel = ref('近30天')
 
+const pendingOutbound = ref(0)
+const pendingInbound = ref(0)
+const activeProducts = ref(0)
+const inactiveProducts = ref(0)
+
+const statCards = ref([
+  { title: '产品总量', total: 0, today: 0, yesterday: 0 },
+  { title: '客商总量', total: 0, today: 0, yesterday: 0 },
+  { title: '采购订单', total: 0, today: 0, yesterday: 0 },
+  { title: '采购入库', total: 0, today: 0, yesterday: 0 },
+  { title: '采购退货', total: 0, today: 0, yesterday: 0 },
+  { title: '销售订单', total: 0, today: 0, yesterday: 0 },
+  { title: '销售发货', total: 0, today: 0, yesterday: 0 },
+  { title: '销售退货', total: 0, today: 0, yesterday: 0 },
+  { title: '其他入库', total: 0, today: 0, yesterday: 0 },
+  { title: '其他出库', total: 0, today: 0, yesterday: 0 },
+  { title: '采购付款', total: 0, today: 0, yesterday: 0 },
+  { title: '销售收款', total: 0, today: 0, yesterday: 0 }
+])
+
+const loadHomeStats = async () => {
+  try {
+    const res = await reportApi.getHomeSummary()
+    if (res.code === 0) {
+      pendingOutbound.value = res.data.pendingOutbound || 0
+      pendingInbound.value = res.data.pendingInbound || 0
+      activeProducts.value = res.data.activeProducts || 0
+      inactiveProducts.value = res.data.inactiveProducts || 0
+      if (res.data.statCards && res.data.statCards.length) {
+        statCards.value = res.data.statCards
+      }
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
 onShow(() => {
   uni.hideTabBar()
+  loadHomeStats()
 })
 
 const userStore = useUserStore()
@@ -266,87 +301,71 @@ const avatarText = computed(() => {
 function onDateQuery(result) {
   dateRangeLabel.value = result.presetLabel
   console.log('查询时间范围:', result)
-  // TODO: 根据 result 调用接口刷新统计数据
 }
-
-const statCards = [
-  { title: '产品总量', total: 86, today: 2, yesterday: 0 },
-  { title: '客商总量', total: 35, today: 1, yesterday: 0 },
-  { title: '采购订单', total: 8, today: 1, yesterday: 2 },
-  { title: '采购入库', total: 5, today: 0, yesterday: 1 },
-  { title: '采购退货', total: 3, today: 1, yesterday: 0 },
-  { title: '销售订单', total: 12, today: 3, yesterday: 1 },
-  { title: '销售发货', total: 10, today: 2, yesterday: 0 },
-  { title: '销售退货', total: 2, today: 0, yesterday: 0 },
-  { title: '其他入库', total: 4, today: 1, yesterday: 1 },
-  { title: '其他出库', total: 1, today: 0, yesterday: 0 },
-  { title: '采购付款', total: 6, today: 1, yesterday: 0 },
-  { title: '销售收款', total: 9, today: 2, yesterday: 1 }
-]
 
 const dataItems = [
   { label: '产品管理', icon: 'gift', bgColor: '#FF9800', url: '/pages/product/list' },
-  { label: '产品分类', icon: 'bars', bgColor: '#FF9800', url: '/pages/product/category' },
+  { label: '产品分类', icon: 'list', bgColor: '#FF9800', url: '/pages/product/category' },
   { label: '品牌管理', icon: 'star', bgColor: '#FF9800', url: '/pages/product/brand' },
-  { label: '计量单位', icon: 'compose', bgColor: '#FF9800', url: '/pages/product/unit' },
-  { label: '职员管理', icon: 'contact', bgColor: '#FF9800', url: '/pages/product/employee' },
+  { label: '计量单位', icon: 'edit-pen', bgColor: '#FF9800', url: '/pages/product/unit' },
+  { label: '职员管理', icon: 'account', bgColor: '#FF9800', url: '/pages/product/employee' },
   { label: '仓库管理', icon: 'home', bgColor: '#FF9800', url: '/pages/inventory/warehouse' },
-  { label: '企业管理', icon: 'shop', bgColor: '#FF9800', url: '/pages/supplier/company-list' },
+  { label: '企业管理', icon: 'bag', bgColor: '#FF9800', url: '/pages/supplier/company-list' },
   { label: '企业分类', icon: 'list', bgColor: '#FF9800', url: '/pages/supplier/category-list' },
-  { label: '会员登记', icon: 'medal', bgColor: '#FF9800', url: '/pages/supplier/member-list' }
+  { label: '会员登记', icon: 'integral', bgColor: '#FF9800', url: '/pages/supplier/member-list' }
 ]
 
 const purchaseItems = [
-  { label: '采购订单', icon: 'cart', bgColor: '#67C23A', url: '/pages/purchase/order-list' },
-  { label: '采购入库单', icon: 'arrowdown', bgColor: '#67C23A', url: '/pages/purchase/inbound-list' },
-  { label: '采购退货单', icon: 'undo', bgColor: '#67C23A', url: '/pages/purchase/return-list' },
-  { label: '采购付款单', icon: 'wallet', bgColor: '#67C23A', url: '/pages/finance/payment-list' },
-  { label: '采购发票登记', icon: 'compose', bgColor: '#67C23A', url: '/pages/purchase/invoice-list' }
+  { label: '采购订单', icon: 'shopping-cart', bgColor: '#67C23A', url: '/pages/purchase/order-list' },
+  { label: '采购入库单', icon: 'download', bgColor: '#67C23A', url: '/pages/purchase/inbound-list' },
+  { label: '采购退货单', icon: 'rewind-left', bgColor: '#67C23A', url: '/pages/purchase/return-list' },
+  { label: '采购付款单', icon: 'rmb-circle', bgColor: '#67C23A', url: '/pages/finance/payment-list' },
+  { label: '采购发票登记', icon: 'edit-pen', bgColor: '#67C23A', url: '/pages/purchase/invoice-list' }
 ]
 
 const saleItems = [
-  { label: '销售订单', icon: 'wallet', bgColor: '#409EFF', url: '/pages/sale/order-list' },
-  { label: '销售发货单', icon: 'paperplane', bgColor: '#409EFF', url: '/pages/sale/delivery-list' },
-  { label: '发货退货单', icon: 'undo', bgColor: '#409EFF', url: '/pages/sale/return-list' },
-  { label: '销售收款单', icon: 'wallet', bgColor: '#409EFF', url: '/pages/finance/receipt-list' },
-  { label: '销售发票登记', icon: 'compose', bgColor: '#409EFF', url: '/pages/sale/invoice-list' }
+  { label: '销售订单', icon: 'rmb-circle', bgColor: '#409EFF', url: '/pages/sale/order-list' },
+  { label: '销售发货单', icon: 'car', bgColor: '#409EFF', url: '/pages/sale/delivery-list' },
+  { label: '发货退货单', icon: 'rewind-left', bgColor: '#409EFF', url: '/pages/sale/return-list' },
+  { label: '销售收款单', icon: 'rmb-circle', bgColor: '#409EFF', url: '/pages/finance/receipt-list' },
+  { label: '销售发票登记', icon: 'edit-pen', bgColor: '#409EFF', url: '/pages/sale/invoice-list' }
 ]
 
 const processingItems = [
-  { label: '药材加工批次', icon: 'loop', bgColor: '#E6A23C', url: 'todo' }
+  { label: '药材加工批次', icon: 'reload', bgColor: '#E6A23C', url: '/pages/processing/batch-list' }
 ]
 
 const inventoryItems = [
   { label: '库存查询', icon: 'home', bgColor: '#9B59B6', url: '/pages/inventory/stock' },
-  { label: '其他入库', icon: 'arrowdown', bgColor: '#9B59B6', url: '/pages/inventory/other-in-list' },
-  { label: '其他出库', icon: 'arrowup', bgColor: '#9B59B6', url: '/pages/inventory/other-out-list' },
-  { label: '库存盘点', icon: 'checkbox', bgColor: '#9B59B6', url: '/pages/inventory/check-list' },
+  { label: '其他入库', icon: 'download', bgColor: '#9B59B6', url: '/pages/inventory/other-in-list' },
+  { label: '其他出库', icon: 'arrow-upward', bgColor: '#9B59B6', url: '/pages/inventory/other-out-list' },
+  { label: '库存盘点', icon: 'checkmark-circle', bgColor: '#9B59B6', url: '/pages/inventory/check-list' },
   { label: '库存日志', icon: 'list', bgColor: '#9B59B6', url: '/pages/inventory/log' }
 ]
 
 const reportItems = [
   { label: '产品库存', icon: 'gift', bgColor: '#2C3E50', url: '/pages/report/product-stock' },
-  { label: '采购订单', icon: 'cart', bgColor: '#2C3E50', url: '/pages/report/purchase-order' },
-  { label: '采购入库', icon: 'arrowdown', bgColor: '#2C3E50', url: '/pages/report/purchase-inbound' },
-  { label: '采购付款', icon: 'wallet', bgColor: '#2C3E50', url: '/pages/finance/payment-list' },
-  { label: '其他入库', icon: 'arrowdown', bgColor: '#2C3E50', url: 'todo' },
-  { label: '销售订单', icon: 'wallet', bgColor: '#2C3E50', url: '/pages/report/sale-order' },
-  { label: '销售发货', icon: 'paperplane', bgColor: '#2C3E50', url: '/pages/report/sale-delivery' },
-  { label: '销售收款', icon: 'wallet', bgColor: '#2C3E50', url: '/pages/finance/receipt-list' },
-  { label: '其他出库', icon: 'arrowup', bgColor: '#2C3E50', url: 'todo' }
+  { label: '采购订单', icon: 'shopping-cart', bgColor: '#2C3E50', url: '/pages/report/purchase-order' },
+  { label: '采购入库', icon: 'download', bgColor: '#2C3E50', url: '/pages/report/purchase-inbound' },
+  { label: '采购付款', icon: 'rmb-circle', bgColor: '#2C3E50', url: '/pages/report/purchase-payment' },
+  { label: '其他入库', icon: 'download', bgColor: '#2C3E50', url: '/pages/report/other-inbound' },
+  { label: '销售订单', icon: 'rmb-circle', bgColor: '#2C3E50', url: '/pages/report/sale-order' },
+  { label: '销售发货', icon: 'car', bgColor: '#2C3E50', url: '/pages/report/sale-delivery' },
+  { label: '销售收款', icon: 'rmb-circle', bgColor: '#2C3E50', url: '/pages/report/sale-receipt' },
+  { label: '其他出库', icon: 'arrow-upward', bgColor: '#2C3E50', url: '/pages/report/other-outbound' }
 ]
 
 const supplierItems = [
-  { label: '企业管理', icon: 'staff', bgColor: '#1ABC9C', url: '/pages/supplier/company-list' },
-  { label: '企业分类', icon: 'bars', bgColor: '#1ABC9C', url: '/pages/supplier/category-list' },
-  { label: '会员等级', icon: 'medal', bgColor: '#1ABC9C', url: '/pages/supplier/member-list' }
+  { label: '企业管理', icon: 'account', bgColor: '#1ABC9C', url: '/pages/supplier/company-list' },
+  { label: '企业分类', icon: 'list', bgColor: '#1ABC9C', url: '/pages/supplier/category-list' },
+  { label: '会员等级', icon: 'integral', bgColor: '#1ABC9C', url: '/pages/supplier/member-list' }
 ]
 
 const systemItems = [
-  { label: '系统设置', icon: 'gear', bgColor: '#909399', url: 'todo' },
-  { label: '管理员', icon: 'staff', bgColor: '#909399', url: 'todo' },
-  { label: '角色', icon: 'person', bgColor: '#909399', url: 'todo' },
-  { label: '打印模板', icon: 'compose', bgColor: '#909399', url: 'todo' },
+  { label: '系统设置', icon: 'setting', bgColor: '#909399', url: 'todo' },
+  { label: '管理员', icon: 'account', bgColor: '#909399', url: 'todo' },
+  { label: '角色', icon: 'account', bgColor: '#909399', url: 'todo' },
+  { label: '打印模板', icon: 'edit-pen', bgColor: '#909399', url: 'todo' },
   { label: '操作日志', icon: 'list', bgColor: '#909399', url: 'todo' }
 ]
 

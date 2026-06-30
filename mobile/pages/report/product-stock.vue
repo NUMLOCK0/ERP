@@ -1,90 +1,160 @@
 <template>
   <view class="report-page">
-    <view class="header-bar">
-      <text class="report-title">产品库存报表</text>
-    </view>
     <scroll-view class="list-scroll" scroll-y @scrolltolower="loadMore">
-      <view class="report-card" v-for="item in list" :key="item.product_id || item.id">
-        <view class="card-row">
-          <view class="product-info">
-            <text class="product-name">{{ item.product_name || item.name || '-' }}</text>
-            <text class="product-code">{{ item.product_code || item.code || '-' }}</text>
-          </view>
-          <view class="stock-section">
-            <text class="stock-qty" :class="getStockClass(item.total_quantity || item.quantity || 0)">
-              {{ item.total_quantity || item.quantity || 0 }}
-            </text>
-            <text class="stock-unit">{{ item.unit_name || '' }}</text>
-          </view>
+      <view class="scroll-inner with-summary">
+        <view v-if="list.length" class="card-list">
+          <BusinessListItem
+            v-for="item in list"
+            :key="item.id"
+            :meta="formatDate(item.updated_at || item.created_at)"
+            :title="item.product_name || '-'"
+            :subtitle="item.code || '-'"
+            :tag-text="stockStatusText(item.quantity || 0)"
+            :tag-type="stockStatusType(item.quantity || 0)"
+            :expanded="!!expandedIds[item.id]"
+            :show-toggle="true"
+            @toggle="toggleCard(item.id)"
+          >
+            <template #summary>
+              <view class="summary-grid">
+                <view class="summary-item"><text class="summary-label">仓库</text><text class="summary-value">{{ item.warehouse_name || '-' }}</text></view>
+                <view class="summary-item"><text class="summary-label">库存数量</text><text class="summary-value strong">{{ formatQuantity(item.quantity) }}</text></view>
+                <view class="summary-item"><text class="summary-label">规格</text><text class="summary-value">{{ item.spec || '-' }}</text></view>
+                <view class="summary-item"><text class="summary-label">销售单价</text><text class="summary-value amount">￥{{ formatPrice(item.sale_price) }}</text></view>
+              </view>
+            </template>
+            <template #detail>
+              <view class="detail-section">
+                <text class="detail-title">库存明细</text>
+                <view class="detail-grid">
+                  <view class="detail-row"><text class="detail-label">产品名称</text><text class="detail-value">{{ item.product_name || '-' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">产品编码</text><text class="detail-value">{{ item.code || '-' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">规格</text><text class="detail-value">{{ item.spec || '-' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">仓库</text><text class="detail-value">{{ item.warehouse_name || '-' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">库存数量</text><text class="detail-value font-bold">{{ formatQuantity(item.quantity) }}</text></view>
+                  <view class="detail-row"><text class="detail-label">采购均价</text><text class="detail-value">￥{{ formatPrice(item.cost_price) }}</text></view>
+                  <view class="detail-row"><text class="detail-label">销售价格</text><text class="detail-value">￥{{ formatPrice(item.sale_price) }}</text></view>
+                  <view class="detail-row"><text class="detail-label">库存估值</text><text class="detail-value amount">￥{{ formatPrice(Number(item.quantity || 0) * Number(item.cost_price || 0)) }}</text></view>
+                  <view class="detail-row"><text class="detail-label">更新时间</text><text class="detail-value">{{ formatDate(item.updated_at) }}</text></view>
+                </view>
+              </view>
+            </template>
+          </BusinessListItem>
         </view>
-        <view class="card-footer">
-          <text class="footer-item">成本价: ¥{{ formatPrice(item.cost_price) }}</text>
-          <text class="footer-item">销售价: ¥{{ formatPrice(item.sale_price) }}</text>
-          <text class="footer-item">库存金额: ¥{{ formatPrice(item.stock_amount) }}</text>
+
+        <view v-else-if="!loading" class="empty-state">
+          <u-icon name="list" size="60" color="#DCDFE6"  />
+          <text class="empty-text">暂无报表数据</text>
         </view>
+
+        <view v-if="loading" class="loading-more"><uni-load-more status="loading" /></view>
+        <view v-if="noMore && list.length > 0" class="loading-more"><uni-load-more status="noMore" /></view>
       </view>
-      <view v-if="list.length === 0 && !loading" class="empty-state">
-        <uni-icons type="bars" size="60" color="#DCDFE6"></uni-icons>
-        <text class="empty-text">暂无报表数据</text>
-      </view>
-      <view v-if="loading" class="loading-more"><uni-load-more status="loading"></uni-load-more></view>
-      <view v-if="noMore && list.length > 0" class="loading-more"><uni-load-more status="noMore"></uni-load-more></view>
     </scroll-view>
+
+    <ReportSummaryBar title="仓库库存汇总" :items="summaryItems" />
   </view>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { reactive, ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import BusinessListItem from '@/components/BusinessListItem.vue'
+import ReportSummaryBar from '@/components/ReportSummaryBar.vue'
 import { reportApi } from '@/api/report'
 
 const list = ref([])
+const summaryItems = ref([])
 const page = ref(1)
 const loading = ref(false)
 const noMore = ref(false)
+const expandedIds = reactive({})
 
-const formatPrice = (val) => {
-  if (val === null || val === undefined) return '0.00'
-  return Number(val).toFixed(2)
+const formatPrice = (val) => (val === null || val === undefined || val === '' ? '0.00' : Number(val).toFixed(2))
+const formatQuantity = (val) => (val === null || val === undefined || val === '' ? '0' : Number(val))
+const formatDate = (val) => {
+  if (!val) return '--'
+  const d = new Date(val)
+  if (Number.isNaN(d.getTime())) return val
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-const getStockClass = (qty) => {
-  if (qty <= 0) return 'text-danger'
-  if (qty < 10) return 'text-warning'
-  return 'text-success'
+const stockStatusText = (qty) => {
+  const value = Number(qty || 0)
+  if (value <= 0) return '缺货'
+  if (value < 10) return '偏低'
+  return '充足'
 }
 
-const fetchList = async () => {
+const stockStatusType = (qty) => {
+  const value = Number(qty || 0)
+  if (value <= 0) return 'error'
+  if (value < 10) return 'warning'
+  return 'success'
+}
+
+const toggleCard = (id) => {
+  if (expandedIds[id]) delete expandedIds[id]
+  else expandedIds[id] = true
+}
+
+const computeSummary = (listData) => {
+  const warehouseMap = {}
+  listData.forEach(item => {
+    const wName = item.warehouse_name || '未分配仓库'
+    if (!warehouseMap[wName]) {
+      warehouseMap[wName] = {
+        product_total: 0,
+        quantity_total: 0,
+        amount_total: 0
+      }
+    }
+    warehouseMap[wName].product_total += 1
+    warehouseMap[wName].quantity_total += Number(item.quantity || 0)
+    warehouseMap[wName].amount_total += Number(item.quantity || 0) * Number(item.cost_price || 0)
+  })
+  
+  return Object.entries(warehouseMap).map(([name, data], idx) => ({
+    key: idx,
+    title: name,
+    stats: [
+      { label: '产品种类', value: formatQuantity(data.product_total) },
+      { label: '库存总量', value: formatQuantity(data.quantity_total) },
+      { label: '库存估值', value: `￥${formatPrice(data.amount_total)}` }
+    ]
+  }))
+}
+
+const fetchList = async (reset = false) => {
   if (loading.value) return
   loading.value = true
   try {
-    const res = await reportApi.getProductStock({ page: page.value, pageSize: 20 })
+    const currentPage = reset ? 1 : page.value
+    const res = await reportApi.getProductStock({ page: currentPage, pageSize: 20 })
     if (res.code === 0) {
       const data = res.data?.list || res.data || []
       const total = res.data?.total || data.length
-      list.value = page.value === 1 ? data : [...list.value, ...data]
-      page.value++
+      list.value = reset ? data : [...list.value, ...data]
+      page.value = currentPage + 1
       noMore.value = list.value.length >= total
+      summaryItems.value = computeSummary(list.value)
     }
-  } catch (e) { uni.showToast({ title: '加载失败', icon: 'none' }) }
-  finally { loading.value = false }
+  } finally {
+    loading.value = false
+  }
 }
 
-const loadMore = () => { if (!noMore.value && !loading.value) fetchList() }
+const loadMore = () => {
+  if (!noMore.value && !loading.value) fetchList()
+}
 
-onMounted(() => fetchList())
+onShow(() => {
+  page.value = 1
+  noMore.value = false
+  fetchList(true)
+})
 </script>
 
-<style lang="scss" scoped>
-.report-page { height: 100vh; display: flex; flex-direction: column; background: #F5F7FA; }
-.header-bar { background: #FFFFFF; padding: 20rpx 24rpx; .report-title { font-size: 34rpx; font-weight: 700; color: #303133; } }
-.list-scroll { flex: 1; padding: 10rpx 20rpx; }
-.report-card {
-  background: #FFFFFF; border-radius: 16rpx; margin-bottom: 16rpx; padding: 24rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
-  .card-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16rpx; }
-  .product-info { flex: 1; .product-name { font-size: 28rpx; font-weight: 600; color: #303133; display: block; } .product-code { font-size: 22rpx; color: #909399; margin-top: 4rpx; display: block; } }
-  .stock-section { text-align: right; .stock-qty { font-size: 40rpx; font-weight: 700; display: block; } .stock-unit { font-size: 20rpx; color: #C0C4CC; } }
-  .card-footer { display: flex; justify-content: space-between; padding-top: 16rpx; border-top: 1rpx solid #F2F6FC; .footer-item { font-size: 22rpx; color: #909399; } }
-}
-.empty-state { display: flex; flex-direction: column; align-items: center; padding-top: 200rpx; .empty-text { font-size: 28rpx; color: #C0C4CC; margin-top: 20rpx; } }
-.loading-more { padding: 20rpx 0; }
+<style scoped lang="scss">
+@import './shared-report.scss';
 </style>

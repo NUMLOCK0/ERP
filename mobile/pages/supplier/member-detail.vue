@@ -34,7 +34,7 @@
         <view class="icon-preview-box">
           <image v-if="level.icon_url" :src="getAssetUrl(level.icon_url)" mode="aspectFit" class="level-icon" @click="previewIcon" />
           <view v-else class="icon-empty-placeholder">
-            <uni-icons type="medal" size="48" color="#C0C4CC"></uni-icons>
+            <u-icon name="integral" size="48" color="#C0C4CC"></u-icon>
             <text class="placeholder-text">暂无专属图标</text>
           </view>
         </view>

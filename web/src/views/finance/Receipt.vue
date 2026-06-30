@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="page-container">
     <el-card>
       <SearchForm :model="searchForm" @search="handleSearch" @reset="handleReset">
@@ -139,9 +139,7 @@
           <el-date-picker v-model="receiveForm.pay_time" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择收款时间" />
         </el-form-item>
         <el-form-item label="收款方式" prop="pay_method">
-          <el-select v-model="receiveForm.pay_method" placeholder="请选择收款方式" clearable>
-            <el-option v-for="method in receiptMethodOptions" :key="method" :label="method" :value="method" />
-          </el-select>
+          <el-input v-model="receiveForm.pay_method" placeholder="请输入收款方式" maxlength="50" show-word-limit />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="receiveForm.remark" type="textarea" :rows="3" maxlength="300" show-word-limit placeholder="请输入备注" />
@@ -397,7 +395,7 @@ const invoiceForm = reactive({
 })
 const receiveRules = {
   amount: [{ required: true, message: '请输入收款金额', trigger: 'blur' }],
-  pay_method: [{ required: true, message: '请选择收款方式', trigger: 'change' }],
+  pay_method: [{ required: true, message: '请输入收款方式', trigger: 'blur' }],
   pay_time: [{ required: true, message: '请选择收款时间', trigger: 'change' }],
   remark: [{ max: 300, message: '备注最多300个字符', trigger: 'blur' }]
 }

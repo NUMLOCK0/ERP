@@ -4,7 +4,16 @@
  */
 import { useUserStore } from '@/store/user'
 
-const BASE_URL = 'http://localhost:3000/api'
+let BASE_URL = '';
+// #ifdef H5
+// H5 环境直接使用相对路径，让 Nginx 代理
+//BASE_URL = '/api';
+BASE_URL = 'http://localhost:3000/api';
+// #endif
+// #ifndef H5
+// 非 H5 环境（App、小程序）必须使用绝对路径
+BASE_URL = 'http://erp.msfdcloud.com/api'; 
+// #endif
 const REQUEST_TIMEOUT = 30000
 
 // 请求拦截

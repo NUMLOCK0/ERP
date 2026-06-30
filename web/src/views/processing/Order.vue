@@ -131,6 +131,11 @@
               <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="批次、产地、含水率、特殊加工要求等" />
             </el-form-item>
           </el-col>
+          <el-col :span="24">
+            <el-form-item label="加工图片">
+              <BusinessImageUpload v-model="form.image_urls" />
+            </el-form-item>
+          </el-col>
         </el-row>
       </el-form>
       <template #footer>
@@ -162,6 +167,21 @@
             <div>
               <div class="summary-label">状态</div>
               <el-tag :type="statusType(detailData.status)">{{ statusText(detailData.status) }}</el-tag>
+            </div>
+          </div>
+
+          <div v-if="normalizeImageUrls(detailData.image_urls).length" class="detail-image-section">
+            <div class="section-heading">加工图片</div>
+            <div class="order-image-list">
+              <el-image
+                v-for="url in normalizeImageUrls(detailData.image_urls)"
+                :key="url"
+                class="order-image-thumb"
+                :src="url"
+                :preview-src-list="normalizeImageUrls(detailData.image_urls)"
+                fit="cover"
+                preview-teleported
+              />
             </div>
           </div>
 
@@ -378,6 +398,7 @@ import SearchForm from '@/components/SearchForm.vue'
 import Pagination from '@/components/Pagination.vue'
 import CopyableNo from '@/components/CopyableNo.vue'
 import ProductCreateDialog from '@/components/ProductCreateDialog.vue'
+import BusinessImageUpload from '@/components/BusinessImageUpload.vue'
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -405,7 +426,8 @@ const form = reactive({
   supplier_id: null as number | null,
   source_quantity: 1,
   source_unit_price: 0,
-  remark: ''
+  remark: '',
+  image_urls: [] as string[]
 })
 const formRules: FormRules = {
   source_product_id: [{ required: true, message: '请选择采购原包货', trigger: 'change' }],
@@ -495,7 +517,8 @@ function resetForm() {
     supplier_id: null,
     source_quantity: 1,
     source_unit_price: 0,
-    remark: ''
+    remark: '',
+    image_urls: []
   })
   formRef.value?.clearValidate()
 }
@@ -530,7 +553,7 @@ async function handleSave() {
   if (!valid) return
   submitting.value = true
   try {
-    await createProcessingOrder({ ...form, source_quantity: Number(form.source_quantity), source_unit_price: Number(form.source_unit_price) })
+    await createProcessingOrder({ ...form, source_quantity: Number(form.source_quantity), source_unit_price: Number(form.source_unit_price), image_urls: form.image_urls })
     ElMessage.success('加工批次已创建')
     editorVisible.value = false
     fetchData()
@@ -742,6 +765,19 @@ function formatDateTime(value: any) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 }
 function listOf(res: any) { return res.data?.list || res.data || [] }
+function normalizeImageUrls(value: any) {
+  if (Array.isArray(value)) return value.filter(Boolean)
+  if (!value) return []
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [value]
+    } catch {
+      return [value]
+    }
+  }
+  return []
+}
 
 onMounted(async () => {
   const [productRes, warehouseRes, supplierRes, employeeRes]: any[] = await Promise.all([
@@ -782,6 +818,21 @@ onMounted(async () => {
 .section-heading { margin: 0 0 10px; color: #303133; font-size: 15px; font-weight: 600; }
 .section-header .section-heading { margin-bottom: 0; }
 .inbound-heading { margin-top: 28px; }
+.detail-image-section {
+  margin-bottom: 18px;
+}
+.order-image-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.order-image-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #f0f2f5;
+}
 .detail-footer {
   position: sticky;
   bottom: 0;

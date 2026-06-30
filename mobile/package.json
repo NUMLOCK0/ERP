@@ -7,7 +7,7 @@
     "dev:app": "uni -p app",
     "dev:h5": "node -e \"process.env.UNI_INPUT_DIR='.'; require('child_process').execSync('uni', {stdio: 'inherit'})\"",
     "dev:mp-weixin": "uni -p mp-weixin",
-    "build:app": "uni build -p app",
+    "build:app": "node -e \"process.env.UNI_INPUT_DIR='.'; require('child_process').execSync('uni build -p app', {stdio: 'inherit'})\"",
     "build:h5": "node -e \"process.env.UNI_INPUT_DIR='.'; require('child_process').execSync('uni build', {stdio: 'inherit'})\"",
     "build:mp-weixin": "uni build -p mp-weixin"
   },

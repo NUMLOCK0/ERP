@@ -127,12 +127,33 @@ router.get('/payment/:id', async (req, res) => {
               COALESCE(NULLIF(fp.pay_method, ''), po.payment_method) AS payment_method,
               COALESCE(fp.pay_time, fp.payment_completed_time, fp.payment_start_time, fp.updated_at) AS payment_time,
               COALESCE(NULLIF(fp.remark, ''), po.purchase_remark, po.admin_remark) AS detail_remark,
-              u.real_name AS creator_name
+              u.real_name AS creator_name,
+              COALESCE(item_stats.purchase_total_quantity, 0) AS purchase_total_quantity,
+              COALESCE(return_stats.refund_amount, 0) AS purchase_refund_amount,
+              COALESCE(return_stats.return_amount, 0) AS purchase_return_amount
        FROM finance_payment fp
        LEFT JOIN purchase_order po ON fp.order_id = po.id
        LEFT JOIN supplier_customer sc ON fp.supplier_id = sc.id
        LEFT JOIN warehouse w ON po.warehouse_id = w.id
        LEFT JOIN sys_user u ON fp.creator_id = u.id
+       LEFT JOIN (
+         SELECT order_id, SUM(COALESCE(final_quantity, quantity)) AS purchase_total_quantity
+         FROM purchase_order_item
+         GROUP BY order_id
+       ) item_stats ON po.id = item_stats.order_id
+       LEFT JOIN (
+         SELECT COALESCE(NULLIF(pr.order_id, 0), pi.order_id) AS order_id,
+                SUM(pr.total_amount) AS refund_amount,
+                SUM(COALESCE(return_item_amount.amount, 0)) AS return_amount
+         FROM purchase_return pr
+         LEFT JOIN purchase_inbound pi ON pr.inbound_id = pi.id
+         LEFT JOIN (
+           SELECT return_id, SUM(amount) AS amount
+           FROM purchase_return_item
+           GROUP BY return_id
+         ) return_item_amount ON pr.id = return_item_amount.return_id
+         GROUP BY COALESCE(NULLIF(pr.order_id, 0), pi.order_id)
+       ) return_stats ON po.id = return_stats.order_id
        WHERE fp.id = ?`,
       [req.params.id]
     );
@@ -505,13 +526,42 @@ router.get('/receipt/:id', async (req, res) => {
               COALESCE(fr.payment_completed_time, fr.payment_start_time, fr.updated_at) AS receipt_time,
               COALESCE(NULLIF(fr.remark, ''), so.sale_remark, so.admin_remark) AS detail_remark,
               w.name AS warehouse_name,
-              u.real_name AS receiver_name
+              u.real_name AS receiver_name,
+              COALESCE(NULLIF(so.customer_contact, ''), sc.contact) AS contact,
+              COALESCE(NULLIF(so.customer_phone, ''), sc.phone) AS phone,
+              COALESCE(NULLIF(so.detail_address, ''), sc.address) AS detail_address,
+              sc.bank_name,
+              sc.address AS bank_address,
+              sc.name AS bank_account_name,
+              sc.bank_account,
+              COALESCE(item_stats.sale_total_quantity, 0) AS sale_total_quantity,
+              COALESCE(return_stats.refund_amount, 0) AS sale_refund_amount,
+              COALESCE(return_stats.return_quantity, 0) AS sale_return_quantity
        FROM finance_receipt fr
        LEFT JOIN sale_delivery sd ON fr.delivery_id = sd.id
        LEFT JOIN sale_order so ON so.id = COALESCE(NULLIF(fr.order_id, 0), sd.order_id)
        LEFT JOIN supplier_customer sc ON fr.customer_id = sc.id
        LEFT JOIN warehouse w ON w.id = COALESCE(NULLIF(so.warehouse_id, 0), sd.warehouse_id)
        LEFT JOIN sys_user u ON fr.creator_id = u.id
+       LEFT JOIN (
+         SELECT order_id, SUM(quantity) AS sale_total_quantity
+         FROM sale_order_item
+         GROUP BY order_id
+       ) item_stats ON so.id = item_stats.order_id
+       LEFT JOIN (
+         SELECT sd.order_id,
+                SUM(sr.total_amount) AS refund_amount,
+                SUM(COALESCE(return_item_stats.return_quantity, 0)) AS return_quantity
+         FROM sale_return sr
+         LEFT JOIN sale_delivery sd ON sr.delivery_id = sd.id
+         LEFT JOIN (
+           SELECT return_id, SUM(quantity) AS return_quantity
+           FROM sale_return_item
+           GROUP BY return_id
+         ) return_item_stats ON sr.id = return_item_stats.return_id
+         WHERE sd.order_id IS NOT NULL
+         GROUP BY sd.order_id
+       ) return_stats ON so.id = return_stats.order_id
        WHERE fr.id = ?`,
       [req.params.id]
     );

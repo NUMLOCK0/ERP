@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const { getPool } = require('../database');
 const Response = require('../utils/response');
@@ -130,6 +130,11 @@ router.get('/order/:id', async (req, res) => {
     if (!rows.length) return res.json(Response.error('加工批次不存在'));
 
     const order = rows[0];
+    try {
+      order.image_urls = JSON.parse(order.image_urls || '[]');
+    } catch (e) {
+      order.image_urls = [];
+    }
     await normalizeOrderStages(pool, order.id);
     const [stages] = await pool.execute(
       `SELECT hps.*,
@@ -171,7 +176,8 @@ router.post('/order', async (req, res) => {
       supplier_id = 0,
       source_quantity,
       source_unit_price = 0,
-      remark = ''
+      remark = '',
+      image_urls
     } = req.body;
 
     if (!source_product_id) throw new Error('请选择采购原包货');
@@ -185,8 +191,8 @@ router.post('/order', async (req, res) => {
     const [result] = await conn.execute(
       `INSERT INTO herb_processing_order
        (batch_no, source_product_id, source_warehouse_id, target_warehouse_id, supplier_id,
-        source_quantity, source_unit_price, status, remark, creator_id)
-       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+        source_quantity, source_unit_price, status, remark, creator_id, image_urls)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
       [
         tempNo,
         source_product_id,
@@ -197,7 +203,8 @@ router.post('/order', async (req, res) => {
         Number(source_unit_price || 0),
         PROCESSING_STATUS.DRAFT,
         remark,
-        req.user.id
+        req.user.id,
+        JSON.stringify(image_urls || [])
       ]
     );
     const orderId = result.insertId;
@@ -231,7 +238,7 @@ router.put('/order/:id', async (req, res) => {
     await pool.execute(
       `UPDATE herb_processing_order
        SET source_product_id = ?, source_warehouse_id = ?, target_warehouse_id = ?, supplier_id = ?,
-           source_quantity = ?, source_unit_price = ?, remark = ?
+           source_quantity = ?, source_unit_price = ?, remark = ?, image_urls = ?
        WHERE id = ?`,
       [
         req.body.source_product_id ?? order.source_product_id,
@@ -241,6 +248,7 @@ router.put('/order/:id', async (req, res) => {
         sourceQuantity,
         sourceUnitPrice,
         req.body.remark ?? order.remark,
+        JSON.stringify(req.body.image_urls || []),
         order.id
       ]
     );

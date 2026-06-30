@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="page-container">
     <template v-if="editorVisible">
       <div class="editor-page">
@@ -23,10 +23,7 @@
               </el-select>
             </el-form-item>
             <el-form-item label="付款方式">
-              <el-select v-model="form.payment_method" placeholder="未确定" clearable>
-                <el-option label="未确定" value="" />
-                <el-option v-for="method in paymentMethodOptions" :key="method" :label="method" :value="method" />
-              </el-select>
+              <el-input v-model="form.payment_method" placeholder="请输入付款方式" maxlength="50" show-word-limit />
             </el-form-item>
             <el-form-item label="管理备注">
               <el-input v-model="form.admin_remark" type="textarea" :rows="1" placeholder="管理备注" />
@@ -42,6 +39,10 @@
               </div>
             </el-form-item>
           </div>
+
+          <el-form-item label="单据图片" class="image-form-item">
+            <BusinessImageUpload v-model="form.image_urls" :disabled="editorMode === 'view'" />
+          </el-form-item>
 
           <div class="product-actions">
             <el-button type="primary" plain @click="openProductDrawer">选择产品</el-button>
@@ -434,6 +435,7 @@ import { getUnits } from '@/api/unit'
 import { getWarehouses } from '@/api/warehouse'
 import SearchForm from '@/components/SearchForm.vue'
 import Pagination from '@/components/Pagination.vue'
+import BusinessImageUpload from '@/components/BusinessImageUpload.vue'
 import { returnFlagTagType, returnFlagText } from '@/utils/status'
 import { getDefaultUnitName, getPreferredProductUnit } from '@/utils/unit'
 
@@ -494,7 +496,8 @@ const form = reactive({
   detail_address: '',
   create_delivery: true,
   ship: false,
-  items: [] as SaleItem[]
+  items: [] as SaleItem[],
+  image_urls: [] as string[]
 })
 
 const formRules = {
@@ -537,7 +540,8 @@ function resetForm() {
     detail_address: '',
     create_delivery: true,
     ship: false,
-    items: []
+    items: [],
+    image_urls: []
   })
   bottomProductKeyword.value = ''
   quickProductKeyword.value = ''
@@ -607,7 +611,8 @@ async function loadOrder(id: number) {
     customer_phone: detail.customer_phone || '',
     detail_address: detail.detail_address || '',
     create_delivery: Boolean(Number(detail.create_delivery || 0)),
-    ship: Boolean(Number(detail.ship || 0))
+    ship: Boolean(Number(detail.ship || 0)),
+    image_urls: normalizeImageUrls(detail.image_urls)
   })
   if (!form.customer_contact && !form.customer_phone && !form.detail_address) handleCustomerChange(form.customer_id)
   form.items = normalizeOrderItems(detail.items || [])
@@ -773,6 +778,7 @@ async function saveOrder(isSubmit: boolean) {
   }
   form.items.forEach(item => recalculateRow(item, false))
   const payload = {
+    order_no: form.order_no,
     customer_id: form.customer_id,
     employee_id: form.employee_id || 0,
     warehouse_id: form.warehouse_id,
@@ -784,6 +790,7 @@ async function saveOrder(isSubmit: boolean) {
     detail_address: form.detail_address,
     create_delivery: Boolean(form.create_delivery),
     ship: Boolean(form.ship),
+    image_urls: form.image_urls,
     items: form.items.map(item => ({
       product_id: item.product_id,
       quantity: item.quantity,
@@ -1056,6 +1063,9 @@ onMounted(async () => {
   grid-template-columns: repeat(3, minmax(150px, 1fr));
   gap: 10px;
   width: 100%;
+}
+.image-form-item {
+  margin-bottom: 12px;
 }
 .product-actions {
   display: flex;

@@ -23,11 +23,11 @@
               </view>
               <view class="card-actions">
                 <view class="action-btn edit" @click="openEdit(item)">
-                  <uni-icons type="compose" size="16" color="#1890FF"></uni-icons>
+                  <u-icon name="edit-pen" size="16" color="#1890FF"></u-icon>
                   <text>编辑</text>
                 </view>
                 <view class="action-btn delete" @click="handleDelete(item)">
-                  <uni-icons type="trash" size="16" color="#FF4D4F"></uni-icons>
+                  <u-icon name="trash" size="16" color="#FF4D4F"></u-icon>
                   <text>删除</text>
                 </view>
               </view>
@@ -38,7 +38,7 @@
           </view>
         </view>
         <view v-else-if="!loading" class="empty-state">
-          <uni-icons type="list" size="60" color="#DCDFE6"></uni-icons>
+          <u-icon name="list" size="60" color="#DCDFE6"></u-icon>
           <text class="empty-text">暂无企业分类</text>
         </view>
 
@@ -50,7 +50,7 @@
 
     <!-- 浮动新增按钮 -->
     <view class="floating-btn" @click="openAdd">
-      <uni-icons type="plus" size="24" color="#FFFFFF"></uni-icons>
+      <u-icon name="plus" size="24" color="#FFFFFF"></u-icon>
     </view>
 
     <!-- 新增/编辑弹窗 -->
@@ -59,7 +59,7 @@
         <view class="sheet-header">
           <text class="sheet-title">{{ isEdit ? '编辑分类' : '新增分类' }}</text>
           <view class="close-btn" @click="closePopup">
-            <uni-icons type="closeempty" size="20" color="#999"></uni-icons>
+            <u-icon name="close" size="20" color="#999"></u-icon>
           </view>
         </view>
 

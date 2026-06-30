@@ -3,80 +3,161 @@
     <view v-if="ret.id" class="detail-content">
       <!-- 基本信息 -->
       <view class="card">
-        <view class="card-title">付款单信息</view>
+        <view class="card-title">基本信息</view>
         <view class="info-grid">
           <view class="info-item">
-            <text class="info-label">付款单号</text>
-            <text class="info-value">{{ ret.payment_no }}</text>
+            <text class="info-label">付款单id</text>
+            <text class="info-value">{{ ret.id }}</text>
           </view>
+          
+          <view class="info-item order-no-item">
+            <text class="info-label">付款单号</text>
+            <view class="info-value-copy">
+              <text class="info-value">{{ ret.payment_no }}</text>
+              <u-icon name="file-text" size="14" color="#1890FF" class="copy-icon" @click="copyPaymentNo"  />
+            </view>
+          </view>
+          
+          <view class="info-item order-no-item">
+            <text class="info-label">采购单号</text>
+            <view class="info-value-copy">
+              <text class="info-value">{{ ret.order_no || '-' }}</text>
+              <u-icon v-if="ret.order_no" name="file-text" size="14" color="#1890FF" class="copy-icon" @click="copyOrderNo"  />
+            </view>
+          </view>
+          
           <view class="info-item">
             <text class="info-label">付款状态</text>
             <view class="info-value">
               <uni-tag :text="statusMap[ret.status] || '未知'" size="small" :type="getStatusType(ret.status)" />
             </view>
           </view>
-          <view class="info-item">
-            <text class="info-label">关联采购单</text>
-            <text class="info-value">{{ ret.order_no || '-' }}</text>
-          </view>
+          
           <view class="info-item">
             <text class="info-label">供应商</text>
             <text class="info-value">{{ ret.supplier_name || '-' }}</text>
           </view>
+          
           <view class="info-item">
-            <text class="info-label">应付总额</text>
-            <text class="info-value font-bold">¥{{ formatPrice(ret.receivable_total_amount) }}</text>
-          </view>
-          <view class="info-item">
-            <text class="info-label">已付金额</text>
+            <text class="info-label">已付款总额</text>
             <text class="info-value text-success font-bold">¥{{ formatPrice(ret.paid_total_amount) }}</text>
           </view>
+          
           <view class="info-item">
-            <text class="info-label">未付金额</text>
-            <text class="info-value text-danger font-bold">¥{{ formatPrice(ret.unpaid_total_amount) }}</text>
+            <text class="info-label">应收总额</text>
+            <text class="info-value font-bold">¥{{ formatPrice(ret.receivable_total_amount) }}</text>
           </view>
+          
           <view class="info-item">
-            <text class="info-label">最近付款方式</text>
+            <text class="info-label">付款方式</text>
             <text class="info-value">{{ ret.pay_method || '-' }}</text>
           </view>
+          
+          <view class="info-item">
+            <text class="info-label">开票时间</text>
+            <text class="info-value date-text">{{ formatDate(ret.invoice_time) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">开票状态</text>
+            <view class="info-value">
+              <uni-tag :text="invoiceStatusMap[ret.invoice_status] || '未开票'" size="small" :type="getInvoiceStatusType(ret.invoice_status)" />
+            </view>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">已开票金额</text>
+            <text class="info-value">¥{{ formatPrice(ret.invoice_total_amount || 0) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">采购总额</text>
+            <text class="info-value">¥{{ formatPrice(ret.purchase_total_amount) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">采购产品总数量</text>
+            <text class="info-value">{{ ret.purchase_total_quantity || 0 }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">采购退款金额</text>
+            <text class="info-value">¥{{ formatPrice(ret.purchase_refund_amount) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">采购退货金额</text>
+            <text class="info-value">¥{{ formatPrice(ret.purchase_return_amount) }}</text>
+          </view>
+          
           <view class="info-item">
             <text class="info-label">联系人</text>
             <text class="info-value">{{ ret.contact || '-' }}</text>
           </view>
+          
           <view class="info-item">
             <text class="info-label">联系电话</text>
             <text class="info-value">{{ ret.phone || '-' }}</text>
           </view>
+          
+          <view class="info-item">
+            <text class="info-label">开户银行</text>
+            <text class="info-value">{{ ret.bank_name || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">开户地址</text>
+            <text class="info-value">{{ ret.bank_address || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">开户户名</text>
+            <text class="info-value">{{ ret.bank_account_name || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">开户户号</text>
+            <text class="info-value">{{ ret.bank_account || '-' }}</text>
+          </view>
+
+          <view class="info-item">
+            <text class="info-label">制单人</text>
+            <text class="info-value">{{ ret.creator_name || '-' }}</text>
+          </view>
+
+          <view class="info-item" style="width: 100%;">
+            <text class="info-label">详细地址</text>
+            <text class="info-value">{{ ret.detail_address || '-' }}</text>
+          </view>
+
+          <view class="info-item" style="width: 100%;">
+            <text class="info-label">备注信息</text>
+            <text class="info-value remarks-value">{{ ret.remark || ret.detail_remark || '-' }}</text>
+          </view>
+
+          <view class="info-item">
+            <text class="info-label">付款开始时间</text>
+            <text class="info-value date-text">{{ formatDate(ret.payment_start_time) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">付款完成时间</text>
+            <text class="info-value date-text">{{ formatDate(ret.payment_completed_time) }}</text>
+          </view>
+
+          <view class="info-item">
+            <text class="info-label">关闭时间</text>
+            <text class="info-value date-text">{{ formatDate(ret.close_time) }}</text>
+          </view>
+          
           <view class="info-item">
             <text class="info-label">创建时间</text>
             <text class="info-value date-text">{{ formatDate(ret.created_at || ret.createdAt) }}</text>
           </view>
-          <view class="info-item" v-if="ret.remark || ret.detail_remark" style="width: 100%;">
-            <text class="info-label">备注说明</text>
-            <text class="info-value">{{ ret.remark || ret.detail_remark }}</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- 供应商开户信息 -->
-      <view class="card" v-if="ret.bank_name || ret.bank_account">
-        <view class="card-title">供应商开户信息</view>
-        <view class="info-grid">
-          <view class="info-item" style="width: 100%;">
-            <text class="info-label">开户银行</text>
-            <text class="info-value">{{ ret.bank_name || '-' }}</text>
-          </view>
-          <view class="info-item" style="width: 100%;">
-            <text class="info-label">开户账号</text>
-            <text class="info-value">{{ ret.bank_account || '-' }}</text>
-          </view>
-          <view class="info-item" style="width: 100%;">
-            <text class="info-label">开户户名</text>
-            <text class="info-value">{{ ret.bank_account_name || '-' }}</text>
-          </view>
-          <view class="info-item" style="width: 100%;" v-if="ret.bank_address">
-            <text class="info-label">银行地址</text>
-            <text class="info-value">{{ ret.bank_address }}</text>
+          
+          <view class="info-item">
+            <text class="info-label">更新时间</text>
+            <text class="info-value date-text">{{ formatDate(ret.updated_at || ret.updatedAt) }}</text>
           </view>
         </view>
       </view>
@@ -84,28 +165,22 @@
       <!-- 付款记录 -->
       <view class="card">
         <view class="card-title">付款明细历史</view>
-        <view class="records-list" v-if="ret.payment_records && ret.payment_records.length > 0">
-          <view class="record-item-card" v-for="(record, idx) in ret.payment_records" :key="idx">
-            <view class="record-header">
-              <text class="record-idx">第 {{ idx + 1 }} 笔付款</text>
-              <text class="record-amount">¥{{ formatPrice(record.amount) }}</text>
+        <view class="product-item-list" v-if="ret.payment_records && ret.payment_records.length > 0">
+          <view class="product-item-card" v-for="(record, idx) in ret.payment_records" :key="idx">
+            <view class="prod-header">
+              <text class="prod-title">#{{ idx + 1 }} 付款记录</text>
+              <text class="prod-spec">{{ record.pay_method || '-' }}</text>
             </view>
-            <view class="record-body">
-              <view class="record-row">
-                <text class="record-label">付款方式：</text>
-                <text class="record-val">{{ record.pay_method || '-' }}</text>
+            <view class="prod-details-grid">
+              <view class="grid-row">
+                <view class="grid-cell"><text class="cell-lbl">付款人：</text><text class="cell-val">{{ record.payer || '-' }}</text></view>
+                <view class="grid-cell"><text class="cell-lbl">付款金额：</text><text class="cell-val danger-text">¥{{ formatPrice(record.amount) }}</text></view>
               </view>
-              <view class="record-row">
-                <text class="record-label">付款人：</text>
-                <text class="record-val">{{ record.payer || '-' }}</text>
+              <view class="grid-row">
+                <view class="grid-cell"><text class="cell-lbl">付款时间：</text><text class="cell-val date-text">{{ formatDate(record.pay_time) }}</text></view>
               </view>
-              <view class="record-row">
-                <text class="record-label">付款时间：</text>
-                <text class="record-val">{{ formatDate(record.pay_time) }}</text>
-              </view>
-              <view class="record-row" v-if="record.remark">
-                <text class="record-label">备注：</text>
-                <text class="record-val">{{ record.remark }}</text>
+              <view class="grid-row" v-if="record.remark">
+                <view class="grid-cell"><text class="cell-lbl">备注说明：</text><text class="cell-val remark-text">{{ record.remark }}</text></view>
               </view>
             </view>
           </view>
@@ -126,7 +201,8 @@
 
     <!-- 底部操作栏 -->
     <view v-if="ret.id" class="bottom-bar safe-bottom">
-      <button v-if="Number(ret.status) < 2" class="btn-primary" @click="openConfirmPopup">确认付款</button>
+      <button v-if="Number(ret.status) < 2" class="btn-primary" @click="openConfirmPopup">付款</button>
+      <button class="btn-more outline" @click="showMore">更 多</button>
       <button class="btn-back" @click="goBack">返回</button>
     </view>
 
@@ -136,7 +212,7 @@
         <view class="sheet-header">
           <text class="sheet-title">确认付款</text>
           <view class="close-btn" @click="closePopup">
-            <uni-icons type="closeempty" size="20" color="#999"></uni-icons>
+            <u-icon name="close" size="20" color="#999"></u-icon>
           </view>
         </view>
 
@@ -160,20 +236,13 @@
                 <text class="picker-value" :class="{ placeholder: !payDate }">
                   {{ payDate || '请选择付款日期' }}
                 </text>
-                <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
               </view>
             </picker>
           </view>
           <view class="form-item">
             <text class="form-label required">付款方式</text>
-            <picker class="form-picker" @change="onPayMethodChange" :value="payMethodIndex" :range="payMethods">
-              <view class="picker-inner">
-                <text class="picker-value" :class="{ placeholder: payMethodIndex === -1 }">
-                  {{ payMethods[payMethodIndex] || '请选择付款方式' }}
-                </text>
-                <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
-              </view>
-            </picker>
+            <input class="form-input" v-model="form.pay_method" placeholder="请输入付款方式" maxlength="50" />
           </view>
           <view class="form-item">
             <text class="form-label">备注说明</text>
@@ -228,13 +297,28 @@ const getStatusType = (status) => {
   return map[status] || 'info'
 }
 
+const invoiceStatusMap = {
+  0: '未开票',
+  1: '已开票',
+  2: '部分开票'
+}
+
+const getInvoiceStatusType = (status) => {
+  const map = {
+    0: 'info',
+    1: 'success',
+    2: 'warning'
+  }
+  return map[status] || 'info'
+}
+
 const formatPrice = (val) => {
   if (val === null || val === undefined) return '0.00'
   return Number(val).toFixed(2)
 }
 
 const formatDate = (val) => {
-  if (!val) return ''
+  if (!val) return '-'
   const d = new Date(val)
   if (isNaN(d.getTime())) return val
   const y = d.getFullYear()
@@ -243,6 +327,26 @@ const formatDate = (val) => {
   const h = String(d.getHours()).padStart(2, '0')
   const min = String(d.getMinutes()).padStart(2, '0')
   return `${y}-${m}-${day} ${h}:${min}`
+}
+
+const copyPaymentNo = () => {
+  if (!ret.value.payment_no) return
+  uni.setClipboardData({
+    data: ret.value.payment_no,
+    success: () => {
+      uni.showToast({ title: '复制付款单号成功', icon: 'none' })
+    }
+  })
+}
+
+const copyOrderNo = () => {
+  if (!ret.value.order_no) return
+  uni.setClipboardData({
+    data: ret.value.order_no,
+    success: () => {
+      uni.showToast({ title: '复制采购单号成功', icon: 'none' })
+    }
+  })
 }
 
 const loadDetail = async () => {
@@ -282,7 +386,6 @@ const openConfirmPopup = () => {
     remark: ''
   }
 
-  // Pre-fill last used payment method index
   if (ret.value.pay_method) {
     payMethodIndex.value = payMethods.indexOf(ret.value.pay_method)
     if (payMethodIndex.value !== -1) {
@@ -333,7 +436,7 @@ const submitConfirm = async () => {
     return
   }
   if (!form.value.pay_method) {
-    uni.showToast({ title: '请选择付款方式', icon: 'none' })
+    uni.showToast({ title: '请输入付款方式', icon: 'none' })
     return
   }
 
@@ -358,6 +461,82 @@ const submitConfirm = async () => {
   }
 }
 
+const goRegisterInvoice = () => {
+  uni.navigateTo({
+    url: `/pages/purchase/invoice-edit?order_id=${ret.value.order_id}`
+  })
+}
+
+const handleDelete = () => {
+  uni.showModal({
+    title: '确认删除',
+    content: `确认删除付款单 ${ret.value.payment_no || ret.value.id} 吗？此操作不可恢复。`,
+    success: async (res) => {
+      if (res.confirm) {
+        uni.showLoading({ title: '正在删除...' })
+        try {
+          const deleteRes = await financeApi.deletePayment(ret.value.id)
+          if (deleteRes.code === 0) {
+            uni.showToast({ title: '已删除', icon: 'success' })
+            setTimeout(() => {
+              uni.navigateBack()
+            }, 800)
+          }
+        } catch (e) { /* handled */ }
+        finally {
+          uni.hideLoading()
+        }
+      }
+    }
+  })
+}
+
+const showMore = () => {
+  const status = Number(ret.value.status)
+  const invoiceStatus = Number(ret.value.invoice_status || 0)
+  
+  const menu = []
+  const actions = []
+  
+  if (status < 2) {
+    actions.push({ command: 'pay', label: '付款' })
+  }
+  if (invoiceStatus !== 1 && ret.value.order_id) {
+    actions.push({ command: 'invoice', label: '发票登记' })
+  }
+  if (status === 3) {
+    actions.push({ command: 'delete', label: '删除' })
+  }
+  
+  actions.forEach(act => {
+    menu.push(act.label)
+  })
+  menu.push('复制付款单号')
+  if (ret.value.order_no) {
+    menu.push('复制采购单号')
+  }
+
+  uni.showActionSheet({
+    itemList: menu,
+    success: ({ tapIndex }) => {
+      const actionLabel = menu[tapIndex]
+      if (actionLabel === '复制付款单号') {
+        copyPaymentNo()
+      } else if (actionLabel === '复制采购单号') {
+        copyOrderNo()
+      } else {
+        const clickedAction = actions.find(act => act.label === actionLabel)
+        if (clickedAction) {
+          const cmd = clickedAction.command
+          if (cmd === 'pay') openConfirmPopup()
+          else if (cmd === 'invoice') goRegisterInvoice()
+          else if (cmd === 'delete') handleDelete()
+        }
+      }
+    }
+  })
+}
+
 const goBack = () => {
   uni.navigateBack()
 }
@@ -373,8 +552,8 @@ onShow(() => {
   min-height: 100vh;
   background: #F5F7FA;
   box-sizing: border-box;
-  padding-bottom: calc(120rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(140rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
 }
 
 .detail-content {
@@ -403,65 +582,142 @@ onShow(() => {
   flex-wrap: wrap;
   .info-item {
     width: 50%;
-    padding: 10rpx 0;
+    padding: 12rpx 8rpx;
     box-sizing: border-box;
-    .info-label { font-size: 22rpx; color: #909399; display: block; margin-bottom: 4rpx; }
-    .info-value { font-size: 26rpx; color: #303133; display: block; font-weight: 500; word-break: break-all; }
+    display: flex;
+    flex-direction: column;
+    
+    .info-label { font-size: 22rpx; color: #909399; display: block; margin-bottom: 6rpx; }
+    .info-value { font-size: 26rpx; color: #303133; display: block; font-weight: 600; word-break: break-all; }
     .date-text { color: #909399; font-size: 24rpx; }
-    .font-bold { font-weight: 700; }
-    .text-success { color: #67C23A; }
-    .text-danger { color: #F56C6C; }
+    
+    &.order-no-item {
+      .info-value-copy {
+        display: flex;
+        align-items: center;
+        gap: 8rpx;
+      }
+      .copy-icon {
+        flex-shrink: 0;
+        cursor: pointer;
+        
+        &:active {
+          opacity: 0.6;
+        }
+      }
+    }
   }
 }
 
-.records-list {
+.remarks-value {
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+.product-item-list {
   display: flex;
   flex-direction: column;
   gap: 16rpx;
 }
 
-.record-item-card {
+.product-item-card {
   background: #F8FAFC;
   border-radius: 12rpx;
-  padding: 18rpx 20rpx;
-  border: 1rpx solid #EBEEF5;
+  padding: 16rpx 20rpx;
+  border: 1rpx solid #EEF2F6;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
 
-  .record-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1rpx solid #EBEEF5;
-    padding-bottom: 10rpx;
-    margin-bottom: 10rpx;
+.prod-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  border-bottom: 1rpx solid #EEF2F6;
+  padding-bottom: 8rpx;
+}
 
-    .record-idx {
-      font-size: 24rpx;
-      font-weight: 600;
-      color: #909399;
-    }
-    .record-amount {
-      font-size: 28rpx;
-      font-weight: 700;
-      color: #F56C6C;
-    }
+.prod-title {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #303133;
+  flex: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.prod-spec {
+  font-size: 20rpx;
+  background: #E8F4FF;
+  color: #1890FF;
+  padding: 2rpx 8rpx;
+  border-radius: 6rpx;
+  max-width: 180rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.prod-details-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.grid-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.grid-cell {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-size: 22rpx;
+  color: #606266;
+  min-width: 0;
+}
+
+.cell-lbl {
+  color: #909399;
+  flex-shrink: 0;
+}
+
+.cell-val {
+  font-weight: 600;
+  color: #303133;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  
+  &.primary {
+    color: #1890FF;
   }
-
-  .record-body {
-    .record-row {
-      display: flex;
-      padding: 4rpx 0;
-      font-size: 22rpx;
-      .record-label {
-        color: #909399;
-        width: 130rpx;
-        flex-shrink: 0;
-      }
-      .record-val {
-        color: #303133;
-        font-weight: 500;
-      }
-    }
+  
+  &.success {
+    color: #67C23A;
   }
+  
+  &.warning {
+    color: #E6A23C;
+  }
+  
+  &.danger-text {
+    color: #F56C6C;
+  }
+}
+
+.remark-text {
+  font-size: 20rpx;
+  color: #909399;
+  font-weight: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .empty-records {
@@ -501,6 +757,12 @@ onShow(() => {
     
     &::after { border: none; }
 
+    &.primary {
+      background: #1890FF;
+      color: #FFFFFF;
+      box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.2);
+    }
+    
     &.btn-primary {
       background: #1890FF;
       color: #FFFFFF;
@@ -510,6 +772,12 @@ onShow(() => {
     &.btn-back {
       background: #F4F4F5;
       color: #909399;
+    }
+    
+    &.outline {
+      background: #FFFFFF;
+      color: #909399;
+      border: 1rpx solid #DCDFE6;
     }
   }
 }
@@ -582,7 +850,7 @@ onShow(() => {
       color: #606266;
       font-weight: 500;
       flex-shrink: 0;
-      width: 160rpx;
+      width: 180rpx;
 
       &.required::after {
         content: '*';

@@ -7,7 +7,64 @@
           <view class="section-header">
             <text class="section-title">基本信息</text>
           </view>
-          <view class="form-group">
+          
+          <!-- Mode 1: 关联采购订单退单 -->
+          <view v-if="orderId" class="form-group">
+            <view class="form-item">
+              <text class="form-label">退货单号</text>
+              <input class="form-input" v-model="form.return_no" placeholder="自定义单号(留空自动生成)" />
+            </view>
+            <view class="form-item">
+              <text class="form-label">采购单号</text>
+              <text class="info-value font-bold">{{ order.order_no || '-' }}</text>
+            </view>
+            <view class="form-item">
+              <text class="form-label">供应商</text>
+              <text class="info-value">{{ order.supplier_name || '-' }}</text>
+            </view>
+            <view class="form-item">
+              <text class="form-label required">退货状态</text>
+              <view class="status-selector">
+                <view class="status-btn" :class="{ active: form.return_status === 0 }" @click="form.return_status = 0">
+                  <text class="status-btn-text">等待退货</text>
+                </view>
+                <view class="status-btn" :class="{ active: form.return_status === 1 }" @click="form.return_status = 1">
+                  <text class="status-btn-text">直接退货</text>
+                </view>
+              </view>
+            </view>
+            <view class="form-item">
+              <text class="form-label">快递名称</text>
+              <input class="form-input" v-model="form.express_name" placeholder="请输入快递名称(选填)" maxlength="60" />
+            </view>
+            <view class="form-item">
+              <text class="form-label">快递单号</text>
+              <input class="form-input" v-model="form.express_no" placeholder="请输入快递单号(选填)" maxlength="60" />
+            </view>
+            <view class="form-item">
+              <text class="form-label">联系人</text>
+              <input class="form-input" v-model="form.contact" placeholder="请输入联系人(选填)" maxlength="60" />
+            </view>
+            <view class="form-item">
+              <text class="form-label">联系电话</text>
+              <input class="form-input" v-model="form.phone" placeholder="请输入联系电话(选填)" maxlength="60" />
+            </view>
+            <view class="form-item">
+              <text class="form-label">收货地址</text>
+              <input class="form-input" v-model="form.address" placeholder="请输入收货地址(选填)" maxlength="160" />
+            </view>
+            <view class="form-item vertical">
+              <text class="form-label">单据备注</text>
+              <textarea class="form-textarea" v-model="form.remark" placeholder="请输入单据备注说明(选填)" maxlength="200" />
+            </view>
+          </view>
+
+          <!-- Mode 2: 手动创建退货单 -->
+          <view v-else class="form-group">
+            <view class="form-item">
+              <text class="form-label">退货单号</text>
+              <input class="form-input" v-model="form.return_no" placeholder="自定义单号(留空自动生成)" />
+            </view>
             <view class="form-item">
               <text class="form-label">关联入库单</text>
               <picker class="form-picker" @change="onInboundChange" :value="inboundIndex" :range="inbounds" range-key="label">
@@ -15,7 +72,7 @@
                   <text class="picker-value" :class="{ placeholder: inboundIndex === -1 }">
                     {{ inbounds[inboundIndex]?.label || '请选择关联入库单(可空)' }}
                   </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                  <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
                 </view>
               </picker>
             </view>
@@ -26,7 +83,7 @@
                   <text class="picker-value" :class="{ placeholder: supplierIndex === -1 }">
                     {{ suppliers[supplierIndex]?.name || '请选择供应商' }}
                   </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                  <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
                 </view>
               </picker>
             </view>
@@ -41,8 +98,8 @@
         <view class="section">
           <view class="section-header list-title-row">
             <text class="section-title">退货商品明细</text>
-            <view class="add-row-btn" @click="openProductSelector">
-              <uni-icons type="plus" size="14" color="#1890FF"></uni-icons>
+            <view v-if="!orderId" class="add-row-btn" @click="openProductSelector">
+              <u-icon name="plus" size="14" color="#1890FF"></u-icon>
               <text class="add-row-text">选择商品</text>
             </view>
           </view>
@@ -51,15 +108,45 @@
           <view v-if="form.items.length > 0" class="items-wrap">
             <view class="item-row-card" v-for="(item, idx) in form.items" :key="idx">
               <view class="card-title-row">
-                <text class="card-index-title">商品明细 #{{ idx + 1 }}</text>
-                <text class="remove-row-btn" @click="removeItemRow(idx)">删除</text>
+                <text class="card-index-title">#{{ idx + 1 }} {{ item.product_name || item.name || '-' }}</text>
+                <text v-if="!orderId" class="remove-row-btn" @click="removeItemRow(idx)">删除</text>
+                <text v-else-if="item.spec" class="card-spec-tag">{{ item.spec }}</text>
               </view>
 
-              <view class="form-group row-group">
-                <view class="form-item">
-                  <text class="form-label">商品名称</text>
-                  <text class="product-info-text">{{ item.name || '-' }}</text>
+              <!-- Order Return View (Compact fields aligned with PC Web) -->
+              <view v-if="orderId" class="item-grid-details">
+                <view class="grid-row">
+                  <view class="grid-cell"><text class="cell-label">采购单价/总额：</text><text class="cell-value">¥{{ formatPrice(item.price) }} / ¥{{ formatPrice(item.amount) }}</text></view>
                 </view>
+                <view class="grid-row">
+                  <view class="grid-cell"><text class="cell-label">采购税金/总额：</text><text class="cell-value">¥{{ formatPrice(item.tax) }} / ¥{{ formatPrice(item.tax) }}</text></view>
+                </view>
+                <view class="grid-row">
+                  <view class="grid-cell"><text class="cell-label">产品单位：</text><text class="cell-value">{{ item.base_quantity || 1 }} / {{ item.unit_name || '-' }}</text></view>
+                  <view class="grid-cell"><text class="cell-label">采购数量：</text><text class="cell-value">{{ item.final_quantity }}</text></view>
+                </view>
+                <view class="grid-row">
+                  <view class="grid-cell"><text class="cell-label">已处理/剩余：</text><text class="cell-value">{{ Number(item.inbounded_quantity || 0) + Number(item.returned_quantity || 0) }} / {{ item.remaining_quantity }}</text></view>
+                </view>
+              </view>
+
+              <view v-if="orderId" class="item-inputs-section">
+                <view class="input-inline-item">
+                  <text class="input-label required">退货数量</text>
+                  <input class="input-field font-bold" type="number" v-model="item.return_quantity" placeholder="数量" @input="onItemReturnQtyInput(idx)" />
+                </view>
+                <view class="input-inline-item">
+                  <text class="input-label required">退款金额</text>
+                  <input class="input-field" type="digit" v-model="item.return_amount" placeholder="金额" />
+                </view>
+                <view class="input-inline-item wide">
+                  <text class="input-label">备注说明</text>
+                  <input class="input-field" v-model="item.remark" placeholder="选填" />
+                </view>
+              </view>
+
+              <!-- Manual Return View -->
+              <view v-else class="form-group row-group">
                 <view class="form-item" v-if="item.spec || item.unit_name">
                   <text class="form-label">规格单位</text>
                   <text class="product-info-text">{{ item.spec || '-' }} ({{ item.unit_name || '-' }})</text>
@@ -93,8 +180,10 @@
           </view>
 
           <view v-else class="empty-items-state">
-            <uni-icons type="undo" size="48" color="#DCDFE6"></uni-icons>
-            <text class="empty-items-text">尚未选择退货商品，请点击右上角选择商品或通过关联入库单自动带出明细</text>
+            <u-icon name="rewind-left" size="48" color="#DCDFE6"></u-icon>
+            <text class="empty-text">
+              {{ orderId ? '该采购订单没有可退货的明细' : '尚未选择退货商品，请点击右上角选择商品或通过关联入库单自动带出明细' }}
+            </text>
           </view>
         </view>
       </view>
@@ -103,61 +192,28 @@
     <!-- 底部操作栏 -->
     <view class="bottom-bar">
       <view class="bottom-btn outline" @click="goCancel">取消</view>
-      <view class="bottom-btn primary" @click="handleSave">保存退货单</view>
+      <view class="bottom-btn primary" @click="handleSave">确认退货</view>
     </view>
 
     <!-- 商品选择弹窗 -->
-    <view v-if="renderProductPopup" class="dialog-overlay" :class="{ show: showProductPopup }" @click="closeProductSelector">
-      <view class="dialog-content" @click.stop>
-        <view class="dialog-header">
-          <text class="dialog-title">选择退货商品</text>
-          <text class="dialog-close" @click="closeProductSelector">×</text>
-        </view>
-        <view class="popup-search-bar">
-          <view class="popup-search-input-wrap">
-            <uni-icons type="search" size="18" color="#999"></uni-icons>
-            <input class="popup-search-input" v-model="productKeyword" placeholder="搜索商品名称/编码" type="text" @confirm="onProductSearch" />
-          </view>
-          <view class="popup-search-btn" @click="onProductSearch">搜索</view>
-        </view>
-        <scroll-view class="dialog-body-scroll" scroll-y @scrolltolower="loadMoreProducts">
-          <view class="popup-product-list">
-            <view v-if="products.length > 0">
-              <view class="product-select-card" v-for="item in products" :key="item.id" @click="selectProduct(item)">
-                <view class="prod-left">
-                  <image v-if="item.image" :src="item.image" mode="aspectFill" class="prod-img" />
-                  <view v-else class="prod-img-placeholder">
-                    <uni-icons type="gift" size="20" color="#C0C4CC"></uni-icons>
-                  </view>
-                  <view class="prod-info">
-                    <text class="prod-name">{{ item.name }}</text>
-                    <text class="prod-code" v-if="item.code">编码: {{ item.code }}</text>
-                    <text class="prod-spec" v-if="item.spec">规格: {{ item.spec }}</text>
-                  </view>
-                </view>
-                <view class="prod-right">
-                  <uni-icons type="plus-filled" size="22" color="#1890FF"></uni-icons>
-                </view>
-              </view>
-            </view>
-            <view v-else-if="!productsLoading" class="popup-empty">
-              <text class="popup-empty-text">未找到相关商品</text>
-            </view>
-            <view v-if="productsLoading" class="popup-loading">
-              <uni-load-more status="loading"></uni-load-more>
-            </view>
-          </view>
-        </scroll-view>
-      </view>
-    </view>
+    <product-select-popup
+      v-model:show="showProductPopup"
+      :selected-ids="selectedProductIds"
+      price-type="cost_price"
+      @confirm="handleProductSelectConfirm"
+    />
   </view>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { purchaseApi } from '@/api/purchase'
 import { commonApi } from '@/api/common'
 import { productApi } from '@/api/product'
+
+const orderId = ref(null)
+const order = ref({})
 
 // Dropdown Options
 const suppliers = ref([])
@@ -169,23 +225,33 @@ const inboundIndex = ref(-1)
 
 // Form State
 const form = reactive({
+  return_no: '',
   inbound_id: null,
   supplier_id: null,
   reason: '',
+  return_status: 1, // 默认直接退货 (status: 1), 0: 等待退货
+  express_name: '',
+  express_no: '',
+  contact: '',
+  phone: '',
+  address: '',
+  remark: '',
   items: []
 })
 
-const totalReturnAmount = ref(0)
+const totalReturnAmount = computed(() => {
+  if (orderId.value) {
+    return form.items.reduce((sum, item) => sum + Number(item.return_amount || 0), 0)
+  } else {
+    return form.items.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+  }
+})
 
 // Product Selector State
-const renderProductPopup = ref(false)
 const showProductPopup = ref(false)
-const productKeyword = ref('')
-const products = ref([])
-const productsPage = ref(1)
-const productsPageSize = 20
-const productsNoMore = ref(false)
-const productsLoading = ref(false)
+const selectedProductIds = computed(() => {
+  return form.items.map(item => item.product_id)
+})
 
 const loadOptions = async () => {
   try {
@@ -227,20 +293,16 @@ const onInboundChange = async (e) => {
   form.inbound_id = selected.id
   
   if (selected.id === null) {
-    // Manually creating, don't clear supplier but clear items
     form.items = []
-    calcTotalAmount()
     return
   }
 
-  // Find supplier index and sync
   const sIdx = suppliers.value.findIndex(s => s.id === selected.supplier_id)
   if (sIdx !== -1) {
     supplierIndex.value = sIdx
     form.supplier_id = selected.supplier_id
   }
 
-  // Load inbound details to get items
   uni.showLoading({ title: '加载入库单明细...' })
   try {
     const res = await purchaseApi.getInboundDetail(selected.id)
@@ -255,7 +317,6 @@ const onInboundChange = async (e) => {
         price: Number(item.price || 0),
         amount: Number(item.amount || 0)
       }))
-      calcTotalAmount()
     }
   } catch (err) {
     // handled
@@ -265,92 +326,42 @@ const onInboundChange = async (e) => {
 }
 
 const openProductSelector = () => {
-  renderProductPopup.value = true
-  setTimeout(() => {
-    showProductPopup.value = true
-  }, 50)
-  productKeyword.value = ''
-  products.value = []
-  productsPage.value = 1
-  productsNoMore.value = false
-  fetchProducts(true)
+  showProductPopup.value = true
 }
 
-const closeProductSelector = () => {
-  showProductPopup.value = false
-  setTimeout(() => {
-    renderProductPopup.value = false
-  }, 200)
-}
-
-const fetchProducts = async (isRefresh = false) => {
-  if (productsLoading.value) return
-  productsLoading.value = true
-  try {
-    const params = {
-      page: isRefresh ? 1 : productsPage.value,
-      pageSize: productsPageSize,
-      keyword: productKeyword.value.trim(),
-      status: 1
-    }
-    const res = await productApi.getList(params)
-    if (res.code === 0) {
-      const data = res.data?.list || res.data || []
-      const total = res.data?.total || data.length
-      if (isRefresh) {
-        products.value = data
-        productsPage.value = 2
-      } else {
-        products.value = [...products.value, ...data]
-        productsPage.value++
+const handleProductSelectConfirm = (selectedList) => {
+  const currentItems = [...form.items]
+  form.items = selectedList.map(prod => {
+    const existing = currentItems.find(item => item.product_id === prod.id)
+    if (existing) {
+      return {
+        product_id: prod.id,
+        name: prod.name,
+        code: prod.code || '',
+        spec: prod.spec || '',
+        unit_name: prod.unit_name || '',
+        quantity: existing.quantity,
+        price: existing.price,
+        amount: Number((Number(existing.quantity || 0) * Number(existing.price || 0)).toFixed(2))
       }
-      productsNoMore.value = products.value.length >= total
+    } else {
+      const price = Number(prod.price || prod.cost_price || prod.sale_price || 0)
+      return {
+        product_id: prod.id,
+        name: prod.name,
+        code: prod.code || '',
+        spec: prod.spec || '',
+        unit_name: prod.unit_name || '',
+        quantity: prod.quantity || 1,
+        price: price,
+        amount: price
+      }
     }
-  } catch (e) {
-    // handled
-  } finally {
-    productsLoading.value = false
-  }
-}
-
-const onProductSearch = () => {
-  productsPage.value = 1
-  productsNoMore.value = false
-  products.value = []
-  fetchProducts(true)
-}
-
-const loadMoreProducts = () => {
-  if (!productsNoMore.value && !productsLoading.value) {
-    fetchProducts()
-  }
-}
-
-const selectProduct = (item) => {
-  const exist = form.items.find(x => x.product_id === item.id)
-  if (exist) {
-    uni.showToast({ title: '该商品已在明细中', icon: 'none' })
-    return
-  }
-
-  form.items.push({
-    product_id: item.id,
-    name: item.name,
-    code: item.code || '',
-    spec: item.spec || '',
-    unit_name: item.unit_name || '',
-    quantity: 1,
-    price: Number(item.cost_price || item.sale_price || 0),
-    amount: Number(item.cost_price || item.sale_price || 0)
   })
-  calcTotalAmount()
-  closeProductSelector()
-  uni.showToast({ title: '已添加商品', icon: 'none' })
 }
 
 const removeItemRow = (idx) => {
   form.items.splice(idx, 1)
-  calcTotalAmount()
 }
 
 const onItemQtyOrPriceInput = (idx) => {
@@ -358,59 +369,57 @@ const onItemQtyOrPriceInput = (idx) => {
   if (item) {
     item.amount = Number((Number(item.quantity || 0) * Number(item.price || 0)).toFixed(2))
   }
-  calcTotalAmount()
 }
 
-const calcTotalAmount = () => {
-  totalReturnAmount.value = form.items.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+const onItemReturnQtyInput = (idx) => {
+  const item = form.items[idx]
+  if (item) {
+    item.return_amount = Number((Number(item.return_quantity || 0) * Number(item.price || 0)).toFixed(2))
+  }
 }
 
 const formatPrice = (val) => {
-  if (val === null || val === undefined) return '0.00'
+  if (val === null || val === undefined || val === '') return '0.00'
   return Number(val).toFixed(2)
 }
 
-const handleSave = async () => {
-  if (!form.supplier_id) {
-    uni.showToast({ title: '请选择供应商', icon: 'none' })
+const loadData = async () => {
+  if (!orderId.value) {
+    loadOptions()
     return
   }
-  const validItems = form.items.filter(item => item.product_id && Number(item.quantity) > 0)
-  if (!validItems.length) {
-    uni.showToast({ title: '退货明细不能为空', icon: 'none' })
-    return
-  }
-
-  // Validate quantities and prices
-  for (const item of validItems) {
-    if (Number(item.quantity) <= 0) {
-      uni.showToast({ title: '退货数量必须大于0', icon: 'none' })
-      return
-    }
-    if (Number(item.price) < 0) {
-      uni.showToast({ title: '退货单价不能小于0', icon: 'none' })
-      return
-    }
-  }
-
-  uni.showLoading({ title: '正在保存...' })
+  
+  uni.showLoading({ title: '加载中...' })
   try {
-    const payload = {
-      inbound_id: form.inbound_id || 0,
-      supplier_id: form.supplier_id,
-      reason: form.reason.trim(),
-      items: validItems.map(item => ({
+    const res = await purchaseApi.getOrderDetail(orderId.value)
+    if (res.code === 0 && res.data) {
+      order.value = res.data
+      
+      form.contact = order.value.contact || ''
+      form.phone = order.value.phone || ''
+      form.address = order.value.address || order.value.bank_address || ''
+      
+      const remainingItems = (order.value.items || []).filter(
+        item => Number(item.remaining_quantity || 0) > 0
+      )
+      
+      form.items = remainingItems.map(item => ({
         product_id: item.product_id,
-        quantity: Number(item.quantity),
-        price: Number(item.price)
+        product_name: item.product_name || item.name || '',
+        spec: item.spec || '',
+        unit_name: item.unit_name || '',
+        base_quantity: Number(item.base_quantity || 1),
+        price: Number(item.final_price ?? item.price ?? 0),
+        tax: Number(item.final_tax ?? item.tax ?? 0),
+        amount: Number(item.final_amount ?? item.amount ?? 0),
+        final_quantity: Number(item.final_quantity ?? item.quantity ?? 1),
+        inbounded_quantity: Number(item.inbounded_quantity || 0),
+        returned_quantity: Number(item.returned_quantity || 0),
+        remaining_quantity: Number(item.remaining_quantity || 0),
+        return_quantity: Number(item.remaining_quantity || 0), 
+        return_amount: Number(((item.remaining_quantity || 0) * (item.final_price ?? item.price ?? 0)).toFixed(2)),
+        remark: ''
       }))
-    }
-    const res = await purchaseApi.createReturn(payload)
-    if (res.code === 0) {
-      uni.showToast({ title: '保存成功', icon: 'success' })
-      setTimeout(() => {
-        uni.navigateBack()
-      }, 1000)
     }
   } catch (e) {
     // handled
@@ -419,13 +428,120 @@ const handleSave = async () => {
   }
 }
 
+onLoad((options) => {
+  if (options && options.order_id) {
+    orderId.value = options.order_id
+  } else {
+    const pages = getCurrentPages()
+    const currentPage = pages[pages.length - 1]
+    orderId.value = currentPage?.$page?.options?.order_id || currentPage?.options?.order_id
+  }
+  loadData()
+})
+
 const goCancel = () => {
   uni.navigateBack()
 }
 
-onMounted(() => {
-  loadOptions()
-})
+const handleSave = async () => {
+  if (orderId.value) {
+    const returnItems = form.items.filter(item => Number(item.return_quantity || 0) > 0 || Number(item.return_amount || 0) > 0)
+    if (returnItems.length === 0) {
+      uni.showToast({ title: '退货明细不能为空，请输入至少一个商品退货量', icon: 'none' })
+      return
+    }
+    
+    for (const item of returnItems) {
+      if (Number(item.return_quantity) > Number(item.remaining_quantity)) {
+        uni.showToast({
+          title: `${item.product_name || item.name} 的退货量超过剩余量`,
+          icon: 'none'
+        })
+        return
+      }
+    }
+    
+    uni.showLoading({ title: '提交中...' })
+    try {
+      const payload = {
+        return_no: form.return_no.trim() || undefined,
+        return_status: form.return_status,
+        express_name: form.express_name,
+        express_no: form.express_no,
+        contact: form.contact,
+        phone: form.phone,
+        address: form.address,
+        remark: form.remark,
+        items: returnItems.map(item => ({
+          product_id: item.product_id,
+          return_quantity: Number(item.return_quantity),
+          return_amount: Number(item.return_amount),
+          price: Number(item.price || 0),
+          remark: item.remark || ''
+        }))
+      }
+      
+      const res = await purchaseApi.createOrderReturn(orderId.value, payload)
+      uni.hideLoading()
+      if (res.code === 0) {
+        uni.showToast({ title: '退货成功', icon: 'success' })
+        setTimeout(() => {
+          uni.redirectTo({
+            url: '/pages/purchase/return-list'
+          })
+        }, 800)
+      }
+    } catch (e) {
+      uni.hideLoading()
+    }
+  } else {
+    if (!form.supplier_id) {
+      uni.showToast({ title: '请选择供应商', icon: 'none' })
+      return
+    }
+    const validItems = form.items.filter(item => item.product_id && Number(item.quantity) > 0)
+    if (!validItems.length) {
+      uni.showToast({ title: '退货明细不能为空', icon: 'none' })
+      return
+    }
+
+    for (const item of validItems) {
+      if (Number(item.quantity) <= 0) {
+        uni.showToast({ title: '退货数量必须大于0', icon: 'none' })
+        return
+      }
+      if (Number(item.price) < 0) {
+        uni.showToast({ title: '退货单价不能小于0', icon: 'none' })
+        return
+      }
+    }
+
+    uni.showLoading({ title: '正在保存...' })
+    try {
+      const payload = {
+        return_no: form.return_no.trim() || undefined,
+        inbound_id: form.inbound_id || 0,
+        supplier_id: form.supplier_id,
+        reason: form.reason.trim(),
+        items: validItems.map(item => ({
+          product_id: item.product_id,
+          quantity: Number(item.quantity),
+          price: Number(item.price)
+        }))
+      }
+      const res = await purchaseApi.createReturn(payload)
+      uni.hideLoading()
+      if (res.code === 0) {
+        uni.showToast({ title: '保存成功', icon: 'success' })
+        setTimeout(() => {
+          uni.navigateBack()
+        }, 1000)
+      }
+    } catch (e) {
+      uni.hideLoading()
+    }
+  }
+}
 </script>
 
 <style lang="scss" scoped>
@@ -444,14 +560,16 @@ onMounted(() => {
 }
 
 .scroll-inner {
-  padding: 20rpx;
+  padding: 24rpx 24rpx 180rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
 }
 
 .section {
   background: #FFFFFF;
   border-radius: 20rpx;
   padding: 28rpx;
-  margin-bottom: 20rpx;
   box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
 }
 
@@ -476,13 +594,13 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 6rpx;
-  padding: 6rpx 16rpx;
+  padding: 8rpx 20rpx;
   border-radius: 8rpx;
   background: #E8F4FF;
 }
 
 .add-row-text {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #1890FF;
   font-weight: 600;
 }
@@ -502,13 +620,19 @@ onMounted(() => {
   &:last-child {
     border-bottom: none;
   }
+  
+  &.vertical {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16rpx;
+  }
 }
 
 .form-label {
   font-size: 28rpx;
   color: #606266;
   flex-shrink: 0;
-  width: 160rpx;
+  width: 180rpx;
 
   &.required::after {
     content: '*';
@@ -546,37 +670,180 @@ onMounted(() => {
   text-align: right;
 }
 
+.info-value {
+  font-size: 28rpx;
+  color: #303133;
+  text-align: right;
+  flex: 1;
+  
+  &.font-bold {
+    font-weight: 700;
+  }
+}
+
+.form-textarea {
+  width: 100%;
+  height: 120rpx;
+  background: #F8FAFC;
+  border: 1rpx solid #DCDFE6;
+  border-radius: 12rpx;
+  padding: 16rpx;
+  font-size: 26rpx;
+  box-sizing: border-box;
+}
+
+.status-selector {
+  display: flex;
+  background: #F4F4F5;
+  border-radius: 12rpx;
+  padding: 4rpx;
+  gap: 4rpx;
+}
+
+.status-btn {
+  padding: 10rpx 28rpx;
+  border-radius: 10rpx;
+  transition: all 0.2s;
+  
+  &.active {
+    background: #FFFFFF;
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+    
+    .status-btn-text {
+      color: #1890FF;
+      font-weight: 700;
+    }
+  }
+}
+
+.status-btn-text {
+  font-size: 26rpx;
+  color: #909399;
+}
+
 /* 商品明细卡片 */
 .items-wrap {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 20rpx;
 }
 
 .item-row-card {
   background: #F8FAFC;
-  border-radius: 16rpx;
-  padding: 20rpx;
+  border-radius: 20rpx;
+  padding: 24rpx;
   border: 1rpx solid #E4E7ED;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.01);
 }
 
 .card-title-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12rpx;
+  margin-bottom: 16rpx;
 }
 
 .card-index-title {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: #606266;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #303133;
 }
 
 .remove-row-btn {
   font-size: 24rpx;
   color: #F56C6C;
   font-weight: 600;
+}
+
+.card-spec-tag {
+  font-size: 20rpx;
+  background: #E8F4FF;
+  color: #1890FF;
+  padding: 2rpx 8rpx;
+  border-radius: 6rpx;
+  max-width: 180rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.item-grid-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  margin-bottom: 20rpx;
+  background: #FFFFFF;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+}
+
+.grid-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.grid-cell {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-size: 22rpx;
+  color: #606266;
+}
+
+.cell-label {
+  color: #909399;
+}
+
+.cell-value {
+  font-weight: 600;
+  color: #303133;
+}
+
+.item-inputs-section {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12rpx;
+}
+
+.input-inline-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #DCDFE6;
+  border-radius: 10rpx;
+  padding: 6rpx 12rpx;
+  
+  &.wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.input-label {
+  font-size: 22rpx;
+  color: #606266;
+  flex-shrink: 0;
+  
+  &.required::after {
+    content: '*';
+    color: #F56C6C;
+  }
+}
+
+.input-field {
+  flex: 1;
+  font-size: 24rpx;
+  color: #303133;
+  text-align: right;
+  height: 48rpx;
+  min-height: 48rpx;
+  
+  &.font-bold {
+    font-weight: 700;
+    color: #1890FF;
+  }
 }
 
 .row-group {
@@ -614,13 +881,13 @@ onMounted(() => {
 }
 
 .summary-card {
-  background: #F5F7FA;
+  background: #FFF8F8;
+  border: 1rpx dashed #FFCBCB;
   border-radius: 16rpx;
   padding: 20rpx 24rpx;
   display: flex;
   flex-direction: column;
   gap: 12rpx;
-  border: 1rpx dashed #DCDFE6;
 }
 
 .summary-row {
@@ -642,14 +909,21 @@ onMounted(() => {
     color: #F56C6C;
     font-size: 32rpx;
   }
+  
+  &.font-bold {
+    font-weight: 700;
+  }
 }
 
 /* 底部操作栏 */
 .bottom-bar {
-  flex-shrink: 0;
-  padding: 16rpx 24rpx;
-  padding-bottom: calc(16rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20rpx 24rpx;
+  padding-bottom: calc(20rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10rpx);
   box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.05);
@@ -683,7 +957,7 @@ onMounted(() => {
   }
 }
 
-/* 弹窗遮罩 */
+/* 弹窗样式 */
 .dialog-overlay {
   position: fixed;
   top: 0;

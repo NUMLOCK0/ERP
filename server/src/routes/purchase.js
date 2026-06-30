@@ -4,7 +4,7 @@ const { getPool } = require('../database');
 const Response = require('../utils/response');
 const { isAuditEnabled } = require('../utils/auditConfig');
 const { resolveInlineProduct } = require('../utils/inlineProduct');
-const { generateBusinessNo, generateTempBusinessNo } = require('../utils/bizNo');
+const { generateBusinessNo, generateTempBusinessNo, isCustomNo } = require('../utils/bizNo');
 
 const PURCHASE_STATUS = {
   PENDING_SUBMIT: 0,
@@ -256,6 +256,13 @@ router.get('/order/:id', async (req, res) => {
     );
     if (!rows.length) return res.json(Response.error('订单不存在'));
     const order = rows[0];
+    try {
+      order.image_urls = JSON.parse(order.image_urls || '[]');
+      order.purchase_image_urls = JSON.parse(order.purchase_image_urls || '[]');
+    } catch (e) {
+      order.image_urls = [];
+      order.purchase_image_urls = [];
+    }
     const [items] = await pool.execute(
       `SELECT poi.*, p.name AS product_name, p.code, p.spec, p.image_urls, u.name AS unit_name,
               COALESCE(pu.base_quantity, 1) AS base_quantity,
@@ -330,7 +337,7 @@ router.get('/order/:id', async (req, res) => {
 router.post('/order', async (req, res) => {
   try {
     const pool = getPool();
-    const { supplier_id, warehouse_id, payment_method = '', admin_remark = '', purchase_remark = '', items } = req.body;
+    const { supplier_id, warehouse_id, payment_method = '', admin_remark = '', purchase_remark = '', items, order_no, image_urls } = req.body;
     if (!supplier_id) return res.json(Response.error('供应商不能为空'));
     if (!warehouse_id) return res.json(Response.error('仓库不能为空'));
     if (!items || !items.length) return res.json(Response.error('明细不能为空'));
@@ -343,20 +350,34 @@ router.post('/order', async (req, res) => {
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
-      const tempOrderNo = await generateTempOrderNo(conn);
+
+      let orderNo = order_no ? String(order_no).trim() : '';
+      const isCustom = isCustomNo(orderNo);
+      if (isCustom) {
+        const [existing] = await conn.execute('SELECT id FROM purchase_order WHERE order_no = ? LIMIT 1', [orderNo]);
+        if (existing.length) {
+          throw new Error(`采购单号 [${orderNo}] 已存在`);
+        }
+      } else {
+        const tempOrderNo = await generateTempOrderNo(conn);
+        orderNo = tempOrderNo;
+      }
 
       const auditEnabled = await isAuditEnabled(conn, 'purchase_order');
       const initialStatus = auditEnabled ? PURCHASE_STATUS.PENDING_SUBMIT : PURCHASE_STATUS.PURCHASING;
       const startTimeSql = auditEnabled ? 'NULL' : 'NOW()';
 
       const [result] = await conn.execute(
-        `INSERT INTO purchase_order (order_no, supplier_id, warehouse_id, payment_method, total_amount, admin_remark, purchase_remark, status, auditor_id, creator_id)
-         VALUES (?,?,?,?,?,?,?,?,?,?)`,
-        [tempOrderNo, supplier_id, warehouse_id, payment_method, totalAmount, admin_remark, purchase_remark, initialStatus, 0, req.user.id]
+        `INSERT INTO purchase_order (order_no, supplier_id, warehouse_id, payment_method, total_amount, admin_remark, purchase_remark, status, auditor_id, creator_id, image_urls)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+        [orderNo, supplier_id, warehouse_id, payment_method, totalAmount, admin_remark, purchase_remark, initialStatus, 0, req.user.id, JSON.stringify(image_urls || [])]
       );
       const orderId = result.insertId;
-      const orderNo = await generatePurchaseOrderNo(conn, orderId);
-      await conn.execute('UPDATE purchase_order SET order_no = ? WHERE id = ?', [orderNo, orderId]);
+      if (!isCustom) {
+        const generatedNo = await generatePurchaseOrderNo(conn, orderId);
+        await conn.execute('UPDATE purchase_order SET order_no = ? WHERE id = ?', [generatedNo, orderId]);
+        orderNo = generatedNo;
+      }
       const tempPaymentNo = await generateTempBizNo(conn, 'finance_payment', 'payment_no', 'TMP-FK');
       const [paymentResult] = await conn.execute(
         `INSERT INTO finance_payment (payment_no, order_id, supplier_id, amount, should_amount, pay_method, status, remark, creator_id)
@@ -400,7 +421,7 @@ router.post('/order', async (req, res) => {
 router.put('/order/:id', async (req, res) => {
   try {
     const pool = getPool();
-    const { supplier_id, warehouse_id, payment_method = '', admin_remark = '', purchase_remark = '', items } = req.body;
+    const { supplier_id, warehouse_id, payment_method = '', admin_remark = '', purchase_remark = '', items, image_urls } = req.body;
 
     const conn = await pool.getConnection();
     try {
@@ -424,8 +445,8 @@ router.put('/order/:id', async (req, res) => {
       }
 
       await conn.execute(
-        'UPDATE purchase_order SET supplier_id=?, warehouse_id=?, payment_method=?, total_amount=?, admin_remark=?, purchase_remark=? WHERE id=?',
-        [supplier_id, warehouse_id, payment_method, totalAmount, admin_remark, purchase_remark, req.params.id]
+        'UPDATE purchase_order SET supplier_id=?, warehouse_id=?, payment_method=?, total_amount=?, admin_remark=?, purchase_remark=?, image_urls=? WHERE id=?',
+        [supplier_id, warehouse_id, payment_method, totalAmount, admin_remark, purchase_remark, JSON.stringify(image_urls || []), req.params.id]
       );
       await conn.execute(
         'UPDATE finance_payment SET supplier_id = ?, should_amount = ?, pay_method = ?, remark = ? WHERE order_id = ?',
@@ -569,7 +590,7 @@ router.post('/order/:id/confirm-purchased', async (req, res) => {
     if (!order) throw new Error('订单不存在');
     if (Number(order.status) !== PURCHASE_STATUS.PURCHASING) throw new Error('仅采购中订单允许已采确认');
 
-    const { payment_method = '', admin_remark = '', purchase_remark = '' } = req.body;
+    const { payment_method = '', admin_remark = '', purchase_remark = '', purchase_image_urls } = req.body;
     let totalAmount = 0;
     for (const item of (req.body.items || [])) {
       const finalQuantity = Number(item.final_quantity || item.quantity || 0);
@@ -587,9 +608,9 @@ router.post('/order/:id/confirm-purchased', async (req, res) => {
 
     await conn.execute(
       `UPDATE purchase_order
-       SET status = ?, payment_method = ?, admin_remark = ?, purchase_remark = ?, total_amount = ?, purchase_completed_time = NOW()
+       SET status = ?, payment_method = ?, admin_remark = ?, purchase_remark = ?, total_amount = ?, purchase_image_urls = ?, purchase_completed_time = NOW()
        WHERE id = ?`,
-      [PURCHASE_STATUS.PURCHASED, payment_method, admin_remark, purchase_remark, totalAmount || order.total_amount, order.id]
+      [PURCHASE_STATUS.PURCHASED, payment_method, admin_remark, purchase_remark, totalAmount || order.total_amount, JSON.stringify(purchase_image_urls || []), order.id]
     );
     await conn.execute(
       'UPDATE finance_payment SET should_amount = ?, pay_method = ?, remark = ? WHERE order_id = ?',
@@ -648,7 +669,7 @@ router.post('/order/:id/inbound', async (req, res) => {
       throw new Error('当前状态不允许入库');
     }
 
-    const { warehouse_id, inbound_status = 0, remark = '', items = [] } = req.body;
+    const { warehouse_id, inbound_status = 0, remark = '', items = [], inbound_no, image_urls } = req.body;
     const inboundItems = items.filter(item => Number(item.inbound_quantity || 0) > 0);
     if (!warehouse_id) throw new Error('仓库不能为空');
     if (!inboundItems.length) throw new Error('入库明细不能为空');
@@ -665,16 +686,30 @@ router.post('/order/:id/inbound', async (req, res) => {
       usageMap.set(productId, usedQuantity);
     }
 
+    let inboundNo = inbound_no ? String(inbound_no).trim() : '';
+    const isCustom = isCustomNo(inboundNo);
+    if (isCustom) {
+      const [existing] = await conn.execute('SELECT id FROM purchase_inbound WHERE inbound_no = ? LIMIT 1', [inboundNo]);
+      if (existing.length) {
+        throw new Error(`入库单号 [${inboundNo}] 已存在`);
+      }
+    } else {
+      const tempNo = await generateTempBizNo(conn, 'purchase_inbound', 'inbound_no', 'TMP-PE');
+      inboundNo = tempNo;
+    }
+
     let totalAmount = 0;
-    const tempNo = await generateTempBizNo(conn, 'purchase_inbound', 'inbound_no', 'TMP-PE');
     const [result] = await conn.execute(
-      `INSERT INTO purchase_inbound (inbound_no, order_id, warehouse_id, supplier_id, total_amount, status, remark, completed_time, creator_id)
-       VALUES (?,?,?,?,?,?,?,?,?)`,
-      [tempNo, order.id, warehouse_id, order.supplier_id, 0, Number(inbound_status), remark, Number(inbound_status) === 1 ? new Date() : null, req.user.id]
+      `INSERT INTO purchase_inbound (inbound_no, order_id, warehouse_id, supplier_id, total_amount, status, remark, completed_time, creator_id, image_urls)
+       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      [inboundNo, order.id, warehouse_id, order.supplier_id, 0, Number(inbound_status), remark, Number(inbound_status) === 1 ? new Date() : null, req.user.id, JSON.stringify(image_urls || [])]
     );
     const inboundId = result.insertId;
-    const inboundNo = await generateIdBizNo(conn, 'purchase_inbound', 'inbound_no', 'PE', inboundId);
-    await conn.execute('UPDATE purchase_inbound SET inbound_no = ? WHERE id = ?', [inboundNo, inboundId]);
+    if (!isCustom) {
+      const generatedNo = await generateIdBizNo(conn, 'purchase_inbound', 'inbound_no', 'PE', inboundId);
+      await conn.execute('UPDATE purchase_inbound SET inbound_no = ? WHERE id = ?', [generatedNo, inboundId]);
+      inboundNo = generatedNo;
+    }
 
     for (const item of inboundItems) {
       const quantity = Number(item.inbound_quantity || 0);
@@ -737,7 +772,8 @@ router.post('/order/:id/return', async (req, res) => {
       phone = '',
       address = '',
       remark = '',
-      items = []
+      items = [],
+      return_no
     } = req.body;
     const returnItems = items.filter(item => Number(item.return_quantity || 0) > 0 || Number(item.return_amount || 0) > 0);
     if (!returnItems.length) throw new Error('退单明细不能为空');
@@ -754,15 +790,29 @@ router.post('/order/:id/return', async (req, res) => {
       returnUsageMap.set(productId, usedQuantity);
     }
 
-    const tempNo = await generateTempBizNo(conn, 'purchase_return', 'return_no', 'TMP-PR');
+    let returnNo = return_no ? String(return_no).trim() : '';
+    const isCustom = isCustomNo(returnNo);
+    if (isCustom) {
+      const [existing] = await conn.execute('SELECT id FROM purchase_return WHERE return_no = ? LIMIT 1', [returnNo]);
+      if (existing.length) {
+        throw new Error(`退货单号 [${returnNo}] 已存在`);
+      }
+    } else {
+      const tempNo = await generateTempBizNo(conn, 'purchase_return', 'return_no', 'TMP-PR');
+      returnNo = tempNo;
+    }
+
     const [result] = await conn.execute(
       `INSERT INTO purchase_return (return_no, inbound_id, order_id, supplier_id, total_amount, status, express_name, express_no, contact, phone, address, reason, completed_time, creator_id)
        VALUES (?,0,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [tempNo, order.id, order.supplier_id, 0, Number(return_status), express_name, express_no, contact, phone, address, remark, Number(return_status) === 1 ? new Date() : null, req.user.id]
+      [returnNo, order.id, order.supplier_id, 0, Number(return_status), express_name, express_no, contact, phone, address, remark, Number(return_status) === 1 ? new Date() : null, req.user.id]
     );
     const returnId = result.insertId;
-    const returnNo = await generateIdBizNo(conn, 'purchase_return', 'return_no', 'PR', returnId);
-    await conn.execute('UPDATE purchase_return SET return_no = ? WHERE id = ?', [returnNo, returnId]);
+    if (!isCustom) {
+      const generatedNo = await generateIdBizNo(conn, 'purchase_return', 'return_no', 'PR', returnId);
+      await conn.execute('UPDATE purchase_return SET return_no = ? WHERE id = ?', [generatedNo, returnId]);
+      returnNo = generatedNo;
+    }
 
     let totalAmount = 0;
     for (const item of returnItems) {
@@ -857,16 +907,27 @@ router.get('/inbound/:id', async (req, res) => {
     const pool = getPool();
     const [rows] = await pool.execute(
       `SELECT pi.*, po.order_no, sc.name AS supplier_name, sc.contact, sc.phone AS mobile_phone,
-              '' AS telephone, sc.email, w.name AS warehouse_name
+              '' AS telephone, sc.email, w.name AS warehouse_name, u.real_name AS creator_name,
+              COALESCE(item_stats.unit_price, 0) AS unit_price,
+              0 AS tax_amount,
+              pi.total_amount AS total_price,
+              COALESCE(item_stats.inbound_total_quantity, 0) AS inbound_total_quantity
        FROM purchase_inbound pi
        LEFT JOIN purchase_order po ON pi.order_id = po.id
        LEFT JOIN supplier_customer sc ON pi.supplier_id = sc.id
        LEFT JOIN warehouse w ON pi.warehouse_id = w.id
+       LEFT JOIN sys_user u ON pi.creator_id = u.id
+       LEFT JOIN (
+         SELECT inbound_id, AVG(price) AS unit_price, SUM(quantity) AS inbound_total_quantity
+         FROM purchase_inbound_item
+         GROUP BY inbound_id
+       ) item_stats ON pi.id = item_stats.inbound_id
        WHERE pi.id = ?`,
       [req.params.id]
     );
     if (!rows.length) return res.json(Response.error('入库单不存在'));
     const inbound = rows[0];
+    inbound.image_urls = parseJsonArray(inbound.image_urls);
     const [items] = await pool.execute(
       `SELECT pii.*, p.name AS product_name, p.code, p.spec, u.name AS unit_name,
               COALESCE(
@@ -928,7 +989,8 @@ router.post('/inbound/:id/complete', async (req, res) => {
       await updateStock(conn, item.product_id, inbound.warehouse_id, item.quantity, 'purchase_inbound', inbound.inbound_no);
     }
 
-    await conn.execute('UPDATE purchase_inbound SET status = 1, completed_time = NOW() WHERE id = ?', [inbound.id]);
+    const mergedImages = [...parseJsonArray(inbound.image_urls), ...parseJsonArray(req.body.image_urls)];
+    await conn.execute('UPDATE purchase_inbound SET status = 1, image_urls = ?, completed_time = NOW() WHERE id = ?', [JSON.stringify(mergedImages), inbound.id]);
 
     const remainingMap = await getPurchaseRemainingMap(conn, inbound.order_id);
     const hasRemaining = Array.from(remainingMap.values()).some(stats => Number(stats.remaining_quantity || 0) > 0);
@@ -1011,23 +1073,35 @@ router.get('/return/:id', async (req, res) => {
   try {
     const pool = getPool();
     const [rows] = await pool.execute(
-      `SELECT pr.*, po.order_no, sc.name AS supplier_name,
+      `SELECT pr.*, po.order_no, sc.name AS supplier_name, u.real_name AS creator_name,
               COALESCE(pr.contact, sc.contact) AS contact,
               COALESCE(NULLIF(pr.phone, ''), sc.phone) AS phone,
-              COALESCE(NULLIF(pr.address, ''), sc.address) AS address
+              COALESCE(NULLIF(pr.address, ''), sc.address) AS address,
+              pr.total_amount AS refund_total_amount,
+              COALESCE(item_stats.refund_total_quantity, 0) AS refund_total_quantity,
+              COALESCE(item_stats.unit_price, 0) AS unit_price,
+              0 AS tax_amount,
+              pr.total_amount AS total_price
        FROM purchase_return pr
        LEFT JOIN purchase_inbound pi ON pr.inbound_id = pi.id
        LEFT JOIN purchase_order po ON COALESCE(NULLIF(pr.order_id, 0), pi.order_id) = po.id
        LEFT JOIN supplier_customer sc ON pr.supplier_id = sc.id
+       LEFT JOIN sys_user u ON pr.creator_id = u.id
+       LEFT JOIN (
+         SELECT return_id, AVG(price) AS unit_price, SUM(quantity) AS refund_total_quantity
+         FROM purchase_return_item
+         GROUP BY return_id
+       ) item_stats ON pr.id = item_stats.return_id
        WHERE pr.id = ?`,
       [req.params.id]
     );
     if (!rows.length) return res.json(Response.error('退货单不存在'));
     const ret = rows[0];
     const [items] = await pool.execute(
-      `SELECT pri.*, p.name AS product_name, p.code, p.spec
+      `SELECT pri.*, p.name AS product_name, p.code, p.spec, u.name AS unit_name
        FROM purchase_return_item pri
        LEFT JOIN product p ON pri.product_id = p.id
+       LEFT JOIN unit u ON p.unit_id = u.id
        WHERE pri.return_id = ?`, [ret.id]
     );
     ret.items = items;
@@ -1084,11 +1158,22 @@ router.post('/return/:id/complete', async (req, res) => {
 router.post('/return', async (req, res) => {
   try {
     const pool = getPool();
-    const { inbound_id, supplier_id, items, reason = '' } = req.body;
+    const { inbound_id, supplier_id, items, reason = '', return_no } = req.body;
     if (!supplier_id) return res.json(Response.error('供应商不能为空'));
     if (!items || !items.length) return res.json(Response.error('明细不能为空'));
 
-    const returnNo = await generateNo(pool, 'CT');
+    let returnNo = return_no ? String(return_no).trim() : '';
+    const isCustom = isCustomNo(returnNo);
+    if (isCustom) {
+      const [existing] = await pool.execute('SELECT id FROM purchase_return WHERE return_no = ? LIMIT 1', [returnNo]);
+      if (existing.length) {
+        return res.json(Response.error(`退货单号 [${returnNo}] 已存在`));
+      }
+    } else {
+      const generatedNo = await generateNo(pool, 'CT');
+      returnNo = generatedNo;
+    }
+
     let totalAmount = 0;
     for (const item of items) {
       totalAmount += (item.quantity || 0) * (item.price || 0);
@@ -1363,6 +1448,20 @@ function roundMoney(value) {
   const amount = Number(value || 0);
   if (!Number.isFinite(amount)) return 0;
   return Math.round(amount * 100) / 100;
+}
+
+function parseJsonArray(value) {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (!value) return [];
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [value];
+    } catch (e) {
+      return [value];
+    }
+  }
+  return [];
 }
 
 function calculateIncludedTax(totalAmount, taxRate) {

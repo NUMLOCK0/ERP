@@ -9,13 +9,17 @@
           </view>
           <view class="form-group">
             <view class="form-item">
+              <text class="form-label">退货单号</text>
+              <input class="form-input" v-model="form.return_no" placeholder="自定义单号(留空自动生成)" />
+            </view>
+            <view class="form-item">
               <text class="form-label required">关联发货单</text>
               <picker class="form-picker" @change="onDeliveryChange" :value="deliveryIndex" :range="deliveries" range-key="label">
                 <view class="picker-inner">
                   <text class="picker-value" :class="{ placeholder: deliveryIndex === -1 }">
                     {{ deliveries[deliveryIndex]?.label || '请选择关联发货单' }}
                   </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                  <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
                 </view>
               </picker>
             </view>
@@ -34,7 +38,7 @@
                   <text class="picker-value">
                     {{ statuses[statusIndex]?.label }}
                   </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                  <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
                 </view>
               </picker>
             </view>
@@ -137,7 +141,7 @@
           </view>
 
           <view v-else class="empty-items-state">
-            <uni-icons type="undo" size="48" color="#DCDFE6"></uni-icons>
+            <u-icon name="rewind-left" size="48" color="#DCDFE6"></u-icon>
             <text class="empty-items-text">请先在上方选择关联发货单以加载发货商品明细</text>
           </view>
         </view>
@@ -153,7 +157,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { saleApi } from '@/api/sale'
 
 const deliveries = ref([])
@@ -167,6 +172,7 @@ const statuses = [
 const statusIndex = ref(0)
 
 const form = reactive({
+  return_no: '',
   delivery_id: null,
   status: 0,
   express_name: '',
@@ -180,30 +186,8 @@ const form = reactive({
 
 const totalRefundAmount = ref(0)
 
-const loadDeliveries = async () => {
-  try {
-    const res = await saleApi.getDeliveries({ page: 1, pageSize: 1000 })
-    if (res.code === 0) {
-      const listData = res.data?.list || res.data || []
-      // Backend validates: only shipped (1) or received (2) can be returned
-      deliveries.value = listData
-        .filter(item => [1, 2].includes(Number(item.status)))
-        .map(item => ({
-          ...item,
-          label: `${item.delivery_no} (${item.customer_name || ''})`
-        }))
-    }
-  } catch (e) {
-    // handled
-  }
-}
-
-const onDeliveryChange = async (e) => {
-  const index = e.detail.value
-  deliveryIndex.value = index
-  const delivery = deliveries.value[index]
+const loadDeliveryGoods = async (delivery) => {
   if (!delivery) return
-
   form.delivery_id = delivery.id
   selectedDelivery.value = delivery
   form.contact = delivery.contact || ''
@@ -246,6 +230,41 @@ const onDeliveryChange = async (e) => {
     // handled
   } finally {
     uni.hideLoading()
+  }
+}
+
+const loadDeliveries = async (targetDeliveryId) => {
+  try {
+    const res = await saleApi.getDeliveries({ page: 1, pageSize: 1000 })
+    if (res.code === 0) {
+      const listData = res.data?.list || res.data || []
+      // Backend validates: only shipped (1) or received (2) can be returned
+      deliveries.value = listData
+        .filter(item => [1, 2].includes(Number(item.status)))
+        .map(item => ({
+          ...item,
+          label: item.delivery_no + ' (' + (item.customer_name || '') + ')'
+        }))
+
+      if (targetDeliveryId) {
+        const idx = deliveries.value.findIndex(item => Number(item.id) === Number(targetDeliveryId))
+        if (idx > -1) {
+          deliveryIndex.value = idx
+          await loadDeliveryGoods(deliveries.value[idx])
+        }
+      }
+    }
+  } catch (e) {
+    // handled
+  }
+}
+
+const onDeliveryChange = (e) => {
+  const index = e.detail.value
+  deliveryIndex.value = index
+  const delivery = deliveries.value[index]
+  if (delivery) {
+    loadDeliveryGoods(delivery)
   }
 }
 
@@ -313,6 +332,7 @@ const handleSave = async () => {
   uni.showLoading({ title: '正在保存...' })
   try {
     const payload = {
+      return_no: form.return_no.trim() || undefined,
       delivery_id: form.delivery_id,
       status: Number(form.status),
       express_name: form.express_name.trim(),
@@ -343,8 +363,9 @@ const handleSave = async () => {
   }
 }
 
-onMounted(() => {
-  loadDeliveries()
+onLoad((options) => {
+  const deliveryId = options?.delivery_id
+  loadDeliveries(deliveryId)
 })
 </script>
 

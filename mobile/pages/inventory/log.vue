@@ -2,7 +2,7 @@
   <view class="log-page">
     <view class="search-bar">
       <view class="search-input-wrap">
-        <uni-icons type="search" size="20" color="#999" />
+        <u-icon name="search" size="20" color="#999"  />
         <input
           v-model="keyword"
           class="search-input"
@@ -72,7 +72,7 @@
           </view>
         </view>
         <view v-else-if="!loading" class="empty-state">
-          <uni-icons type="list" size="60" color="#DCDFE6" />
+          <u-icon name="list" size="60" color="#DCDFE6"  />
           <text class="empty-text">暂无库存日志</text>
         </view>
         <view v-if="loading" class="loading-more">

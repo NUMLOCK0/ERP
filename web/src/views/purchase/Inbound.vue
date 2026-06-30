@@ -109,6 +109,20 @@
             <el-descriptions-item label="取消时间">{{ formatDateTime(detail.cancel_time) }}</el-descriptions-item>
             <el-descriptions-item label="创建时间">{{ formatDateTime(detail.created_at) }}</el-descriptions-item>
             <el-descriptions-item label="更新时间">{{ formatDateTime(detail.updated_at) }}</el-descriptions-item>
+            <el-descriptions-item label="入库图片">
+              <div v-if="normalizeImageUrls(detail.image_urls).length" class="order-image-list">
+                <el-image
+                  v-for="url in normalizeImageUrls(detail.image_urls)"
+                  :key="url"
+                  class="order-image-thumb"
+                  :src="url"
+                  :preview-src-list="normalizeImageUrls(detail.image_urls)"
+                  fit="cover"
+                  preview-teleported
+                />
+              </div>
+              <span v-else>-</span>
+            </el-descriptions-item>
           </el-descriptions>
         </el-tab-pane>
         <el-tab-pane label="商品列表" name="items">
@@ -135,6 +149,21 @@
         </el-tab-pane>
       </el-tabs>
     </el-drawer>
+
+    <el-dialog v-model="completeDialogVisible" title="确认入库" width="520px" append-to-body>
+      <el-form label-width="88px">
+        <el-form-item label="入库单号">
+          <span>{{ completeForm.inbound_no }}</span>
+        </el-form-item>
+        <el-form-item label="入库图片">
+          <BusinessImageUpload v-model="completeForm.image_urls" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="completeDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitComplete">确认入库</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -146,6 +175,7 @@ import { completePurchaseInbound, getPurchaseInbound, getPurchaseInbounds } from
 import { getSuppliers } from '@/api/supplier'
 import SearchForm from '@/components/SearchForm.vue'
 import Pagination from '@/components/Pagination.vue'
+import BusinessImageUpload from '@/components/BusinessImageUpload.vue'
 
 const loading = ref(false)
 const tableData = ref<any[]>([])
@@ -156,6 +186,8 @@ const activeTab = ref('basic')
 const pagination = reactive({ page: 1, size: 20 })
 const searchForm = reactive({ keyword: '', supplier_id: null as any, dateRange: null as any })
 const detail = reactive<any>({ items: [] })
+const completeDialogVisible = ref(false)
+const completeForm = reactive({ id: null as number | null, inbound_no: '', image_urls: [] as string[] })
 
 async function fetchData() {
   loading.value = true
@@ -184,9 +216,16 @@ async function handleView(row: any) {
 }
 
 async function handleComplete(row: any) {
-  await ElMessageBox.confirm(`确认入库 ${row.inbound_no}？完成后会增加库存。`, '提示', { type: 'warning' })
-  await completePurchaseInbound(row.id)
+  Object.assign(completeForm, { id: row.id, inbound_no: row.inbound_no || '', image_urls: [] })
+  completeDialogVisible.value = true
+}
+
+async function submitComplete() {
+  if (!completeForm.id) return
+  await ElMessageBox.confirm(`确认入库 ${completeForm.inbound_no}？完成后会增加库存。`, '提示', { type: 'warning' })
+  await completePurchaseInbound(completeForm.id, { image_urls: completeForm.image_urls })
   ElMessage.success('入库成功')
+  completeDialogVisible.value = false
   fetchData()
 }
 
@@ -219,6 +258,20 @@ function emptyText(value: any) {
   return value === undefined || value === null || value === '' ? '-' : value
 }
 
+function normalizeImageUrls(value: any) {
+  if (Array.isArray(value)) return value.filter(Boolean)
+  if (!value) return []
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [value]
+    } catch {
+      return [value]
+    }
+  }
+  return []
+}
+
 onMounted(async () => {
   fetchData()
   const res: any = await getSuppliers({ page: 1, pageSize: 1000, type: 'supplier', status: 1 })
@@ -232,6 +285,18 @@ onMounted(async () => {
 }
 .detail-table {
   margin-top: 16px;
+}
+.order-image-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.order-image-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #f0f2f5;
 }
 </style>
 

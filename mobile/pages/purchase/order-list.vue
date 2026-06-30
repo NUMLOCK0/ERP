@@ -1,8 +1,8 @@
 <template>
-  <view class="order-list-page">
+  <view class="list-page">
     <view class="search-bar">
       <view class="search-input-wrap">
-        <uni-icons type="search" size="20" color="#999999" />
+        <u-icon name="search" size="20" color="#999999"  />
         <input
           v-model="keyword"
           class="search-input"
@@ -57,7 +57,7 @@
                 </view>
                 <view class="summary-item">
                   <text class="summary-label">总金额</text>
-                  <text class="summary-value amount">¥{{ formatPrice(item.total_amount) }}</text>
+                  <text class="summary-value amount">￥{{ formatPrice(item.total_amount) }}</text>
                 </view>
                 <view class="summary-item">
                   <text class="summary-label">收货仓库</text>
@@ -74,90 +74,47 @@
               <view class="detail-section">
                 <text class="detail-title">订单信息</text>
                 <view class="detail-grid">
-                  <view class="detail-row">
-                    <text class="detail-label">订单编号</text>
-                    <text class="detail-value">{{ item.order_no || '-' }}</text>
-                  </view>
-                  <view class="detail-row">
-                    <text class="detail-label">订单状态</text>
-                    <text class="detail-value">{{ statusMap[item.status] || '未知' }}</text>
-                  </view>
-                  <view class="detail-row">
-                    <text class="detail-label">供应商</text>
-                    <text class="detail-value">{{ item.supplier_name || '-' }}</text>
-                  </view>
-                  <view class="detail-row">
-                    <text class="detail-label">收货仓库</text>
-                    <text class="detail-value">{{ item.warehouse_name || '-' }}</text>
-                  </view>
-                  <view class="detail-row">
-                    <text class="detail-label">付款方式</text>
-                    <text class="detail-value">{{ item.payment_method || '-' }}</text>
-                  </view>
-                  <view class="detail-row">
-                    <text class="detail-label">商品条数</text>
-                    <text class="detail-value">{{ getItemCount(item) }}</text>
-                  </view>
-                  <view class="detail-row">
-                    <text class="detail-label">总数量</text>
-                    <text class="detail-value">{{ getQuantity(item) }}</text>
-                  </view>
-                  <view class="detail-row">
-                    <text class="detail-label">总金额</text>
-                    <text class="detail-value amount">¥{{ formatPrice(item.total_amount) }}</text>
-                  </view>
-                  <view class="detail-row">
-                    <text class="detail-label">创建时间</text>
-                    <text class="detail-value">{{ formatDate(item.created_at || item.createdAt) || '--' }}</text>
-                  </view>
-                  <view class="detail-row">
-                    <text class="detail-label">审核时间</text>
-                    <text class="detail-value">{{ formatDate(item.audit_time || item.auditTime) || '--' }}</text>
-                  </view>
-                  <view class="detail-row" v-if="item.creator_name || item.creator || item.created_by_name">
+                  <view class="detail-row"><text class="detail-label">订单编号</text><text class="detail-value">{{ item.order_no || '-' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">订单状态</text><text class="detail-value">{{ statusMap[item.status] || '未知' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">供应商</text><text class="detail-value">{{ item.supplier_name || '-' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">收货仓库</text><text class="detail-value">{{ item.warehouse_name || '-' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">付款方式</text><text class="detail-value">{{ item.payment_method || '-' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">商品条数</text><text class="detail-value">{{ getItemCount(item) }}</text></view>
+                  <view class="detail-row"><text class="detail-label">总数量</text><text class="detail-value">{{ getQuantity(item) }}</text></view>
+                  <view class="detail-row"><text class="detail-label">总金额</text><text class="detail-value amount">￥{{ formatPrice(item.total_amount) }}</text></view>
+                  <view class="detail-row"><text class="detail-label">创建时间</text><text class="detail-value">{{ formatDate(item.created_at || item.createdAt) || '--' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">审核时间</text><text class="detail-value">{{ formatDate(item.audit_time || item.auditTime) || '--' }}</text></view>
+                  <view v-if="item.creator_name || item.creator || item.created_by_name" class="detail-row">
                     <text class="detail-label">制单人</text>
                     <text class="detail-value">{{ item.creator_name || item.creator || item.created_by_name }}</text>
                   </view>
-                  <view class="detail-row" v-if="item.admin_remark">
-                    <text class="detail-label">管理备注</text>
-                    <text class="detail-value multiline">{{ item.admin_remark }}</text>
-                  </view>
-                  <view class="detail-row" v-if="item.purchase_remark">
-                    <text class="detail-label">采购备注</text>
-                    <text class="detail-value multiline">{{ item.purchase_remark }}</text>
-                  </view>
-                  <view class="detail-row" v-if="item.remark">
-                    <text class="detail-label">备注</text>
-                    <text class="detail-value multiline">{{ item.remark }}</text>
-                  </view>
+                  <view v-if="item.admin_remark" class="detail-row"><text class="detail-label">管理备注</text><text class="detail-value multiline">{{ item.admin_remark }}</text></view>
+                  <view v-if="item.purchase_remark" class="detail-row"><text class="detail-label">采购备注</text><text class="detail-value multiline">{{ item.purchase_remark }}</text></view>
+                  <view v-if="item.remark" class="detail-row"><text class="detail-label">备注</text><text class="detail-value multiline">{{ item.remark }}</text></view>
                 </view>
               </view>
             </template>
 
             <template #actions>
               <view class="action-btn primary" @click="goDetail(item.id)">详情</view>
-              <view class="action-btn outline-primary" @click="goEdit(item.id)">编辑</view>
+              <view v-if="Number(item.status) === 0" class="action-btn outline-primary" @click="goEdit(item.id)">编辑</view>
               <view class="action-btn outline" @click="showMore(item)">更多</view>
             </template>
           </BusinessListItem>
         </view>
 
         <view v-else-if="!loading" class="empty-state">
-          <uni-icons type="cart" size="60" color="#DCDFE6" />
+          <u-icon name="shopping-cart" size="60" color="#DCDFE6"  />
           <text class="empty-text">暂无采购订单</text>
         </view>
 
-        <view v-if="loading" class="loading-more">
-          <uni-load-more status="loading" />
-        </view>
-        <view v-if="noMore && list.length > 0" class="loading-more">
-          <uni-load-more status="noMore" />
-        </view>
+        <view v-if="loading" class="loading-more"><uni-load-more status="loading" /></view>
+        <view v-if="noMore && list.length > 0" class="loading-more"><uni-load-more status="noMore" /></view>
       </view>
     </scroll-view>
 
     <view class="floating-btn" @click="goCreate">
-      <uni-icons type="plus" size="24" color="#FFFFFF" />
+      <u-icon name="plus" size="24" color="#FFFFFF"  />
     </view>
   </view>
 </template>
@@ -166,6 +123,7 @@
 import { reactive, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { purchaseApi } from '@/api/purchase'
+import http from '@/api/request'
 import BusinessListItem from '@/components/BusinessListItem.vue'
 
 const keyword = ref('')
@@ -224,13 +182,8 @@ const formatPrice = (val) => {
 const formatDate = (val) => {
   if (!val) return ''
   const d = new Date(val)
-  if (isNaN(d.getTime())) return val
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  const h = String(d.getHours()).padStart(2, '0')
-  const min = String(d.getMinutes()).padStart(2, '0')
-  return `${y}-${m}-${day} ${h}:${min}`
+  if (Number.isNaN(d.getTime())) return val
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
 const getItemCount = (item) => {
@@ -258,35 +211,30 @@ const toggleCard = (id) => {
   expandedIds[id] = true
 }
 
-const switchTab = (value) => {
-  activeTab.value = value
+const resetAndFetch = () => {
   page.value = 1
   noMore.value = false
   list.value = []
   fetchList(true)
 }
 
-const onSearch = () => {
-  page.value = 1
-  noMore.value = false
-  list.value = []
-  fetchList(true)
+const switchTab = (value) => {
+  activeTab.value = value
+  resetAndFetch()
 }
+
+const onSearch = () => resetAndFetch()
 
 const fetchList = async (isRefresh = false) => {
   if (loading.value) return
   loading.value = true
-
   try {
     const params = {
       page: isRefresh ? 1 : page.value,
       pageSize,
       keyword: keyword.value.trim()
     }
-    if (activeTab.value !== '') {
-      params.status = Number(activeTab.value)
-    }
-
+    if (activeTab.value !== '') params.status = Number(activeTab.value)
     const res = await purchaseApi.getOrders(params)
     if (res.code === 0) {
       const data = res.data?.list || res.data || []
@@ -316,9 +264,7 @@ const onRefresh = () => {
 }
 
 const loadMore = () => {
-  if (!noMore.value && !loading.value) {
-    fetchList()
-  }
+  if (!noMore.value && !loading.value) fetchList()
 }
 
 const goDetail = (id) => {
@@ -333,23 +279,25 @@ const goCreate = () => {
   uni.navigateTo({ url: '/pages/purchase/order-edit' })
 }
 
+const refreshAfterAction = () => {
+  page.value = 1
+  noMore.value = false
+  fetchList(true)
+}
+
 const submitOrder = (item) => {
   uni.showModal({
-    title: '确认提审',
-    content: `确定提交订单 ${item.order_no || ''} 吗？提交后将进入审核流程。`,
+    title: '确认提交',
+    content: `确认提交采购订单 ${item.order_no || ''} 吗？`,
     success: async (res) => {
       if (!res.confirm) return
       try {
         const submitRes = await purchaseApi.submitOrder(item.id)
         if (submitRes.code === 0) {
-          uni.showToast({ title: '提审成功', icon: 'success' })
-          page.value = 1
-          noMore.value = false
-          fetchList(true)
+          uni.showToast({ title: '提交成功', icon: 'success' })
+          refreshAfterAction()
         }
-      } catch (error) {
-        // request interceptor handles toast
-      }
+      } catch (error) { /* handled */ }
     }
   })
 }
@@ -357,44 +305,242 @@ const submitOrder = (item) => {
 const cancelOrder = (item) => {
   uni.showModal({
     title: '确认取消',
-    content: `确定取消并删除订单 ${item.order_no || ''} 吗？`,
+    content: `确认取消采购订单 ${item.order_no || ''} 吗？`,
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        const cancelRes = await purchaseApi.cancelOrder(item.id)
+        if (cancelRes.code === 0) {
+          uni.showToast({ title: '已取消', icon: 'success' })
+          refreshAfterAction()
+        }
+      } catch (error) { /* handled */ }
+    }
+  })
+}
+
+const closeOrder = (item) => {
+  uni.showModal({
+    title: '确认关闭',
+    content: `确认关闭采购订单 ${item.order_no || ''} 吗？`,
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        const closeRes = await purchaseApi.closeOrder(item.id)
+        if (closeRes.code === 0) {
+          uni.showToast({ title: '已关闭', icon: 'success' })
+          refreshAfterAction()
+        }
+      } catch (error) { /* handled */ }
+    }
+  })
+}
+
+const deleteOrder = (item) => {
+  uni.showModal({
+    title: '确认删除',
+    content: `确认删除采购订单 ${item.order_no || ''} 吗？此操作不可恢复。`,
     success: async (res) => {
       if (!res.confirm) return
       try {
         const deleteRes = await purchaseApi.deleteOrder(item.id)
         if (deleteRes.code === 0) {
-          uni.showToast({ title: '已取消', icon: 'success' })
-          list.value = list.value.filter((current) => current.id !== item.id)
+          uni.showToast({ title: '已删除', icon: 'success' })
+          refreshAfterAction()
         }
-      } catch (error) {
-        // request interceptor handles toast
-      }
+      } catch (error) { /* handled */ }
     }
   })
 }
 
-const showMore = (item) => {
-  const menu = ['查看详情']
-  if (Number(item.status) === 0) {
-    menu.push('编辑订单', '提交审核', '取消订单')
-  } else {
-    menu.push('复制单号')
+const auditOrder = (item) => {
+  uni.showModal({
+    title: '确认审核通过',
+    content: `确认审核通过采购订单 ${item.order_no || ''} 吗？`,
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        const auditRes = await purchaseApi.auditOrder(item.id, { approved: true })
+        if (auditRes.code === 0) {
+          uni.showToast({ title: '已通过', icon: 'success' })
+          refreshAfterAction()
+        }
+      } catch (error) { /* handled */ }
+    }
+  })
+}
+
+const rejectOrder = (item) => {
+  uni.showModal({
+    title: '确认拒绝',
+    content: `确认拒绝采购订单 ${item.order_no || ''} 吗？`,
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        const rejectRes = await purchaseApi.rejectOrder(item.id)
+        if (rejectRes.code === 0) {
+          uni.showToast({ title: '已拒绝', icon: 'success' })
+          refreshAfterAction()
+        }
+      } catch (error) { /* handled */ }
+    }
+  })
+}
+
+const startPurchase = (item) => {
+  uni.showModal({
+    title: '确认开始采购',
+    content: `确认开始采购订单 ${item.order_no || ''} 吗？`,
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        const startRes = await purchaseApi.startPurchase(item.id)
+        if (startRes.code === 0) {
+          uni.showToast({ title: '已开始采购', icon: 'success' })
+          refreshAfterAction()
+        }
+      } catch (error) { /* handled */ }
+    }
+  })
+}
+
+const confirmPurchased = async (item) => {
+  uni.showLoading({ title: '加载中...' })
+  try {
+    const detailRes = await purchaseApi.getOrderDetail(item.id)
+    uni.hideLoading()
+    if (detailRes.code !== 0) return
+    const detail = detailRes.data || {}
+    uni.showModal({
+      title: '已采确认',
+      content: `确认已采购订单 ${detail.order_no || ''} 吗？将使用原采购数量与单价。`,
+      success: async (res) => {
+        if (!res.confirm) return
+        try {
+          const purchaseImageUrls = await chooseUploadImages()
+          const items = (detail.items || []).map(it => ({
+            id: it.id,
+            final_quantity: Number(it.quantity || 0),
+            final_price: Number(it.price || 0),
+            final_tax: Number(it.tax || 0),
+            final_amount: Number(it.amount || 0),
+            final_remark: it.remark || ''
+          }))
+          const confirmRes = await purchaseApi.confirmPurchased(detail.id, {
+            payment_method: detail.payment_method || '',
+            admin_remark: detail.admin_remark || '',
+            purchase_remark: detail.purchase_remark || '',
+            purchase_image_urls: purchaseImageUrls,
+            items
+          })
+          if (confirmRes.code === 0) {
+            uni.showToast({ title: '已采确认成功', icon: 'success' })
+            refreshAfterAction()
+          }
+        } catch (error) { /* handled */ }
+      }
+    })
+  } catch (err) {
+    uni.hideLoading()
   }
+}
+
+const chooseUploadImages = () => {
+  return new Promise((resolve) => {
+    uni.showModal({
+      title: '上传已采图片',
+      content: '是否上传已采确认图片？',
+      confirmText: '上传',
+      cancelText: '跳过',
+      success: (modalRes) => {
+        if (!modalRes.confirm) {
+          resolve([])
+          return
+        }
+        uni.chooseImage({
+          count: 10,
+          success: async (chooseRes) => {
+            const urls = []
+            uni.showLoading({ title: '上传中...' })
+            try {
+              for (const filePath of chooseRes.tempFilePaths || []) {
+                const uploadRes = await http.upload('/upload/file', filePath)
+                if (uploadRes.code === 0 && uploadRes.data?.url) urls.push(uploadRes.data.url)
+              }
+              resolve(urls)
+            } catch (error) {
+              uni.showToast({ title: error.message || '上传失败', icon: 'none' })
+              resolve([])
+            } finally {
+              uni.hideLoading()
+            }
+          },
+          fail: () => resolve([])
+        })
+      },
+      fail: () => resolve([])
+    })
+  })
+}
+
+const inboundOrder = (item) => {
+  uni.navigateTo({
+    url: `/pages/purchase/inbound-edit?order_id=${item.id}`
+  })
+}
+
+const returnOrder = (item) => {
+  uni.navigateTo({
+    url: `/pages/purchase/return-edit?order_id=${item.id}`
+  })
+}
+
+const showMore = (item) => {
+  const status = Number(item.status)
+  const hasRemaining = Number(item.remaining_quantity || 0) > 0
+  
+  const menu = ['查看详情']
+  const actions = []
+  if (status === 0) actions.push({ command: 'edit', label: '编辑' }, { command: 'submit', label: '提交审核' }, { command: 'cancel', label: '取消' })
+  if (status === 2) actions.push({ command: 'audit', label: '审核通过' }, { command: 'reject', label: '拒绝' }, { command: 'cancel', label: '取消' })
+  if (status === 5) actions.push({ command: 'startPurchase', label: '开始采购' }, { command: 'cancel', label: '取消' }, { command: 'close', label: '关闭' })
+  if (status === 1) actions.push({ command: 'confirmPurchased', label: '已采确认' }, { command: 'cancel', label: '取消' })
+  if ([6, 7, 8].includes(status) && hasRemaining) actions.push({ command: 'inbound', label: '入库' }, { command: 'returnOrder', label: '退单' })
+  if ([6, 7, 8].includes(status)) actions.push({ command: 'close', label: '关闭' })
+  if ([3, 4].includes(status)) actions.push({ command: 'delete', label: '删除' })
+
+  actions.forEach(act => {
+    menu.push(act.label)
+  })
+  menu.push('复制单号')
 
   uni.showActionSheet({
     itemList: menu,
     success: ({ tapIndex }) => {
-      const action = menu[tapIndex]
-      if (action === '查看详情') {
+      const actionLabel = menu[tapIndex]
+      if (actionLabel === '查看详情') {
         goDetail(item.id)
-      } else if (action === '编辑订单') {
-        goEdit(item.id)
-      } else if (action === '提交审核') {
-        submitOrder(item)
-      } else if (action === '取消订单') {
-        cancelOrder(item)
-      } else if (action === '复制单号') {
-        uni.setClipboardData({ data: item.order_no || '' })
+      } else if (actionLabel === '复制单号') {
+        uni.setClipboardData({
+          data: item.order_no || '',
+          success: () => uni.showToast({ title: '复制成功', icon: 'none' })
+        })
+      } else {
+        const clickedAction = actions.find(act => act.label === actionLabel)
+        if (clickedAction) {
+          const cmd = clickedAction.command
+          if (cmd === 'edit') goEdit(item.id)
+          else if (cmd === 'submit') submitOrder(item)
+          else if (cmd === 'cancel') cancelOrder(item)
+          else if (cmd === 'audit') auditOrder(item)
+          else if (cmd === 'reject') rejectOrder(item)
+          else if (cmd === 'startPurchase') startPurchase(item)
+          else if (cmd === 'confirmPurchased') confirmPurchased(item)
+          else if (cmd === 'inbound') inboundOrder(item)
+          else if (cmd === 'returnOrder') returnOrder(item)
+          else if (cmd === 'close') closeOrder(item)
+          else if (cmd === 'delete') deleteOrder(item)
+        }
       }
     }
   })
@@ -402,322 +548,10 @@ const showMore = (item) => {
 
 onShow(() => {
   uni.hideTabBar()
-  page.value = 1
-  noMore.value = false
-  fetchList(true)
+  resetAndFetch()
 })
 </script>
 
 <style scoped lang="scss">
-.order-list-page {
-  height: calc(100vh - var(--window-top));
-  display: flex;
-  flex-direction: column;
-  background: #f5f7fa;
-  overflow: hidden;
-}
-
-.search-bar {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  padding: 16rpx 20rpx;
-  background: #ffffff;
-}
-
-.search-input-wrap {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  height: 72rpx;
-  padding: 0 16rpx;
-  background: #f2f4f6;
-  border-radius: 12rpx;
-}
-
-.search-input {
-  flex: 1;
-  margin-left: 10rpx;
-  font-size: 28rpx;
-  color: #303133;
-}
-
-.search-btn {
-  flex-shrink: 0;
-  min-width: 108rpx;
-  height: 72rpx;
-  line-height: 72rpx;
-  text-align: center;
-  background: #1890ff;
-  border-radius: 12rpx;
-  color: #ffffff;
-  font-size: 26rpx;
-  font-weight: 600;
-}
-
-.tab-bar {
-  flex-shrink: 0;
-  display: flex;
-  padding: 0 20rpx;
-  background: #ffffff;
-  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.02);
-}
-
-.tab-item {
-  position: relative;
-  flex: 1;
-  padding: 24rpx 0;
-  text-align: center;
-  font-size: 28rpx;
-  color: #606266;
-
-  &.active {
-    color: #1890ff;
-    font-weight: 600;
-  }
-}
-
-.tab-line {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  width: 40rpx;
-  height: 4rpx;
-  border-radius: 2rpx;
-  transform: translateX(-50%);
-  background: #1890ff;
-}
-
-.list-scroll {
-  flex: 1;
-  height: 0;
-}
-
-.scroll-inner {
-  padding: 16rpx 20rpx 140rpx;
-}
-
-.card-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
-.order-card {
-  overflow: hidden;
-  background: #ffffff;
-  border-radius: 16rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
-}
-
-.card-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16rpx;
-  padding: 20rpx 24rpx 18rpx;
-  border-bottom: 1rpx solid #f2f6fc;
-}
-
-.header-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.card-date {
-  display: block;
-  font-size: 22rpx;
-  color: #909399;
-}
-
-.order-no {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 30rpx;
-  font-weight: 700;
-  color: #303133;
-  word-break: break-all;
-}
-
-.card-body {
-  padding: 20rpx 24rpx 24rpx;
-}
-
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16rpx;
-}
-
-.summary-item {
-  padding: 18rpx 20rpx;
-  background: #f8fafc;
-  border-radius: 12rpx;
-
-  &.wide {
-    grid-column: 1 / -1;
-  }
-}
-
-.summary-label {
-  display: block;
-  font-size: 22rpx;
-  color: #909399;
-}
-
-.summary-value {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 26rpx;
-  color: #303133;
-  font-weight: 500;
-  word-break: break-all;
-
-  &.strong {
-    font-size: 28rpx;
-    font-weight: 600;
-  }
-
-  &.amount {
-    color: #f56c6c;
-    font-weight: 700;
-  }
-}
-
-.expanded {
-  padding-top: 18rpx;
-}
-
-.detail-section {
-  padding: 18rpx 20rpx;
-  background: #f8fafc;
-  border-radius: 12rpx;
-}
-
-.detail-title {
-  display: block;
-  margin-bottom: 12rpx;
-  font-size: 24rpx;
-  font-weight: 700;
-  color: #303133;
-}
-
-.detail-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 14rpx;
-}
-
-.detail-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20rpx;
-}
-
-.detail-label {
-  flex-shrink: 0;
-  width: 120rpx;
-  font-size: 24rpx;
-  color: #909399;
-  line-height: 1.5;
-}
-
-.detail-value {
-  flex: 1;
-  min-width: 0;
-  text-align: right;
-  font-size: 24rpx;
-  color: #303133;
-  line-height: 1.5;
-  word-break: break-all;
-
-  &.amount {
-    color: #f56c6c;
-    font-weight: 700;
-  }
-
-  &.multiline {
-    text-align: left;
-  }
-}
-
-.toggle-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8rpx;
-  margin-top: 18rpx;
-  padding: 12rpx 0;
-}
-
-.toggle-text {
-  font-size: 24rpx;
-  color: #1890ff;
-  font-weight: 600;
-}
-
-.card-actions {
-  display: flex;
-  gap: 16rpx;
-  margin-top: 8rpx;
-}
-
-.action-btn {
-  flex: 1;
-  height: 72rpx;
-  line-height: 72rpx;
-  text-align: center;
-  border-radius: 12rpx;
-  font-size: 26rpx;
-  font-weight: 600;
-
-  &.primary {
-    background: #1890ff;
-    color: #ffffff;
-  }
-
-  &.outline-primary {
-    background: #e8f4ff;
-    color: #1890ff;
-  }
-
-  &.outline {
-    background: #f2f6fc;
-    color: #606266;
-  }
-}
-
-.floating-btn {
-  position: fixed;
-  right: 40rpx;
-  bottom: 40rpx;
-  z-index: 99;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100rpx;
-  height: 100rpx;
-  background: #1890ff;
-  border-radius: 50%;
-  box-shadow: 0 4rpx 16rpx rgba(24, 144, 255, 0.4);
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-top: 160rpx;
-}
-
-.empty-text {
-  margin-top: 16rpx;
-  font-size: 26rpx;
-  color: #c0c4cc;
-}
-
-.loading-more {
-  padding: 20rpx 0;
-}
+@import './shared-list.scss';
 </style>

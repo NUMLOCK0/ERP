@@ -741,6 +741,7 @@ async function createTables() {
   await ensureColumn('herb_processing_order', 'source_unit_price', 'DECIMAL(18,2) DEFAULT 0');
   await ensureColumn('herb_processing_order', 'inbound_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('herb_processing_order', 'inbound_user_id', 'INT DEFAULT 0');
+  await ensureColumn('herb_processing_order', 'image_urls', 'JSON DEFAULT NULL');
   await ensureColumn('herb_processing_stage', 'return_quantity', 'DECIMAL(18,2) DEFAULT 0');
   await ensureColumn('herb_processing_stage', 'transfer_quantity', 'DECIMAL(18,2) DEFAULT 0');
   await ensureColumn('herb_processing_stage', 'output_product_id', 'INT DEFAULT 0');
@@ -763,6 +764,8 @@ async function createTables() {
   await ensureColumn('purchase_order', 'completed_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('purchase_order', 'cancel_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('purchase_order', 'close_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('purchase_order', 'image_urls', 'JSON DEFAULT NULL');
+  await ensureColumn('purchase_order', 'purchase_image_urls', 'JSON DEFAULT NULL');
   await ensureColumn('purchase_order_item', 'tax', 'DECIMAL(18,2) DEFAULT 0');
   await ensureColumn('purchase_order_item', 'tax_rate', 'DECIMAL(5,2) DEFAULT 13');
   await ensureColumn('purchase_order_item', 'remark', "VARCHAR(255) DEFAULT ''");
@@ -774,6 +777,7 @@ async function createTables() {
   await ensureColumn('purchase_inbound', 'remark', 'TEXT DEFAULT NULL');
   await ensureColumn('purchase_inbound', 'completed_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('purchase_inbound', 'cancel_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('purchase_inbound', 'image_urls', 'JSON DEFAULT NULL');
   await ensureColumn('purchase_inbound', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
   await ensureColumn('purchase_inbound_item', 'location', "VARCHAR(100) DEFAULT ''");
   await ensureColumn('purchase_inbound_item', 'remark', "VARCHAR(255) DEFAULT ''");
@@ -857,6 +861,7 @@ async function createTables() {
   await ensureColumn('sale_order', 'completed_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('sale_order', 'cancel_time', 'DATETIME DEFAULT NULL');
   await ensureColumn('sale_order', 'close_time', 'DATETIME DEFAULT NULL');
+  await ensureColumn('sale_order', 'image_urls', 'JSON DEFAULT NULL');
   await ensureColumn('sale_order_item', 'tax', 'DECIMAL(18,2) DEFAULT 0');
   await ensureColumn('sale_order_item', 'tax_rate', 'DECIMAL(5,2) DEFAULT 13');
   await ensureColumn('sale_delivery', 'delivery_remark', 'TEXT DEFAULT NULL');

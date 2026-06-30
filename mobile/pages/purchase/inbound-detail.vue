@@ -3,71 +3,168 @@
     <view v-if="inbound.id" class="detail-content">
       <!-- 入库基本信息 -->
       <view class="card">
-        <view class="card-title">入库单信息</view>
+        <view class="card-title">基本信息</view>
         <view class="info-grid">
           <view class="info-item">
-            <text class="info-label">入库单号</text>
-            <text class="info-value">{{ inbound.inbound_no }}</text>
+            <text class="info-label">入库单ID</text>
+            <text class="info-value">{{ inbound.id }}</text>
           </view>
+          
+          <view class="info-item order-no-item">
+            <text class="info-label">入库单号</text>
+            <view class="info-value-copy">
+              <text class="info-value">{{ inbound.inbound_no }}</text>
+              <u-icon name="file-text" size="14" color="#1890FF" class="copy-icon" @click="copyInboundNo"  />
+            </view>
+          </view>
+          
+          <view class="info-item order-no-item">
+            <text class="info-label">采购单号</text>
+            <view class="info-value-copy">
+              <text class="info-value">{{ inbound.order_no || '-' }}</text>
+              <u-icon v-if="inbound.order_no" name="file-text" size="14" color="#1890FF" class="copy-icon" @click="copyOrderNo"  />
+            </view>
+          </view>
+          
           <view class="info-item">
-            <text class="info-label">状态</text>
+            <text class="info-label">入库状态</text>
             <view class="info-value">
               <uni-tag :text="statusMap[inbound.status] || '未知'" size="small" :type="getStatusType(inbound.status)" />
             </view>
           </view>
+          
           <view class="info-item">
-            <text class="info-label">关联采购单</text>
-            <text class="info-value">{{ inbound.order_no || '-' }}</text>
+            <text class="info-label">收货仓库</text>
+            <text class="info-value">{{ inbound.warehouse_name || '-' }}</text>
           </view>
+          
           <view class="info-item">
             <text class="info-label">供应商</text>
             <text class="info-value">{{ inbound.supplier_name || '-' }}</text>
           </view>
+          
           <view class="info-item">
-            <text class="info-label">入库仓库</text>
-            <text class="info-value">{{ inbound.warehouse_name || '-' }}</text>
+            <text class="info-label">单价</text>
+            <text class="info-value">¥{{ formatPrice(inbound.unit_price) }}</text>
           </view>
+          
           <view class="info-item">
-            <text class="info-label">总金额</text>
-            <text class="info-value text-danger font-bold">¥{{ formatPrice(inbound.total_amount) }}</text>
+            <text class="info-label">税金</text>
+            <text class="info-value">¥{{ formatPrice(inbound.tax_amount) }}</text>
           </view>
-          <view class="info-item" v-if="inbound.creator_name">
-            <text class="info-label">创建人</text>
-            <text class="info-value">{{ inbound.creator_name }}</text>
+          
+          <view class="info-item">
+            <text class="info-label">总价</text>
+            <text class="info-value text-danger font-bold">¥{{ formatPrice(inbound.total_price || inbound.total_amount) }}</text>
           </view>
+          
+          <view class="info-item">
+            <text class="info-label">入库总数量</text>
+            <text class="info-value">{{ inbound.inbound_total_quantity || inbound.total_quantity || 0 }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">联系人</text>
+            <text class="info-value">{{ inbound.contact || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">联系手机</text>
+            <text class="info-value">{{ inbound.mobile_phone || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">联系座机</text>
+            <text class="info-value">{{ inbound.telephone || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">联系邮箱</text>
+            <text class="info-value">{{ inbound.email || '-' }}</text>
+          </view>
+
+          <view class="info-item">
+            <text class="info-label">制单人</text>
+            <text class="info-value">{{ inbound.creator_name || '-' }}</text>
+          </view>
+
+          <view class="info-item" style="width: 100%;">
+            <text class="info-label">备注信息</text>
+            <text class="info-value remarks-value">{{ inbound.remark || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">完成时间</text>
+            <text class="info-value date-text">{{ formatDate(inbound.completed_time) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">取消时间</text>
+            <text class="info-value date-text">{{ formatDate(inbound.cancel_time) }}</text>
+          </view>
+          
           <view class="info-item">
             <text class="info-label">创建时间</text>
             <text class="info-value date-text">{{ formatDate(inbound.created_at || inbound.createdAt) }}</text>
           </view>
-          <view class="info-item" v-if="inbound.completed_time">
-            <text class="info-label">入库完成时间</text>
-            <text class="info-value date-text">{{ formatDate(inbound.completed_time || inbound.completedTime) }}</text>
+          
+          <view class="info-item">
+            <text class="info-label">更新时间</text>
+            <text class="info-value date-text">{{ formatDate(inbound.updated_at || inbound.updatedAt) }}</text>
           </view>
-          <view class="info-item" v-if="inbound.remark" style="width: 100%;">
-            <text class="info-label">备注说明</text>
-            <text class="info-value">{{ inbound.remark }}</text>
-          </view>
+        </view>
+        <view v-if="normalizeImageUrls(inbound.image_urls).length" class="detail-image-grid">
+          <image
+            v-for="(url, idx) in normalizeImageUrls(inbound.image_urls)"
+            :key="idx"
+            :src="url"
+            mode="aspectFill"
+            class="detail-image"
+            @click="previewImages(idx)"
+          />
         </view>
       </view>
 
       <!-- 入库明细 -->
       <view class="card">
-        <view class="card-title">入库明细</view>
-        <view class="item-list">
-          <view class="item-header">
-            <text class="col-name">商品</text>
-            <text class="col-qty">入库量</text>
-            <text class="col-price">入库价</text>
-            <text class="col-amount">金额</text>
-          </view>
-          <view class="item-row" v-for="(item, index) in inbound.items" :key="index">
-            <view class="col-name">
-              <text class="p-name">{{ item.product_name || '-' }}</text>
-              <text class="p-spec" v-if="item.spec || item.unit_name">规格: {{ item.spec || '-' }} ({{ item.unit_name || '-' }})</text>
+        <view class="card-title">入库明细 ({{ inbound.items?.length || 0 }} 项)</view>
+        <view class="product-item-list">
+          <view class="product-item-card" v-for="(item, index) in inbound.items" :key="index">
+            <!-- 头部：商品名称与规格 -->
+            <view class="prod-header">
+              <text class="prod-title">#{{ index + 1 }} {{ item.product_name || '-' }}</text>
+              <text class="prod-spec" v-if="item.spec">{{ item.spec }}</text>
             </view>
-            <text class="col-qty">{{ item.quantity }}</text>
-            <text class="col-price">¥{{ formatPrice(item.price) }}</text>
-            <text class="col-amount">¥{{ formatPrice(item.amount) }}</text>
+            
+            <!-- 编码 -->
+            <view class="prod-code-row" v-if="item.code">
+              <text class="prod-code-label">编码：</text>
+              <text class="prod-code-val">{{ item.code }}</text>
+            </view>
+            
+            <!-- 紧凑网格详情 -->
+            <view class="prod-details-grid">
+              <!-- 第一行：单位、入库单价 -->
+              <view class="grid-row">
+                <view class="grid-cell"><text class="cell-lbl">单位：</text><text class="cell-val">{{ item.unit_name || '-' }}</text></view>
+                <view class="grid-cell"><text class="cell-lbl">入库单价：</text><text class="cell-val">¥{{ formatPrice(item.price) }}</text></view>
+              </view>
+              <!-- 第二行：采购数量、本次入库 -->
+              <view class="grid-row">
+                <view class="grid-cell"><text class="cell-lbl">采购数量：</text><text class="cell-val">{{ item.purchase_quantity || '-' }}</text></view>
+                <view class="grid-cell"><text class="cell-lbl">本次入库：</text><text class="cell-val success">{{ item.quantity }}</text></view>
+              </view>
+              <!-- 第三行：入库金额、估算税金 -->
+              <view class="grid-row">
+                <view class="grid-cell"><text class="cell-lbl">入库金额：</text><text class="cell-val danger-text">¥{{ formatPrice(item.amount) }}</text></view>
+                <view class="grid-cell"><text class="cell-lbl">入库税金：</text><text class="cell-val">¥{{ formatPrice(item.tax_total) }}</text></view>
+              </view>
+              <!-- 第四行：入库货位、备注 -->
+              <view class="grid-row">
+                <view class="grid-cell"><text class="cell-lbl">入库货位：</text><text class="cell-val primary">{{ item.location || '-' }}</text></view>
+                <view class="grid-cell" v-if="item.remark"><text class="cell-lbl">备注：</text><text class="cell-val remark-text">{{ item.remark }}</text></view>
+              </view>
+            </view>
           </view>
         </view>
       </view>
@@ -93,6 +190,7 @@
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { purchaseApi } from '@/api/purchase'
+import http from '@/api/request'
 
 const inbound = ref({})
 const loading = ref(true)
@@ -116,7 +214,7 @@ const formatPrice = (val) => {
 }
 
 const formatDate = (val) => {
-  if (!val) return ''
+  if (!val) return '-'
   const d = new Date(val)
   if (isNaN(d.getTime())) return val
   const y = d.getFullYear()
@@ -125,6 +223,26 @@ const formatDate = (val) => {
   const h = String(d.getHours()).padStart(2, '0')
   const min = String(d.getMinutes()).padStart(2, '0')
   return `${y}-${m}-${day} ${h}:${min}`
+}
+
+const copyInboundNo = () => {
+  if (!inbound.value.inbound_no) return
+  uni.setClipboardData({
+    data: inbound.value.inbound_no,
+    success: () => {
+      uni.showToast({ title: '复制入库单号成功', icon: 'none' })
+    }
+  })
+}
+
+const copyOrderNo = () => {
+  if (!inbound.value.order_no) return
+  uni.setClipboardData({
+    data: inbound.value.order_no,
+    success: () => {
+      uni.showToast({ title: '复制采购单号成功', icon: 'none' })
+    }
+  })
 }
 
 const loadDetail = async () => {
@@ -153,7 +271,8 @@ const handleConfirmInbound = () => {
       if (res.confirm) {
         uni.showLoading({ title: '正在入库...' })
         try {
-          const confirmRes = await purchaseApi.confirmInbound(inbound.value.id)
+          const imageUrls = await chooseUploadImages()
+          const confirmRes = await purchaseApi.confirmInbound(inbound.value.id, { image_urls: imageUrls })
           if (confirmRes.code === 0) {
             uni.showToast({ title: '入库成功', icon: 'success' })
             loadDetail()
@@ -164,6 +283,64 @@ const handleConfirmInbound = () => {
         }
       }
     }
+  })
+}
+
+const normalizeImageUrls = (value) => {
+  if (Array.isArray(value)) return value.filter(Boolean)
+  if (!value) return []
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [value]
+    } catch (error) {
+      return [value]
+    }
+  }
+  return []
+}
+
+const previewImages = (idx) => {
+  const urls = normalizeImageUrls(inbound.value.image_urls)
+  if (!urls.length) return
+  uni.previewImage({ urls, current: urls[idx] })
+}
+
+const chooseUploadImages = () => {
+  return new Promise((resolve) => {
+    uni.showModal({
+      title: '上传入库图片',
+      content: '是否上传入库确认图片？',
+      confirmText: '上传',
+      cancelText: '跳过',
+      success: (modalRes) => {
+        if (!modalRes.confirm) {
+          resolve([])
+          return
+        }
+        uni.chooseImage({
+          count: 10,
+          success: async (chooseRes) => {
+            const urls = []
+            uni.showLoading({ title: '上传中...' })
+            try {
+              for (const filePath of chooseRes.tempFilePaths || []) {
+                const uploadRes = await http.upload('/upload/file', filePath)
+                if (uploadRes.code === 0 && uploadRes.data?.url) urls.push(uploadRes.data.url)
+              }
+              resolve(urls)
+            } catch (error) {
+              uni.showToast({ title: error.message || '上传失败', icon: 'none' })
+              resolve([])
+            } finally {
+              uni.hideLoading()
+            }
+          },
+          fail: () => resolve([])
+        })
+      },
+      fail: () => resolve([])
+    })
   })
 }
 
@@ -182,8 +359,8 @@ onShow(() => {
   min-height: 100vh;
   background: #F5F7FA;
   box-sizing: border-box;
-  padding-bottom: calc(120rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(140rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
 }
 
 .detail-content {
@@ -207,46 +384,174 @@ onShow(() => {
   }
 }
 
+.detail-image-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12rpx;
+  margin-top: 22rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #F2F6FC;
+}
+
+.detail-image {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 10rpx;
+  background: #F5F7FA;
+}
+
 .info-grid {
   display: flex;
   flex-wrap: wrap;
   .info-item {
     width: 50%;
-    padding: 10rpx 0;
+    padding: 12rpx 8rpx;
     box-sizing: border-box;
-    .info-label { font-size: 22rpx; color: #909399; display: block; margin-bottom: 4rpx; }
-    .info-value { font-size: 26rpx; color: #303133; display: block; font-weight: 500; }
+    display: flex;
+    flex-direction: column;
+    
+    .info-label { font-size: 22rpx; color: #909399; display: block; margin-bottom: 6rpx; }
+    .info-value { font-size: 26rpx; color: #303133; display: block; font-weight: 600; word-break: break-all; }
     .date-text { color: #909399; font-size: 24rpx; }
+    
+    &.order-no-item {
+      .info-value-copy {
+        display: flex;
+        align-items: center;
+        gap: 8rpx;
+      }
+      .copy-icon {
+        flex-shrink: 0;
+        cursor: pointer;
+        
+        &:active {
+          opacity: 0.6;
+        }
+      }
+    }
   }
 }
 
-.item-list {
-  .item-header {
-    display: flex;
-    background: #F8FAFC;
-    border-radius: 8rpx;
-    padding: 16rpx 12rpx;
-    margin-bottom: 8rpx;
+.remarks-value {
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+.product-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.product-item-card {
+  background: #F8FAFC;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  border: 1rpx solid #EEF2F6;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.prod-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  border-bottom: 1rpx solid #EEF2F6;
+  padding-bottom: 8rpx;
+}
+
+.prod-title {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #303133;
+  flex: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.prod-spec {
+  font-size: 20rpx;
+  background: #E8F4FF;
+  color: #1890FF;
+  padding: 2rpx 8rpx;
+  border-radius: 6rpx;
+  max-width: 180rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.prod-code-row {
+  display: flex;
+  align-items: center;
+  font-size: 20rpx;
+  color: #909399;
+}
+
+.prod-code-val {
+  font-family: monospace;
+}
+
+.prod-details-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.grid-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.grid-cell {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-size: 22rpx;
+  color: #606266;
+  min-width: 0;
+}
+
+.cell-lbl {
+  color: #909399;
+  flex-shrink: 0;
+}
+
+.cell-val {
+  font-weight: 600;
+  color: #303133;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  
+  &.primary {
+    color: #1890FF;
   }
-  .item-row {
-    display: flex;
-    align-items: center;
-    padding: 18rpx 12rpx;
-    border-bottom: 1rpx solid #F2F6FC;
-    &:last-child { border-bottom: none; }
+  
+  &.success {
+    color: #67C23A;
   }
-  .col-name {
-    flex: 2;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    padding-right: 10rpx;
-    .p-name { font-size: 24rpx; color: #303133; font-weight: 600; }
-    .p-spec { font-size: 20rpx; color: #909399; margin-top: 4rpx; }
+  
+  &.warning {
+    color: #E6A23C;
   }
-  .col-qty { flex: 0.8; text-align: center; font-size: 24rpx; color: #606266; font-weight: 600; }
-  .col-price { flex: 1.2; text-align: right; font-size: 24rpx; color: #606266; }
-  .col-amount { flex: 1.5; text-align: right; font-size: 24rpx; color: #F56C6C; font-weight: 600; }
+  
+  &.danger-text {
+    color: #F56C6C;
+  }
+}
+
+.remark-text {
+  font-size: 20rpx;
+  color: #909399;
+  font-weight: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .bottom-bar {

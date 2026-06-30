@@ -1,91 +1,137 @@
 <template>
   <view class="report-page">
-    <view class="header-bar">
-      <text class="report-title">采购入库报表</text>
-    </view>
     <scroll-view class="list-scroll" scroll-y @scrolltolower="loadMore">
-      <view class="report-card" v-for="item in list" :key="item.id">
-        <view class="card-header">
-          <text class="inbound-no">{{ item.inbound_no || '-' }}</text>
-          <uni-tag :text="item.status === 'confirmed' ? '已确认' : '待确认'" size="small" :type="item.status === 'confirmed' ? 'success' : 'warning'" />
+      <view class="scroll-inner with-summary">
+        <view v-if="list.length" class="card-list">
+          <BusinessListItem
+            v-for="item in list"
+            :key="item.id"
+            :meta="formatDate(item.created_at || item.createdAt)"
+            :title="item.inbound_no || '-'"
+            :tag-text="inboundStatusText(item.status)"
+            :tag-type="inboundStatusType(item.status)"
+            :expanded="!!expandedIds[item.id]"
+            :show-toggle="true"
+            @toggle="toggleCard(item.id)"
+          >
+            <template #summary>
+              <view class="summary-grid">
+                <view class="summary-item wide"><text class="summary-label">供应商</text><text class="summary-value strong">{{ item.supplier_name || '-' }}</text></view>
+                <view class="summary-item"><text class="summary-label">仓库</text><text class="summary-value">{{ item.warehouse_name || '-' }}</text></view>
+                <view class="summary-item"><text class="summary-label">采购总额</text><text class="summary-value amount">￥{{ formatPrice(item.purchase_total_amount || item.total_amount) }}</text></view>
+              </view>
+            </template>
+            <template #detail>
+              <view class="detail-section">
+                <text class="detail-title">入库报表明细</text>
+                <view class="detail-grid">
+                  <view class="detail-row"><text class="detail-label">关联订单</text><text class="detail-value">{{ item.order_no || '-' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">产品名称</text><text class="detail-value">{{ item.product_name || '-' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">产品规格</text><text class="detail-value">{{ item.product_spec || item.spec || '-' }}</text></view>
+                  <view class="detail-row"><text class="detail-label">入库数量</text><text class="detail-value">{{ formatQuantity(item.inbound_quantity || item.quantity) }}</text></view>
+                  <view class="detail-row"><text class="detail-label">采购数量</text><text class="detail-value">{{ formatQuantity(item.purchase_quantity) }}</text></view>
+                  <view class="detail-row"><text class="detail-label">采购价</text><text class="detail-value">￥{{ formatPrice(item.purchase_price) }}</text></view>
+                  <view class="detail-row"><text class="detail-label">税金总额</text><text class="detail-value">￥{{ formatPrice(item.tax_total || item.tax) }}</text></view>
+                </view>
+              </view>
+            </template>
+          </BusinessListItem>
         </view>
-        <view class="card-body">
-          <view class="body-row">
-            <text class="body-label">关联订单</text>
-            <text class="body-value">{{ item.order_no || '-' }}</text>
-          </view>
-          <view class="body-row">
-            <text class="body-label">供应商</text>
-            <text class="body-value">{{ item.supplier_name || '-' }}</text>
-          </view>
-          <view class="body-row">
-            <text class="body-label">仓库</text>
-            <text class="body-value">{{ item.warehouse_name || '-' }}</text>
-          </view>
-          <view class="body-row">
-            <text class="body-label">金额</text>
-            <text class="body-value text-danger">¥{{ formatPrice(item.total_amount) }}</text>
-          </view>
+
+        <view v-else-if="!loading" class="empty-state">
+          <u-icon name="list" size="60" color="#DCDFE6"  />
+          <text class="empty-text">暂无报表数据</text>
         </view>
-        <view class="card-footer">
-          <text class="footer-time">{{ item.created_at || item.createdAt }}</text>
-        </view>
+
+        <view v-if="loading" class="loading-more"><uni-load-more status="loading" /></view>
+        <view v-if="noMore && list.length > 0" class="loading-more"><uni-load-more status="noMore" /></view>
       </view>
-      <view v-if="list.length === 0 && !loading" class="empty-state">
-        <uni-icons type="bars" size="60" color="#DCDFE6"></uni-icons>
-        <text class="empty-text">暂无报表数据</text>
-      </view>
-      <view v-if="loading" class="loading-more"><uni-load-more status="loading"></uni-load-more></view>
-      <view v-if="noMore && list.length > 0" class="loading-more"><uni-load-more status="noMore"></uni-load-more></view>
     </scroll-view>
+
+    <ReportSummaryBar title="仓库入库汇总" :items="summaryItems" />
   </view>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { reactive, ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import BusinessListItem from '@/components/BusinessListItem.vue'
+import ReportSummaryBar from '@/components/ReportSummaryBar.vue'
 import { reportApi } from '@/api/report'
 
 const list = ref([])
+const summaryItems = ref([])
 const page = ref(1)
 const loading = ref(false)
 const noMore = ref(false)
+const expandedIds = reactive({})
 
-const formatPrice = (val) => {
-  if (val === null || val === undefined) return '0.00'
-  return Number(val).toFixed(2)
+const formatPrice = (val) => (val === null || val === undefined || val === '' ? '0.00' : Number(val).toFixed(2))
+const formatQuantity = (val) => (val === null || val === undefined || val === '' ? '0' : Number(val))
+const formatDate = (val) => {
+  if (!val) return '--'
+  const d = new Date(val)
+  if (Number.isNaN(d.getTime())) return val
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const inboundStatusText = (status) => ({ 0: '待入库', 1: '已入库', confirmed: '已确认', pending: '待确认' }[status] || status || '未知')
+const inboundStatusType = (status) => ({ 0: 'warning', 1: 'success', confirmed: 'success', pending: 'warning' }[status] || 'info')
+const toggleCard = (id) => { if (expandedIds[id]) delete expandedIds[id]; else expandedIds[id] = true }
+
+const mapSummaryItems = (rows) => rows.map((item, index) => ({
+  key: item.id || index,
+  title: item.warehouse_name || item.name || `仓库 ${index + 1}`,
+  stats: [
+    { label: '产品总数', value: formatQuantity(item.product_total) },
+    { label: '采购总数', value: formatQuantity(item.purchase_total) },
+    { label: '采购总额', value: `￥${formatPrice(item.purchase_amount)}` },
+    { label: '税金总额', value: `￥${formatPrice(item.tax_total)}` },
+    { label: '入库总数', value: formatQuantity(item.inbound_total) }
+  ]
+}))
+
+const fetchSummary = async () => {
+  try {
+    const res = await reportApi.getPurchaseInboundSummary()
+    if (res.code === 0) {
+      const data = res.data?.list || res.data || []
+      summaryItems.value = mapSummaryItems(data)
+    }
+  } catch (error) {
+    // request interceptor handles toast
+  }
 }
 
-const fetchList = async () => {
+const fetchList = async (reset = false) => {
   if (loading.value) return
   loading.value = true
   try {
-    const res = await reportApi.getPurchaseInbound({ page: page.value, pageSize: 20 })
+    const currentPage = reset ? 1 : page.value
+    const res = await reportApi.getPurchaseInbound({ page: currentPage, pageSize: 20 })
     if (res.code === 0) {
       const data = res.data?.list || res.data || []
       const total = res.data?.total || data.length
-      list.value = page.value === 1 ? data : [...list.value, ...data]
-      page.value++
+      list.value = reset ? data : [...list.value, ...data]
+      page.value = currentPage + 1
       noMore.value = list.value.length >= total
     }
-  } catch (e) { uni.showToast({ title: '加载失败', icon: 'none' }) }
-  finally { loading.value = false }
+  } finally {
+    loading.value = false
+  }
 }
 
-const loadMore = () => { if (!noMore.value && !loading.value) fetchList() }
+const loadMore = () => {
+  if (!noMore.value && !loading.value) fetchList()
+}
 
-onMounted(() => fetchList())
+onShow(() => {
+  page.value = 1
+  noMore.value = false
+  fetchList(true)
+  fetchSummary()
+})
 </script>
 
-<style lang="scss" scoped>
-.report-page { height: 100vh; display: flex; flex-direction: column; background: #F5F7FA; }
-.header-bar { background: #FFFFFF; padding: 20rpx 24rpx; .report-title { font-size: 34rpx; font-weight: 700; color: #303133; } }
-.list-scroll { flex: 1; padding: 10rpx 20rpx; }
-.report-card {
-  background: #FFFFFF; border-radius: 16rpx; margin-bottom: 16rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04); overflow: hidden;
-  .card-header { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 24rpx; border-bottom: 1rpx solid #F2F6FC; .inbound-no { font-size: 28rpx; font-weight: 600; color: #303133; } }
-  .card-body { padding: 16rpx 24rpx; .body-row { display: flex; justify-content: space-between; padding: 8rpx 0; .body-label { font-size: 24rpx; color: #909399; } .body-value { font-size: 24rpx; color: #303133; font-weight: 500; } } }
-  .card-footer { padding: 12rpx 24rpx; border-top: 1rpx solid #F2F6FC; .footer-time { font-size: 22rpx; color: #C0C4CC; } }
-}
-.empty-state { display: flex; flex-direction: column; align-items: center; padding-top: 200rpx; .empty-text { font-size: 28rpx; color: #C0C4CC; margin-top: 20rpx; } }
-.loading-more { padding: 20rpx 0; }
+<style scoped lang="scss">
+@import './shared-report.scss';
 </style>

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="page-container">
     <template v-if="editorVisible">
       <div class="editor-page">
@@ -677,6 +677,7 @@ async function handleSave(statusOverride?: number) {
   submitting.value = true
   try {
     await createOtherOutbound({
+      outbound_no: form.outbound_no,
       customer_id: form.customer_id,
       warehouse_id: form.warehouse_id,
       status: form.status,

@@ -16,11 +16,11 @@
         <view class="menu-item" v-for="item in menuList" :key="item.label" @click="navigateTo(item.url)">
           <view class="menu-left">
             <view class="menu-icon" :style="{ backgroundColor: item.bgColor }">
-              <uni-icons :type="item.icon" size="20" color="#FFFFFF"></uni-icons>
+              <u-icon :name="item.icon" size="20" color="#FFFFFF"></u-icon>
             </view>
             <text class="menu-label">{{ item.label }}</text>
           </view>
-          <uni-icons type="right" size="16" color="#C0C4CC"></uni-icons>
+          <u-icon name="arrow-right" size="16" color="#C0C4CC"></u-icon>
         </view>
       </view>
     </view>
@@ -31,11 +31,11 @@
         <view class="menu-item" @click="handleLogout">
           <view class="menu-left">
             <view class="menu-icon" style="background-color: #F56C6C;">
-              <uni-icons type="closeempty" size="20" color="#FFFFFF"></uni-icons>
+              <u-icon name="close" size="20" color="#FFFFFF"></u-icon>
             </view>
             <text class="menu-label">退出登录</text>
           </view>
-          <uni-icons type="right" size="16" color="#C0C4CC"></uni-icons>
+          <u-icon name="arrow-right" size="16" color="#C0C4CC"></u-icon>
         </view>
       </view>
     </view>
@@ -67,11 +67,11 @@ const avatarText = computed(() => {
 
 const menuList = [
   { label: '产品管理', icon: 'gift', bgColor: '#F0AD4E', url: '/pages/product/list' },
-  { label: '库存查询', icon: 'box', bgColor: '#5BC0DE', url: '/pages/inventory/stock' },
-  { label: '采购订单', icon: 'cart', bgColor: '#409EFF', url: '/pages/purchase/order-list' },
-  { label: '销售订单', icon: 'wallet', bgColor: '#67C23A', url: '/pages/sale/order-list' },
-  { label: '财务报表', icon: 'paperclip', bgColor: '#8E44AD', url: '/pages/finance/payment-list' },
-  { label: '数据报表', icon: 'bars', bgColor: '#17A2B8', url: '/pages/report/product-stock' }
+  { label: '库存查询', icon: 'grid', bgColor: '#5BC0DE', url: '/pages/inventory/stock' },
+  { label: '采购订单', icon: 'shopping-cart', bgColor: '#409EFF', url: '/pages/purchase/order-list' },
+  { label: '销售订单', icon: 'rmb-circle', bgColor: '#67C23A', url: '/pages/sale/order-list' },
+  { label: '财务报表', icon: 'attach', bgColor: '#8E44AD', url: '/pages/finance/payment-list' },
+  { label: '数据报表', icon: 'list', bgColor: '#17A2B8', url: '/pages/report/product-stock' }
 ]
 
 const navigateTo = (url) => {

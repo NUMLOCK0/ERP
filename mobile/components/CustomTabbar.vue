@@ -5,11 +5,11 @@
       :class="{ active: current === 'index' }"
       @click="switchTab('index')"
     >
-      <uni-icons
-        :type="current === 'index' ? 'home-filled' : 'home'"
+      <u-icon
+        :name="current === 'index' ? 'home-fill' : 'home'"
         :size="24"
         :color="current === 'index' ? '#409EFF' : '#999999'"
-      ></uni-icons>
+      ></u-icon>
       <text class="tabbar-text">首页</text>
     </view>
 
@@ -25,11 +25,11 @@
       :class="{ active: current === 'mine' }"
       @click="switchTab('mine')"
     >
-      <uni-icons
-        :type="current === 'mine' ? 'person-filled' : 'person'"
+      <u-icon
+        :name="current === 'mine' ? 'account-fill' : 'account'"
         :size="24"
         :color="current === 'mine' ? '#409EFF' : '#999999'"
-      ></uni-icons>
+      ></u-icon>
       <text class="tabbar-text">我的</text>
     </view>
   </view>

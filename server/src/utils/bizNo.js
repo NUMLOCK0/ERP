@@ -231,10 +231,21 @@ function randomChars(length) {
   return text;
 }
 
+function isCustomNo(no) {
+  if (!no) return false;
+  const str = String(no).trim();
+  if (!str) return false;
+  // 如果包含花括号形式的占位符（如 {date}, {time}）或通配符（如 *），说明是系统自动生成的模版而非自定义输入
+  if (str.includes('{') && str.includes('}')) return false;
+  if (str.includes('*')) return false;
+  return true;
+}
+
 module.exports = {
   DEFAULT_NO_RULES,
   getDefaultNoConfigs,
   getNoRule,
   generateBusinessNo,
-  generateTempBusinessNo
+  generateTempBusinessNo,
+  isCustomNo
 };

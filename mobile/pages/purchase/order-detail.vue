@@ -1,73 +1,206 @@
 <template>
   <view class="order-detail">
     <view v-if="order.id" class="detail-content">
-      <!-- 订单基本信息 -->
+      <!-- 采购单基本信息 -->
       <view class="card">
-        <view class="card-title">订单信息</view>
+        <view class="card-title">基本信息</view>
         <view class="info-grid">
           <view class="info-item">
-            <text class="info-label">订单号</text>
-            <text class="info-value">{{ order.order_no }}</text>
+            <text class="info-label">采购单ID</text>
+            <text class="info-value">{{ order.id }}</text>
           </view>
-          <view class="info-item">
-            <text class="info-label">状态</text>
-            <view class="info-value">
-              <uni-tag :text="statusMap[order.status] || '未知'" size="small" :type="getStatusType(order.status)" />
+          
+          <view class="info-item order-no-item">
+            <text class="info-label">采购单号</text>
+            <view class="info-value-copy">
+              <text class="info-value">{{ order.order_no }}</text>
+              <u-icon name="file-text" size="14" color="#1890FF" class="copy-icon" @click="copyOrderNo"  />
             </view>
           </view>
+          
           <view class="info-item">
             <text class="info-label">供应商</text>
             <text class="info-value">{{ order.supplier_name || '-' }}</text>
           </view>
+          
           <view class="info-item">
-            <text class="info-label">收货仓库</text>
-            <text class="info-value">{{ order.warehouse_name || '-' }}</text>
+            <text class="info-label">采购状态</text>
+            <view class="info-value">
+              <uni-tag :text="statusMap[order.status] || '未知'" size="small" :type="getStatusType(order.status)" />
+            </view>
           </view>
+          
+          <view class="info-item">
+            <text class="info-label">付款状态</text>
+            <view class="info-value">
+              <uni-tag :text="paymentStatusMap[order.payment_status] || '未付款'" size="small" :type="getPaymentStatusType(order.payment_status)" />
+            </view>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">退货状态</text>
+            <view class="info-value">
+              <uni-tag :text="returnStatusMap[order.return_status] || '无退货'" size="small" :type="getReturnStatusType(order.return_status)" />
+            </view>
+          </view>
+          
           <view class="info-item">
             <text class="info-label">付款方式</text>
             <text class="info-value">{{ order.payment_method || '-' }}</text>
           </view>
+          
           <view class="info-item">
-            <text class="info-label">总金额</text>
+            <text class="info-label">付款总额</text>
+            <text class="info-value">¥{{ formatPrice(order.payment_total_amount) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">单价</text>
+            <text class="info-value">¥{{ formatPrice(order.unit_price) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">税金</text>
+            <text class="info-value">¥{{ formatPrice(order.tax_amount) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">总价</text>
             <text class="info-value text-danger font-bold">¥{{ formatPrice(order.total_amount) }}</text>
           </view>
+          
+          <view class="info-item">
+            <text class="info-label">最终产品总数量</text>
+            <text class="info-value">{{ order.final_product_total_quantity || 0 }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">退款金额</text>
+            <text class="info-value">¥{{ formatPrice(order.refund_amount) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">退货数量</text>
+            <text class="info-value">{{ order.return_quantity || 0 }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">联系人</text>
+            <text class="info-value">{{ order.contact || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">联系电话</text>
+            <text class="info-value">{{ order.phone || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">开户银行</text>
+            <text class="info-value">{{ order.bank_name || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">开户地址</text>
+            <text class="info-value">{{ order.bank_address || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">开户户名</text>
+            <text class="info-value">{{ order.bank_account_name || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">开户户号</text>
+            <text class="info-value">{{ order.bank_account || '-' }}</text>
+          </view>
+          
+          <view class="info-item" style="width: 100%;">
+            <text class="info-label">采购单备注信息</text>
+            <text class="info-value remarks-value">{{ order.purchase_remark || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">完成时间</text>
+            <text class="info-value date-text">{{ formatDate(order.completed_time) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">入库开始时间</text>
+            <text class="info-value date-text">{{ formatDate(order.inbound_start_time) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">采购完成时间</text>
+            <text class="info-value date-text">{{ formatDate(order.purchase_completed_time) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">采购开始时间</text>
+            <text class="info-value date-text">{{ formatDate(order.purchase_start_time) }}</text>
+          </view>
+          
           <view class="info-item">
             <text class="info-label">创建时间</text>
             <text class="info-value date-text">{{ formatDate(order.created_at || order.createdAt) }}</text>
           </view>
-          <view class="info-item" v-if="order.audit_time">
-            <text class="info-label">审核时间</text>
-            <text class="info-value date-text">{{ formatDate(order.audit_time || order.auditTime) }}</text>
-          </view>
-          <view class="info-item" v-if="order.admin_remark" style="width: 100%;">
-            <text class="info-label">管理备注</text>
-            <text class="info-value">{{ order.admin_remark }}</text>
-          </view>
-          <view class="info-item" v-if="order.purchase_remark" style="width: 100%;">
-            <text class="info-label">采购备注</text>
-            <text class="info-value">{{ order.purchase_remark }}</text>
+          
+          <view class="info-item">
+            <text class="info-label">更新时间</text>
+            <text class="info-value date-text">{{ formatDate(order.updated_at || order.updatedAt) }}</text>
           </view>
         </view>
       </view>
 
       <!-- 商品明细 -->
       <view class="card">
-        <view class="card-title">商品明细</view>
-        <view class="item-list">
-          <view class="item-header">
-            <text class="col-name">商品</text>
-            <text class="col-qty">数量</text>
-            <text class="col-price">单价</text>
-            <text class="col-amount">金额</text>
-          </view>
-          <view class="item-row" v-for="(item, index) in order.items" :key="index">
-            <view class="col-name">
-              <text class="p-name">{{ item.product_name || '-' }}</text>
-              <text class="p-spec" v-if="item.spec || item.unit_name">规格: {{ item.spec || '-' }} ({{ item.unit_name || '-' }})</text>
+        <view class="card-title">商品明细 ({{ order.items?.length || 0 }} 项)</view>
+        <view class="product-item-list">
+          <view class="product-item-card" v-for="(item, index) in order.items" :key="index">
+            <!-- 头部：商品名称与规格 -->
+            <view class="prod-header">
+              <text class="prod-title">#{{ index + 1 }} {{ item.product_name || '-' }}</text>
+              <text class="prod-spec" v-if="item.spec">{{ item.spec }}</text>
             </view>
-            <text class="col-qty">{{ item.quantity }}</text>
-            <text class="col-price">¥{{ formatPrice(item.price) }}</text>
-            <text class="col-amount">¥{{ formatPrice(item.amount) }}</text>
+            
+            <!-- 编码 -->
+            <view class="prod-code-row" v-if="item.code">
+              <text class="prod-code-label">编码：</text>
+              <text class="prod-code-val">{{ item.code }}</text>
+            </view>
+            
+            <!-- 紧凑网格详情 -->
+            <view class="prod-details-grid">
+              <!-- 第一行：单位、单价 -->
+              <view class="grid-row">
+                <view class="grid-cell"><text class="cell-lbl">单位：</text><text class="cell-val">{{ item.unit_name || '-' }}</text></view>
+                <view class="grid-cell"><text class="cell-lbl">采购单价：</text><text class="cell-val">¥{{ formatPrice(item.price) }}</text></view>
+              </view>
+              <!-- 第二行：数量、税额/税率 -->
+              <view class="grid-row">
+                <view class="grid-cell"><text class="cell-lbl">采购数量：</text><text class="cell-val">{{ item.quantity }}</text></view>
+                <view class="grid-cell"><text class="cell-lbl">税额/率：</text><text class="cell-val">¥{{ formatPrice(item.tax) }} ({{ item.tax_rate }}%)</text></view>
+              </view>
+              <!-- 第三行：采购金额 -->
+              <view class="grid-row">
+                <view class="grid-cell"><text class="cell-lbl">采购金额：</text><text class="cell-val danger-text">¥{{ formatPrice(item.amount) }}</text></view>
+                <view class="grid-cell" v-if="item.final_quantity !== null"><text class="cell-lbl">最终数量：</text><text class="cell-val">{{ item.final_quantity }}</text></view>
+              </view>
+              <!-- 第四行：最终单价、最终金额 -->
+              <view class="grid-row" v-if="item.final_quantity !== null">
+                <view class="grid-cell"><text class="cell-lbl">最终单价：</text><text class="cell-val">¥{{ formatPrice(item.final_price) }}</text></view>
+                <view class="grid-cell"><text class="cell-lbl">最终金额：</text><text class="cell-val danger-text">¥{{ formatPrice(item.final_amount) }}</text></view>
+              </view>
+              <!-- 第五行：已入库、已退货 -->
+              <view class="grid-row">
+                <view class="grid-cell"><text class="cell-lbl">已入库：</text><text class="cell-val success">{{ item.inbounded_quantity }}</text></view>
+                <view class="grid-cell"><text class="cell-lbl">已退货：</text><text class="cell-val warning">{{ item.returned_quantity }}</text></view>
+              </view>
+              <!-- 第六行：待入库、备注 -->
+              <view class="grid-row">
+                <view class="grid-cell"><text class="cell-lbl">待入库：</text><text class="cell-val primary">{{ item.remaining_quantity }}</text></view>
+                <view class="grid-cell" v-if="item.remark"><text class="cell-lbl">备注：</text><text class="cell-val remark-text">{{ item.remark }}</text></view>
+              </view>
+            </view>
           </view>
         </view>
       </view>
@@ -83,13 +216,10 @@
 
     <!-- 底部操作栏 -->
     <view v-if="order.id" class="bottom-bar safe-bottom">
-      <button v-if="Number(order.status) === 0" class="btn-cancel outline" @click="handleCancel">取消订单</button>
-      <button v-if="Number(order.status) === 0" class="btn-edit warning" @click="goEdit">编 辑</button>
       <button v-if="Number(order.status) === 0" class="btn-submit primary" @click="handleSubmit">提 审</button>
+      <button v-if="Number(order.status) === 2" class="btn-primary" @click="handleAudit">审核通过</button>
       
-      <button v-if="Number(order.status) === 2" class="btn-danger" @click="handleAudit(0)">审核拒绝</button>
-      <button v-if="Number(order.status) === 2" class="btn-primary" @click="handleAudit(1)">审核通过</button>
-      
+      <button class="btn-more outline" @click="showMore">更 多</button>
       <button class="btn-back" @click="goBack">返回</button>
     </view>
   </view>
@@ -132,13 +262,41 @@ const getStatusType = (status) => {
   return map[status] || 'info'
 }
 
+const paymentStatusMap = {
+  0: '未付款',
+  1: '部分付款',
+  2: '已付款'
+}
+
+const getPaymentStatusType = (status) => {
+  const map = {
+    0: 'info',
+    1: 'warning',
+    2: 'success'
+  }
+  return map[status] || 'info'
+}
+
+const returnStatusMap = {
+  0: '无退货',
+  1: '已退货'
+}
+
+const getReturnStatusType = (status) => {
+  const map = {
+    0: 'info',
+    1: 'danger'
+  }
+  return map[status] || 'info'
+}
+
 const formatPrice = (val) => {
   if (val === null || val === undefined) return '0.00'
   return Number(val).toFixed(2)
 }
 
 const formatDate = (val) => {
-  if (!val) return ''
+  if (!val) return '-'
   const d = new Date(val)
   if (isNaN(d.getTime())) return val
   const y = d.getFullYear()
@@ -147,6 +305,16 @@ const formatDate = (val) => {
   const h = String(d.getHours()).padStart(2, '0')
   const min = String(d.getMinutes()).padStart(2, '0')
   return `${y}-${m}-${day} ${h}:${min}`
+}
+
+const copyOrderNo = () => {
+  if (!order.value.order_no) return
+  uni.setClipboardData({
+    data: order.value.order_no,
+    success: () => {
+      uni.showToast({ title: '复制单号成功', icon: 'none' })
+    }
+  })
 }
 
 const loadDetail = async () => {
@@ -185,17 +353,34 @@ const handleSubmit = async () => {
   })
 }
 
-const handleAudit = async (approved) => {
-  const title = approved ? '确认审核通过' : '确认拒绝'
+const handleAudit = async () => {
   uni.showModal({
-    title,
-    content: approved ? '审核通过后将生成采购入库单。' : '确定拒绝此订单吗？',
+    title: '确认审核通过',
+    content: '审核通过后将生成采购入库单。',
     success: async (res) => {
       if (res.confirm) {
         try {
-          const auditRes = await purchaseApi.auditOrder(order.value.id, { approved })
+          const auditRes = await purchaseApi.auditOrder(order.value.id, { approved: true })
           if (auditRes.code === 0) {
-            uni.showToast({ title: approved ? '审核通过' : '已拒绝', icon: 'success' })
+            uni.showToast({ title: '已通过', icon: 'success' })
+            loadDetail()
+          }
+        } catch (e) { /* handled */ }
+      }
+    }
+  })
+}
+
+const handleReject = () => {
+  uni.showModal({
+    title: '确认拒绝',
+    content: '确认拒绝该采购订单吗？',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          const rejectRes = await purchaseApi.rejectOrder(order.value.id)
+          if (rejectRes.code === 0) {
+            uni.showToast({ title: '已拒绝', icon: 'success' })
             loadDetail()
           }
         } catch (e) { /* handled */ }
@@ -207,13 +392,13 @@ const handleAudit = async (approved) => {
 const handleCancel = () => {
   uni.showModal({
     title: '确认取消',
-    content: '确定取消并删除此采购订单吗？',
+    content: '确定取消并关闭此采购订单吗？',
     success: async (res) => {
       if (res.confirm) {
         try {
-          const deleteRes = await purchaseApi.deleteOrder(order.value.id)
-          if (deleteRes.code === 0) {
-            uni.showToast({ title: '已取消删除', icon: 'success' })
+          const cancelRes = await purchaseApi.cancelOrder(order.value.id)
+          if (cancelRes.code === 0) {
+            uni.showToast({ title: '已取消订单', icon: 'success' })
             setTimeout(() => uni.navigateBack(), 500)
           }
         } catch (e) { /* handled */ }
@@ -230,6 +415,149 @@ const goBack = () => {
   uni.navigateBack()
 }
 
+const startPurchase = () => {
+  uni.showModal({
+    title: '确认开始采购',
+    content: `确认开始采购订单 ${order.value.order_no || ''} 吗？`,
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          const startRes = await purchaseApi.startPurchase(order.value.id)
+          if (startRes.code === 0) {
+            uni.showToast({ title: '已开始采购', icon: 'success' })
+            loadDetail()
+          }
+        } catch (e) { /* handled */ }
+      }
+    }
+  })
+}
+
+const confirmPurchased = () => {
+  uni.showModal({
+    title: '已采确认',
+    content: `确认已采购订单 ${order.value.order_no || ''} 吗？将使用原采购数量与单价。`,
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          const items = (order.value.items || []).map(it => ({
+            id: it.id,
+            final_quantity: Number(it.quantity || 0),
+            final_price: Number(it.price || 0),
+            final_tax: Number(it.tax || 0),
+            final_amount: Number(it.amount || 0),
+            final_remark: it.remark || ''
+          }))
+          const confirmRes = await purchaseApi.confirmPurchased(order.value.id, {
+            payment_method: order.value.payment_method || '',
+            admin_remark: order.value.admin_remark || '',
+            purchase_remark: order.value.purchase_remark || '',
+            items
+          })
+          if (confirmRes.code === 0) {
+            uni.showToast({ title: '已采确认成功', icon: 'success' })
+            loadDetail()
+          }
+        } catch (e) { /* handled */ }
+      }
+    }
+  })
+}
+
+const inboundOrder = () => {
+  uni.navigateTo({
+    url: `/pages/purchase/inbound-edit?order_id=${order.value.id}`
+  })
+}
+
+const returnOrder = () => {
+  uni.navigateTo({
+    url: `/pages/purchase/return-edit?order_id=${order.value.id}`
+  })
+}
+
+const closeOrder = () => {
+  uni.showModal({
+    title: '确认关闭',
+    content: `确认关闭采购订单 ${order.value.order_no || ''} 吗？`,
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          const closeRes = await purchaseApi.closeOrder(order.value.id)
+          if (closeRes.code === 0) {
+            uni.showToast({ title: '已关闭', icon: 'success' })
+            loadDetail()
+          }
+        } catch (e) { /* handled */ }
+      }
+    }
+  })
+}
+
+const deleteOrder = () => {
+  uni.showModal({
+    title: '确认删除',
+    content: `确认删除采购订单 ${order.value.order_no || ''} 吗？此操作不可恢复。`,
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          const deleteRes = await purchaseApi.deleteOrder(order.value.id)
+          if (deleteRes.code === 0) {
+            uni.showToast({ title: '已删除', icon: 'success' })
+            setTimeout(() => uni.navigateBack(), 500)
+          }
+        } catch (e) { /* handled */ }
+      }
+    }
+  })
+}
+
+const showMore = () => {
+  const status = Number(order.value.status)
+  const hasRemaining = (order.value.items || []).some(it => Number(it.remaining_quantity || 0) > 0)
+  
+  const menu = []
+  const actions = []
+  if (status === 0) actions.push({ command: 'edit', label: '编辑' }, { command: 'submit', label: '提交审核' }, { command: 'cancel', label: '取消' })
+  if (status === 2) actions.push({ command: 'audit', label: '审核通过' }, { command: 'reject', label: '拒绝' }, { command: 'cancel', label: '取消' })
+  if (status === 5) actions.push({ command: 'startPurchase', label: '开始采购' }, { command: 'cancel', label: '取消' }, { command: 'close', label: '关闭' })
+  if (status === 1) actions.push({ command: 'confirmPurchased', label: '已采确认' }, { command: 'cancel', label: '取消' })
+  if ([6, 7, 8].includes(status) && hasRemaining) actions.push({ command: 'inbound', label: '入库' }, { command: 'returnOrder', label: '退单' })
+  if ([6, 7, 8].includes(status)) actions.push({ command: 'close', label: '关闭' })
+  if ([3, 4].includes(status)) actions.push({ command: 'delete', label: '删除' })
+
+  actions.forEach(act => {
+    menu.push(act.label)
+  })
+  menu.push('复制单号')
+
+  uni.showActionSheet({
+    itemList: menu,
+    success: ({ tapIndex }) => {
+      const actionLabel = menu[tapIndex]
+      if (actionLabel === '复制单号') {
+        copyOrderNo()
+      } else {
+        const clickedAction = actions.find(act => act.label === actionLabel)
+        if (clickedAction) {
+          const cmd = clickedAction.command
+          if (cmd === 'edit') goEdit()
+          else if (cmd === 'submit') handleSubmit()
+          else if (cmd === 'cancel') handleCancel()
+          else if (cmd === 'audit') handleAudit()
+          else if (cmd === 'reject') handleReject()
+          else if (cmd === 'startPurchase') startPurchase()
+          else if (cmd === 'confirmPurchased') confirmPurchased()
+          else if (cmd === 'inbound') inboundOrder()
+          else if (cmd === 'returnOrder') returnOrder()
+          else if (cmd === 'close') closeOrder()
+          else if (cmd === 'delete') deleteOrder()
+        }
+      }
+    }
+  })
+}
+
 onShow(() => {
   uni.hideTabBar()
   loadDetail()
@@ -241,8 +569,8 @@ onShow(() => {
   min-height: 100vh;
   background: #F5F7FA;
   box-sizing: border-box;
-  padding-bottom: calc(120rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(140rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
 }
 
 .detail-content {
@@ -271,41 +599,153 @@ onShow(() => {
   flex-wrap: wrap;
   .info-item {
     width: 50%;
-    padding: 10rpx 0;
+    padding: 12rpx 8rpx;
     box-sizing: border-box;
-    .info-label { font-size: 22rpx; color: #909399; display: block; margin-bottom: 4rpx; }
-    .info-value { font-size: 26rpx; color: #303133; display: block; font-weight: 500; }
+    display: flex;
+    flex-direction: column;
+    
+    .info-label { font-size: 22rpx; color: #909399; display: block; margin-bottom: 6rpx; }
+    .info-value { font-size: 26rpx; color: #303133; display: block; font-weight: 600; word-break: break-all; }
     .date-text { color: #909399; font-size: 24rpx; }
+    
+    &.order-no-item {
+      .info-value-copy {
+        display: flex;
+        align-items: center;
+        gap: 8rpx;
+      }
+      .copy-icon {
+        flex-shrink: 0;
+        cursor: pointer;
+        
+        &:active {
+          opacity: 0.6;
+        }
+      }
+    }
   }
 }
 
-.item-list {
-  .item-header {
-    display: flex;
-    background: #F8FAFC;
-    border-radius: 8rpx;
-    padding: 16rpx 12rpx;
-    margin-bottom: 8rpx;
+.remarks-value {
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+.product-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.product-item-card {
+  background: #F8FAFC;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  border: 1rpx solid #EEF2F6;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.prod-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  border-bottom: 1rpx solid #EEF2F6;
+  padding-bottom: 8rpx;
+}
+
+.prod-title {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #303133;
+  flex: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.prod-spec {
+  font-size: 20rpx;
+  background: #E8F4FF;
+  color: #1890FF;
+  padding: 2rpx 8rpx;
+  border-radius: 6rpx;
+  max-width: 180rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.prod-code-row {
+  display: flex;
+  align-items: center;
+  font-size: 20rpx;
+  color: #909399;
+}
+
+.prod-code-val {
+  font-family: monospace;
+}
+
+.prod-details-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.grid-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.grid-cell {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-size: 22rpx;
+  color: #606266;
+  min-width: 0;
+}
+
+.cell-lbl {
+  color: #909399;
+  flex-shrink: 0;
+}
+
+.cell-val {
+  font-weight: 600;
+  color: #303133;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  
+  &.primary {
+    color: #1890FF;
   }
-  .item-row {
-    display: flex;
-    align-items: center;
-    padding: 18rpx 12rpx;
-    border-bottom: 1rpx solid #F2F6FC;
-    &:last-child { border-bottom: none; }
+  
+  &.success {
+    color: #67C23A;
   }
-  .col-name {
-    flex: 2;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    padding-right: 10rpx;
-    .p-name { font-size: 24rpx; color: #303133; font-weight: 600; }
-    .p-spec { font-size: 20rpx; color: #909399; margin-top: 4rpx; }
+  
+  &.warning {
+    color: #E6A23C;
   }
-  .col-qty { flex: 0.8; text-align: center; font-size: 24rpx; color: #606266; font-weight: 600; }
-  .col-price { flex: 1.2; text-align: right; font-size: 24rpx; color: #606266; }
-  .col-amount { flex: 1.5; text-align: right; font-size: 24rpx; color: #F56C6C; font-weight: 600; }
+  
+  &.danger-text {
+    color: #F56C6C;
+  }
+}
+
+.remark-text {
+  font-size: 20rpx;
+  color: #909399;
+  font-weight: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .bottom-bar {

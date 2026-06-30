@@ -5,7 +5,7 @@
       <view class="sheet-header">
         <text class="sheet-title">选择时间范围</text>
         <view class="close-btn" @click="close">
-          <uni-icons type="closeempty" size="20" color="#999"></uni-icons>
+          <u-icon name="close" size="20" color="#999"></u-icon>
         </view>
       </view>
 

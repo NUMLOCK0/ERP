@@ -9,7 +9,7 @@
           <view class="form-group">
             <view class="form-item">
               <text class="form-label">盘点单号</text>
-              <input v-model="form.check_no" class="form-input" />
+              <input v-model="form.check_no" class="form-input" placeholder="自定义单号(留空自动生成)" />
             </view>
             <view class="form-item">
               <text class="form-label required">仓库</text>
@@ -18,7 +18,7 @@
                   <text class="picker-value" :class="{ placeholder: warehouseIndex === -1 }">
                     {{ warehouseLabels[warehouseIndex] || '请选择仓库' }}
                   </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399" />
+                  <u-icon name="arrow-down" size="14" color="#909399"  />
                 </view>
               </picker>
             </view>
@@ -31,7 +31,7 @@
               <picker mode="date" :value="checkDate" @change="onDateChange">
                 <view class="picker-inner">
                   <text class="picker-value" :class="{ placeholder: !checkDate }">{{ checkDate || '请选择日期' }}</text>
-                  <uni-icons type="arrowdown" size="14" color="#909399" />
+                  <u-icon name="arrow-down" size="14" color="#909399"  />
                 </view>
               </picker>
             </view>
@@ -46,7 +46,7 @@
           <view class="section-header list-title-row">
             <text class="section-title">盘点明细</text>
             <view class="add-row-btn" @click="openPicker">
-              <uni-icons type="plus" size="14" color="#1890FF" />
+              <u-icon name="plus" size="14" color="#1890FF"  />
               <text class="add-row-text">添加产品</text>
             </view>
           </view>
@@ -85,7 +85,7 @@
           </view>
 
           <view v-else class="empty-items-state">
-            <uni-icons type="compose" size="48" color="#DCDFE6" />
+            <u-icon name="edit-pen" size="48" color="#DCDFE6"  />
             <text class="empty-items-text">暂无盘点明细，请先添加产品</text>
           </view>
         </view>
@@ -97,48 +97,12 @@
       <view class="bottom-btn primary" @click="submit">提交</view>
     </view>
 
-    <view v-if="pickerVisible" class="dialog-overlay" :class="{ show: pickerShown }" @click="closePicker">
-      <view class="dialog-content" @click.stop>
-        <view class="dialog-header">
-          <text class="dialog-title">选择产品</text>
-          <text class="dialog-close" @click="closePicker">×</text>
-        </view>
-        <view class="popup-search-bar">
-          <view class="popup-search-input-wrap">
-            <uni-icons type="search" size="18" color="#999" />
-            <input v-model="productKeyword" class="popup-search-input" placeholder="搜索产品名称/编码" confirm-type="search" @confirm="searchProducts" />
-          </view>
-          <view class="popup-search-btn" @click="searchProducts">搜索</view>
-        </view>
-        <scroll-view class="dialog-body-scroll" scroll-y @scrolltolower="loadMoreProducts">
-          <view class="popup-product-list">
-            <view v-if="products.length > 0">
-              <view v-for="item in products" :key="item.id" class="product-select-card" @click="addProduct(item)">
-                <view class="prod-left">
-                  <view class="prod-img-placeholder">
-                    <uni-icons type="gift" size="20" color="#C0C4CC" />
-                  </view>
-                  <view class="prod-info">
-                    <text class="prod-name">{{ item.name }}</text>
-                    <text v-if="item.code" class="prod-code">编码: {{ item.code }}</text>
-                    <text v-if="item.spec" class="prod-spec">规格: {{ item.spec }}</text>
-                  </view>
-                </view>
-                <view class="prod-right">
-                  <uni-icons type="plus-filled" size="22" color="#1890FF" />
-                </view>
-              </view>
-            </view>
-            <view v-else-if="!productsLoading" class="popup-empty">
-              <text class="popup-empty-text">未找到相关产品</text>
-            </view>
-            <view v-if="productsLoading" class="popup-loading">
-              <uni-load-more status="loading" />
-            </view>
-          </view>
-        </scroll-view>
-      </view>
-    </view>
+    <!-- 商品选择弹窗 -->
+    <product-select-popup
+      v-model:show="pickerShown"
+      :selected-ids="selectedProductIds"
+      @confirm="handleProductSelectConfirm"
+    />
   </view>
 </template>
 
@@ -151,19 +115,16 @@ import { useUserStore } from '@/store/user'
 
 const userStore = useUserStore()
 const warehouses = ref([])
-const products = ref([])
 const warehouseIndex = ref(-1)
 const checkDate = ref('')
-const pickerVisible = ref(false)
 const pickerShown = ref(false)
-const productKeyword = ref('')
-const productsPage = ref(1)
-const productsPageSize = 20
-const productsLoading = ref(false)
-const productsNoMore = ref(false)
+
+const selectedProductIds = computed(() => {
+  return form.items.map(item => item.product_id)
+})
 
 const form = reactive({
-  check_no: `PD${Date.now()}`,
+  check_no: '',
   warehouse_id: null,
   checker_name: userStore.userInfo?.real_name || userStore.userInfo?.username || '',
   check_time: '',
@@ -174,12 +135,8 @@ const form = reactive({
 const warehouseLabels = computed(() => warehouses.value.map(item => item.name))
 
 async function loadOptions() {
-  const [warehouseRes, productRes] = await Promise.all([
-    warehouseApi.getList({ page: 1, pageSize: 1000, status: 1 }),
-    productApi.getList({ page: 1, pageSize: 200, status: 1 })
-  ])
+  const warehouseRes = await warehouseApi.getList({ page: 1, pageSize: 1000, status: 1 })
   warehouses.value = warehouseRes.data?.list || warehouseRes.data || []
-  products.value = productRes.data?.list || productRes.data || []
   if (warehouses.value.length > 0) {
     warehouseIndex.value = 0
     form.warehouse_id = warehouses.value[0].id
@@ -199,63 +156,33 @@ function onDateChange(e) {
 }
 
 function openPicker() {
-  productKeyword.value = ''
-  productsPage.value = 1
-  productsNoMore.value = false
-  products.value = []
-  pickerVisible.value = true
-  setTimeout(() => {
-    pickerShown.value = true
-  }, 20)
-  searchProducts(true)
+  pickerShown.value = true
 }
 
-function closePicker() {
-  pickerShown.value = false
-  setTimeout(() => {
-    pickerVisible.value = false
-  }, 220)
-}
-
-async function searchProducts(reset = false) {
-  if (productsLoading.value) return
-  productsLoading.value = true
-  try {
-    const params = {
-      page: reset ? 1 : productsPage.value,
-      pageSize: productsPageSize,
-      keyword: productKeyword.value.trim(),
-      status: 1
+function handleProductSelectConfirm(selectedList) {
+  const currentItems = [...form.items]
+  form.items = selectedList.map(prod => {
+    const existing = currentItems.find(item => item.product_id === prod.id)
+    if (existing) {
+      return {
+        product_id: prod.id,
+        product_name: prod.name,
+        code: prod.code || '',
+        book_quantity: existing.book_quantity,
+        actual_quantity: existing.actual_quantity,
+        remark: existing.remark || ''
+      }
+    } else {
+      return {
+        product_id: prod.id,
+        product_name: prod.name,
+        code: prod.code || '',
+        book_quantity: Number(prod.stock_total || prod.stock || 0),
+        actual_quantity: Number(prod.stock_total || prod.stock || 0),
+        remark: ''
+      }
     }
-    const res = await productApi.getList(params)
-    const data = res.data?.list || res.data || []
-    const total = res.data?.total ?? data.length
-    products.value = reset ? data : [...products.value, ...data]
-    productsPage.value = reset ? 2 : productsPage.value + 1
-    productsNoMore.value = products.value.length >= total
-  } finally {
-    productsLoading.value = false
-  }
-}
-
-function loadMoreProducts() {
-  if (!productsNoMore.value && !productsLoading.value) searchProducts()
-}
-
-function addProduct(item) {
-  if (form.items.find(row => row.product_id === item.id)) {
-    uni.showToast({ title: '该产品已添加', icon: 'none' })
-    return
-  }
-  form.items.push({
-    product_id: item.id,
-    product_name: item.name,
-    code: item.code || '',
-    book_quantity: Number(item.stock_total || 0),
-    actual_quantity: Number(item.stock_total || 0),
-    remark: ''
   })
-  uni.showToast({ title: '已添加', icon: 'success' })
 }
 
 function removeItem(index) {
@@ -294,7 +221,7 @@ async function submit() {
   }
 
   await inventoryApi.createCheck({
-    check_no: form.check_no,
+    check_no: form.check_no.trim() || undefined,
     warehouse_id: form.warehouse_id,
     checker_name: form.checker_name,
     check_time: form.check_time || `${new Date().toISOString().slice(0, 10)} 00:00:00`,

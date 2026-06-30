@@ -28,11 +28,11 @@
         <view class="menu-item" v-for="item in menuList" :key="item.label" @click="navigateTo(item.url)">
           <view class="menu-left">
             <view class="menu-icon" :style="{ backgroundColor: item.bgColor }">
-              <uni-icons :type="item.icon" size="20" color="#FFFFFF"></uni-icons>
+              <u-icon :name="item.icon" size="20" color="#FFFFFF"></u-icon>
             </view>
             <text class="menu-label">{{ item.label }}</text>
           </view>
-          <uni-icons type="right" size="16" color="#C0C4CC"></uni-icons>
+          <u-icon name="arrow-right" size="16" color="#C0C4CC"></u-icon>
         </view>
       </view>
     </view>
@@ -43,11 +43,11 @@
 <script setup>
 
 const menuList = [
-  { label: '采购订单', icon: 'cart', bgColor: '#409EFF', url: '/pages/purchase/order-list' },
-  { label: '采购入库单', icon: 'arrowdown', bgColor: '#67C23A', url: '/pages/purchase/inbound-list' },
-  { label: '采购退货单', icon: 'undo', bgColor: '#F56C6C', url: '/pages/purchase/return-list' },
-  { label: '采购付款单', icon: 'wallet', bgColor: '#8E44AD', url: '/pages/finance/payment-list' },
-  { label: '采购发票登记', icon: 'compose', bgColor: '#909399', url: '/pages/purchase/invoice-list' }
+  { label: '采购订单', icon: 'shopping-cart', bgColor: '#409EFF', url: '/pages/purchase/order-list' },
+  { label: '采购入库单', icon: 'arrow-down', bgColor: '#67C23A', url: '/pages/purchase/inbound-list' },
+  { label: '采购退货单', icon: 'rewind-left', bgColor: '#F56C6C', url: '/pages/purchase/return-list' },
+  { label: '采购付款单', icon: 'rmb-circle', bgColor: '#8E44AD', url: '/pages/finance/payment-list' },
+  { label: '采购发票登记', icon: 'edit-pen', bgColor: '#909399', url: '/pages/purchase/invoice-list' }
 ]
 
 const navigateTo = (url) => {

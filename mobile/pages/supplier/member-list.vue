@@ -3,7 +3,7 @@
     <!-- 搜索栏 -->
     <view class="search-bar">
       <view class="search-input-wrap">
-        <uni-icons type="search" size="20" color="#999"></uni-icons>
+        <u-icon name="search" size="20" color="#999"></u-icon>
         <input class="search-input" v-model="keyword" placeholder="会员等级名称/描述" type="text" @confirm="onSearch" />
       </view>
       <view class="search-btn" @click="onSearch">搜索</view>
@@ -29,7 +29,7 @@
             <view class="card-left">
               <image v-if="item.icon_url" :src="getAssetUrl(item.icon_url)" mode="aspectFill" class="level-icon" />
               <view v-else class="level-icon-placeholder">
-                <uni-icons type="medal" size="24" color="#E6A23C"></uni-icons>
+                <u-icon name="integral" size="24" color="#E6A23C"></u-icon>
               </view>
               <view class="level-info">
                 <text class="level-name">{{ item.name }}</text>
@@ -41,12 +41,12 @@
                 <uni-tag :text="'排序: ' + (item.sort_order ?? 0)" size="small" type="primary" style="margin-right: 8rpx;" />
                 <uni-tag :text="item.status === 1 ? '启用' : '禁用'" size="small" :type="item.status === 1 ? 'success' : 'info'" />
               </view>
-              <uni-icons type="arrowright" size="14" color="#C0C4CC"></uni-icons>
+              <u-icon name="arrow-right" size="14" color="#C0C4CC"></u-icon>
             </view>
           </view>
         </view>
         <view v-else-if="!loading" class="empty-state">
-          <uni-icons type="vip" size="60" color="#DCDFE6"></uni-icons>
+          <u-icon name="account-fill" size="60" color="#DCDFE6"></u-icon>
           <text class="empty-text">暂无会员登记等级</text>
         </view>
 
@@ -61,7 +61,7 @@
 
     <!-- 浮动新增按钮 -->
     <view class="floating-btn" @click="goCreate">
-      <uni-icons type="plus" size="24" color="#FFFFFF"></uni-icons>
+      <u-icon name="plus" size="24" color="#FFFFFF"></u-icon>
     </view>
   </view>
 </template>

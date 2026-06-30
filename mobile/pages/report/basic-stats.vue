@@ -5,7 +5,7 @@
       <text class="top-title">基础统计</text>
       <view class="dropdown-btn" @click="showDatePopup = !showDatePopup">
         <text class="dropdown-text">{{ dateRangeLabel }}</text>
-        <uni-icons :type="showDatePopup ? 'arrowup' : 'arrowdown'" size="12" color="#606266"></uni-icons>
+        <u-icon :name="showDatePopup ? 'arrow-up' : 'arrow-down'" size="12" color="#606266"></u-icon>
       </view>
     </view>
 

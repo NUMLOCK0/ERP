@@ -26,14 +26,14 @@
         <view v-for="item in menuList" :key="item.label" class="menu-item" @click="navigateTo(item.url)">
           <view class="menu-left">
             <view class="menu-icon" :style="{ backgroundColor: item.bgColor }">
-              <uni-icons :type="item.icon" size="20" color="#FFFFFF" />
+              <u-icon :name="item.icon" size="20" color="#FFFFFF"  />
             </view>
             <view class="menu-meta">
               <text class="menu-label">{{ item.label }}</text>
               <text class="menu-desc">{{ item.desc }}</text>
             </view>
           </view>
-          <uni-icons type="right" size="16" color="#C0C4CC" />
+          <u-icon name="arrow-right" size="16" color="#C0C4CC"  />
         </view>
       </view>
     </view>
@@ -43,9 +43,9 @@
 <script setup>
 const menuList = [
   { label: '库存查询', desc: '按产品和仓库查看库存', icon: 'search', bgColor: '#409EFF', url: '/pages/inventory/stock' },
-  { label: '其他入库', desc: '快速新增其他入库单', icon: 'arrowdown', bgColor: '#67C23A', url: '/pages/inventory/other-in-list' },
-  { label: '其他出库', desc: '快速新增其他出库单', icon: 'arrowup', bgColor: '#F56C6C', url: '/pages/inventory/other-out-list' },
-  { label: '库存盘点', desc: '盘点确认与调整库存', icon: 'checkbox', bgColor: '#E6A23C', url: '/pages/inventory/check-list' },
+  { label: '其他入库', desc: '快速新增其他入库单', icon: 'arrow-down', bgColor: '#67C23A', url: '/pages/inventory/other-in-list' },
+  { label: '其他出库', desc: '快速新增其他出库单', icon: 'arrow-up', bgColor: '#F56C6C', url: '/pages/inventory/other-out-list' },
+  { label: '库存盘点', desc: '盘点确认与调整库存', icon: 'checkmark-circle', bgColor: '#E6A23C', url: '/pages/inventory/check-list' },
   { label: '库存日志', desc: '查看库存变动记录', icon: 'list', bgColor: '#909399', url: '/pages/inventory/log' },
   { label: '仓库管理', desc: '维护仓库基础资料', icon: 'home', bgColor: '#8E44AD', url: '/pages/inventory/warehouse' }
 ]

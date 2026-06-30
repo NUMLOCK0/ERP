@@ -15,7 +15,7 @@
                   <text class="picker-value" :class="{ placeholder: orderIndex === -1 }">
                     {{ orders[orderIndex]?.label || '请选择采购单(可空)' }}
                   </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                  <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
                 </view>
               </picker>
             </view>
@@ -26,7 +26,7 @@
                   <text class="picker-value" :class="{ placeholder: supplierIndex === -1 }">
                     {{ suppliers[supplierIndex]?.name || '请选择供应商' }}
                   </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                  <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
                 </view>
               </picker>
             </view>
@@ -40,14 +40,7 @@
             </view>
             <view class="form-item">
               <text class="form-label required">付款方式</text>
-              <picker class="form-picker" @change="onPayMethodChange" :value="payMethodIndex" :range="payMethods">
-                <view class="picker-inner">
-                  <text class="picker-value" :class="{ placeholder: payMethodIndex === -1 }">
-                    {{ payMethods[payMethodIndex] || '请选择付款方式' }}
-                  </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
-                </view>
-              </picker>
+              <input class="form-input" v-model="form.pay_method" placeholder="请输入付款方式" maxlength="50" />
             </view>
             <view class="form-item">
               <text class="form-label">付款备注</text>
@@ -179,7 +172,7 @@ const handleSave = async () => {
     return
   }
   if (!form.pay_method) {
-    uni.showToast({ title: '请选择付款方式', icon: 'none' })
+    uni.showToast({ title: '请输入付款方式', icon: 'none' })
     return
   }
 

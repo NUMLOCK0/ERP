@@ -6,29 +6,29 @@
 
       <!-- 放射状菜单 -->
       <view class="kaidan-menu">
-        <view class="menu-item" @click="goCreate('sale')">
-          <view class="menu-icon-wrap sale">
-            <image class="menu-icon-img" src="/static/icon/icon-sale.png" mode="aspectFit" />
-          </view>
-          <text class="menu-label">销售</text>
-        </view>
         <view class="menu-item" @click="goCreate('purchase')">
           <view class="menu-icon-wrap purchase">
-            <image class="menu-icon-img" src="/static/icon/icon-purchase.png" mode="aspectFit" />
+            <u-icon name="shopping-cart" size="30" color="#67C23A"></u-icon>
           </view>
           <text class="menu-label">采购</text>
         </view>
-        <view class="menu-item" @click="goCreate('inventory')">
-          <view class="menu-icon-wrap inventory">
-            <image class="menu-icon-img" src="/static/icon/icon-inventory.png" mode="aspectFit" />
+        <view class="menu-item" @click="goCreate('sale')">
+          <view class="menu-icon-wrap sale">
+            <u-icon name="bag" size="30" color="#409EFF"></u-icon>
           </view>
-          <text class="menu-label">库存</text>
+          <text class="menu-label">销售</text>
+        </view>
+        <view class="menu-item" @click="goCreate('processing')">
+          <view class="menu-icon-wrap processing">
+            <u-icon name="setting" size="30" color="#E6A23C"></u-icon>
+          </view>
+          <text class="menu-label">加工</text>
         </view>
       </view>
 
       <!-- 关闭按钮 -->
       <view class="close-btn" @click="close">
-        <uni-icons type="closeempty" size="28" color="#FFFFFF"></uni-icons>
+        <u-icon name="close" size="28" color="#FFFFFF"></u-icon>
       </view>
       <text class="close-label">关闭</text>
     </view>
@@ -52,9 +52,9 @@ const close = () => {
 const goCreate = (type) => {
   close()
   const urlMap = {
-    sale: '/pages/sale/order-detail',
-    purchase: '/pages/purchase/order-detail',
-    inventory: '/pages/inventory/check-list'
+    sale: '/pages/sale/order-edit',
+    purchase: '/pages/purchase/order-edit',
+    processing: '/pages/processing/batch-edit'
   }
   uni.navigateTo({ url: urlMap[type] })
 }
@@ -88,7 +88,8 @@ const goCreate = (type) => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8rpx);
 }
 
 .kaidan-menu {
@@ -96,7 +97,7 @@ const goCreate = (type) => {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 80rpx;
+  gap: 60rpx;
   z-index: 1;
   margin-bottom: 60rpx;
   padding: 40rpx;
@@ -116,15 +117,13 @@ const goCreate = (type) => {
     align-items: center;
     justify-content: center;
     margin-bottom: 16rpx;
-    background: #FFFFFF;
-    box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.12);
+    box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
+    transition: transform 0.2s ease;
 
-    .menu-icon-img {
-      width: 56rpx;
-      height: 56rpx;
+    &:active {
+      transform: scale(0.9);
     }
 
-    /* 图标不存在时用纯色圆形+文字占位 */
     &.sale {
       background: #E8F4FD;
       border: 4rpx solid #409EFF;
@@ -133,9 +132,9 @@ const goCreate = (type) => {
       background: #E8F8F0;
       border: 4rpx solid #67C23A;
     }
-    &.inventory {
-      background: #F4E8FC;
-      border: 4rpx solid #9B59B6;
+    &.processing {
+      background: #FDF6EC;
+      border: 4rpx solid #E6A23C;
     }
   }
 
@@ -151,11 +150,16 @@ const goCreate = (type) => {
   width: 80rpx;
   height: 80rpx;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1;
+  transition: transform 0.2s ease;
+
+  &:active {
+    transform: rotate(90deg) scale(0.9);
+  }
 }
 
 .close-label {

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="page-container">
     <template v-if="editorVisible">
       <div class="editor-page">
@@ -18,10 +18,7 @@
               </el-select>
             </el-form-item>
             <el-form-item label="付款方式">
-              <el-select v-model="form.payment_method" placeholder="未确定" clearable>
-                <el-option label="未确定" value="" />
-                <el-option v-for="method in paymentMethodOptions" :key="method" :label="method" :value="method" />
-              </el-select>
+              <el-input v-model="form.payment_method" placeholder="请输入付款方式" maxlength="50" show-word-limit />
             </el-form-item>
             <el-form-item label="管理备注">
               <el-input v-model="form.admin_remark" type="textarea" :rows="1" placeholder="管理备注" />
@@ -42,6 +39,10 @@
               </el-select>
             </el-form-item>
           </div>
+
+          <el-form-item label="单据图片" class="image-form-item">
+            <BusinessImageUpload v-model="form.image_urls" :disabled="editorMode === 'view'" />
+          </el-form-item>
 
           <div class="product-actions">
             <el-button type="primary" plain @click="openProductDrawer">选择产品</el-button>
@@ -283,10 +284,7 @@
               </el-select>
             </el-form-item>
             <el-form-item label="付款方式">
-              <el-select v-model="confirmForm.payment_method" placeholder="未确定" clearable>
-                <el-option label="未确定" value="" />
-                <el-option v-for="method in paymentMethodOptions" :key="method" :label="method" :value="method" />
-              </el-select>
+              <el-input v-model="confirmForm.payment_method" placeholder="请输入付款方式" maxlength="50" show-word-limit />
             </el-form-item>
             <el-form-item label="联系信息" class="contact-form-item">
               <div class="contact-fields">
@@ -301,6 +299,10 @@
               <el-input v-model="confirmForm.purchase_remark" type="textarea" :rows="1" placeholder="单据备注" />
             </el-form-item>
           </div>
+
+          <el-form-item label="已采图片" class="image-form-item">
+            <BusinessImageUpload v-model="confirmForm.purchase_image_urls" />
+          </el-form-item>
 
           <el-table border :data="confirmForm.items" class="purchase-detail-table confirm-table" stripe>
             <el-table-column prop="product_name" label="产品标题" min-width="180" show-overflow-tooltip />
@@ -380,6 +382,10 @@
               <el-input v-model="inboundForm.remark" type="textarea" :rows="1" placeholder="单据备注" />
             </el-form-item>
           </div>
+
+          <el-form-item label="入库图片" class="image-form-item">
+            <BusinessImageUpload v-model="inboundForm.image_urls" />
+          </el-form-item>
 
           <el-table border :data="inboundForm.items" class="purchase-detail-table confirm-table" stripe>
             <el-table-column prop="product_name" label="产品标题" min-width="180" show-overflow-tooltip />
@@ -705,6 +711,34 @@
             <el-descriptions-item label="关闭时间">{{ formatDateTime(detailData.close_time) }}</el-descriptions-item>
             <el-descriptions-item label="创建时间">{{ formatDateTime(detailData.created_at) }}</el-descriptions-item>
             <el-descriptions-item label="更新时间">{{ formatDateTime(detailData.updated_at) }}</el-descriptions-item>
+            <el-descriptions-item label="单据图片">
+              <div v-if="normalizeImageUrls(detailData.image_urls).length" class="order-image-list">
+                <el-image
+                  v-for="url in normalizeImageUrls(detailData.image_urls)"
+                  :key="url"
+                  class="order-image-thumb"
+                  :src="url"
+                  :preview-src-list="normalizeImageUrls(detailData.image_urls)"
+                  fit="cover"
+                  preview-teleported
+                />
+              </div>
+              <span v-else>-</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="已采图片">
+              <div v-if="normalizeImageUrls(detailData.purchase_image_urls).length" class="order-image-list">
+                <el-image
+                  v-for="url in normalizeImageUrls(detailData.purchase_image_urls)"
+                  :key="url"
+                  class="order-image-thumb"
+                  :src="url"
+                  :preview-src-list="normalizeImageUrls(detailData.purchase_image_urls)"
+                  fit="cover"
+                  preview-teleported
+                />
+              </div>
+              <span v-else>-</span>
+            </el-descriptions-item>
           </el-descriptions>
         </el-tab-pane>
         <el-tab-pane label="产品列表" name="items">
@@ -780,6 +814,7 @@ import { getUnits } from '@/api/unit'
 import { getWarehouses } from '@/api/warehouse'
 import SearchForm from '@/components/SearchForm.vue'
 import Pagination from '@/components/Pagination.vue'
+import BusinessImageUpload from '@/components/BusinessImageUpload.vue'
 import { returnFlagTagType, returnFlagText } from '@/utils/status'
 import { getDefaultUnitName, getPreferredProductUnit } from '@/utils/unit'
 
@@ -847,7 +882,8 @@ const form = reactive({
   purchase_remark: '',
   supplier_contact: '',
   supplier_phone: '',
-  items: [] as PurchaseItem[]
+  items: [] as PurchaseItem[],
+  image_urls: [] as string[]
 })
 const detailData = reactive<any>({ items: [] })
 const confirmForm = reactive({
@@ -860,7 +896,8 @@ const confirmForm = reactive({
   purchase_remark: '',
   supplier_contact: '',
   supplier_phone: '',
-  items: [] as PurchaseItem[]
+  items: [] as PurchaseItem[],
+  purchase_image_urls: [] as string[]
 })
 const inboundForm = reactive({
   id: null as number | null,
@@ -869,7 +906,8 @@ const inboundForm = reactive({
   warehouse_id: null as any,
   inbound_status: null as any,
   remark: '',
-  items: [] as PurchaseItem[]
+  items: [] as PurchaseItem[],
+  image_urls: [] as string[]
 })
 const returnForm = reactive({
   id: null as number | null,
@@ -961,7 +999,8 @@ function resetForm() {
     purchase_remark: '',
     supplier_contact: '',
     supplier_phone: '',
-    items: []
+    items: [],
+    image_urls: []
   })
   confirmVisible.value = false
   inboundVisible.value = false
@@ -1025,7 +1064,8 @@ async function loadOrder(id: number) {
     admin_remark: detail.admin_remark || '',
     purchase_remark: detail.purchase_remark || '',
     supplier_contact: detail.contact || '',
-    supplier_phone: detail.phone || ''
+    supplier_phone: detail.phone || '',
+    image_urls: normalizeImageUrls(detail.image_urls)
   })
   handleSupplierChange(form.supplier_id)
   form.items = normalizeOrderItems(detail.items || [])
@@ -1204,11 +1244,13 @@ async function handleSave() {
     return
   }
   const payload = {
+    order_no: form.order_no,
     supplier_id: form.supplier_id,
     warehouse_id: form.warehouse_id || warehouses.value[0]?.id || 0,
     payment_method: form.payment_method,
     admin_remark: form.admin_remark,
     purchase_remark: form.purchase_remark,
+    image_urls: form.image_urls,
     items: items.map(item => ({
       product_id: item.product_id,
       product_name: item.product_name.trim(),
@@ -1274,6 +1316,7 @@ async function handleConfirmPurchased(row: any) {
     purchase_remark: detail.purchase_remark || '',
     supplier_contact: detail.contact || '',
     supplier_phone: detail.phone || '',
+    purchase_image_urls: normalizeImageUrls(detail.purchase_image_urls),
     items: normalizeOrderItems(detail.items || [])
   })
   confirmVisible.value = true
@@ -1290,6 +1333,7 @@ async function handleConfirmPurchasedSubmit() {
     payment_method: confirmForm.payment_method,
     admin_remark: confirmForm.admin_remark,
     purchase_remark: confirmForm.purchase_remark,
+    purchase_image_urls: confirmForm.purchase_image_urls,
     items: items.map(item => ({
       id: item.id,
       final_quantity: Number(item.final_quantity || 0),
@@ -1318,6 +1362,7 @@ async function handleInbound(row: any) {
     warehouse_id: detail.warehouse_id || warehouses.value[0]?.id || null,
     inbound_status: null,
     remark: '',
+    image_urls: [],
     items: remainingItems.map(item => ({
       ...item,
       inbound_quantity: Number(item.remaining_quantity || 0),
@@ -1350,9 +1395,11 @@ async function handleInboundSubmit() {
   }
   const items = detailItems.filter(item => Number(item.inbound_quantity || 0) > 0)
   await createPurchaseOrderInbound(inboundForm.id, {
+    inbound_no: inboundForm.inbound_no,
     warehouse_id: inboundForm.warehouse_id,
     inbound_status: inboundForm.inbound_status,
     remark: inboundForm.remark,
+    image_urls: inboundForm.image_urls,
     items: items.map(item => ({
       product_id: item.product_id,
       inbound_quantity: Number(item.inbound_quantity || 0),
@@ -1412,6 +1459,7 @@ async function handleReturnSubmit() {
   }
   const items = detailItems.filter(item => Number(item.return_quantity || 0) > 0 || Number(item.return_amount || 0) > 0)
   await createPurchaseOrderReturn(returnForm.id, {
+    return_no: returnForm.return_no,
     return_status: returnForm.return_status,
     express_name: returnForm.express_name,
     express_no: returnForm.express_no,
@@ -1712,6 +1760,21 @@ onMounted(async () => {
   grid-template-columns: repeat(2, minmax(180px, 1fr));
   gap: 12px;
   width: 100%;
+}
+.image-form-item {
+  margin-bottom: 12px;
+}
+.order-image-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.order-image-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #f0f2f5;
 }
 .product-actions {
   display: flex;

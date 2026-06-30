@@ -4,7 +4,7 @@ const { getPool } = require('../database');
 const Response = require('../utils/response');
 const { isAuditEnabled } = require('../utils/auditConfig');
 const { resolveInlineProduct } = require('../utils/inlineProduct');
-const { generateBusinessNo } = require('../utils/bizNo');
+const { generateBusinessNo, isCustomNo } = require('../utils/bizNo');
 
 // ==================== 库存查询 ====================
 
@@ -273,7 +273,8 @@ router.post('/check', async (req, res) => {
       check_time = null,
       remark = '',
       submit = false,
-      items
+      items,
+      check_no
     } = req.body;
     if (!warehouse_id) return res.json(Response.error('仓库不能为空'));
     if (!Array.isArray(items) || !items.length) return res.json(Response.error('明细不能为空'));
@@ -290,7 +291,16 @@ router.post('/check', async (req, res) => {
       productIds.add(productId);
     }
 
-    const checkNo = await generateNo(pool, 'PD');
+    let checkNo = check_no ? String(check_no).trim() : '';
+    const isCustom = isCustomNo(checkNo);
+    if (isCustom) {
+      const [existing] = await pool.execute('SELECT id FROM inventory_check WHERE check_no = ? LIMIT 1', [checkNo]);
+      if (existing.length) {
+        return res.json(Response.error(`盘点单号 [${checkNo}] 已存在`));
+      }
+    } else {
+      checkNo = await generateNo(pool, 'PD');
+    }
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
@@ -610,13 +620,28 @@ router.post('/other-inbound', async (req, res) => {
       warehouse_id,
       items,
       admin_remark = '',
-      inbound_remark = ''
+      inbound_remark = '',
+      inbound_no
     } = req.body;
-    if (!supplier_id) return res.json(Response.error('供应商不能为空'));
     if (!warehouse_id) return res.json(Response.error('仓库不能为空'));
     if (!Array.isArray(items) || !items.length) return res.json(Response.error('入库明细不能为空'));
 
-    const inboundNo = await generateNo(pool, 'QT');
+    let supplierId = supplier_id;
+    if (!supplierId) {
+      const [suppliers] = await pool.execute('SELECT id FROM supplier_customer WHERE type = "supplier" LIMIT 1');
+      supplierId = suppliers[0]?.id || 0;
+    }
+
+    let inboundNo = inbound_no ? String(inbound_no).trim() : '';
+    const isCustom = isCustomNo(inboundNo);
+    if (isCustom) {
+      const [existing] = await pool.execute('SELECT id FROM other_inbound WHERE inbound_no = ? LIMIT 1', [inboundNo]);
+      if (existing.length) {
+        return res.json(Response.error(`入库单号 [${inboundNo}] 已存在`));
+      }
+    } else {
+      inboundNo = await generateNo(pool, 'QT');
+    }
     let totalAmount = 0;
     let totalQuantity = 0;
     let taxAmount = 0;
@@ -643,7 +668,7 @@ router.post('/other-inbound', async (req, res) => {
          VALUES (?,?,?,?,?,?,1,?,?,?,?,NOW())`,
         [
           inboundNo,
-          supplier_id,
+          supplierId,
           warehouse_id,
           totalAmount,
           totalQuantity,
@@ -791,14 +816,29 @@ router.post('/other-outbound', async (req, res) => {
       admin_remark = '',
       outbound_remark = '',
       status = 0,
-      items
+      items,
+      outbound_no
     } = req.body;
-    if (!customer_id) return res.json(Response.error('客户不能为空'));
     if (!warehouse_id) return res.json(Response.error('仓库不能为空'));
     if (!Array.isArray(items) || !items.length) return res.json(Response.error('出库明细不能为空'));
     if (![0, 1, 2].includes(Number(status))) return res.json(Response.error('出库状态不正确'));
 
-    const outboundNo = await generateNo(pool, 'QC');
+    let customerId = customer_id;
+    if (!customerId) {
+      const [customers] = await pool.execute('SELECT id FROM supplier_customer WHERE type = "customer" LIMIT 1');
+      customerId = customers[0]?.id || 0;
+    }
+
+    let outboundNo = outbound_no ? String(outbound_no).trim() : '';
+    const isCustom = isCustomNo(outboundNo);
+    if (isCustom) {
+      const [existing] = await pool.execute('SELECT id FROM other_outbound WHERE outbound_no = ? LIMIT 1', [outboundNo]);
+      if (existing.length) {
+        return res.json(Response.error(`出库单号 [${outboundNo}] 已存在`));
+      }
+    } else {
+      outboundNo = await generateNo(pool, 'QC');
+    }
     let totalAmount = 0;
     let totalQuantity = 0;
     let taxAmount = 0;
@@ -847,7 +887,7 @@ router.post('/other-outbound', async (req, res) => {
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
           outboundNo,
-          customer_id,
+          customerId,
           warehouse_id,
           totalAmount,
           totalQuantity,

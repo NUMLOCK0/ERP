@@ -19,7 +19,7 @@
                   <text class="picker-value" :class="{ placeholder: typeIndex === -1 }">
                     {{ types[typeIndex]?.label || '请选择企业类型' }}
                   </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                  <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
                 </view>
               </picker>
             </view>

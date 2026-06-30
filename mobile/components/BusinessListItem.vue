@@ -24,7 +24,7 @@
 
     <view v-if="showToggle" class="toggle-btn" @click="$emit('toggle')">
       <text class="toggle-text">{{ expanded ? collapseText : expandText }}</text>
-      <uni-icons :type="expanded ? 'arrowup' : 'arrowdown'" size="16" color="#1890FF" />
+      <u-icon :name="expanded ? 'arrow-up' : 'arrow-down'" size="16" color="#1890FF"  />
     </view>
 
     <view v-if="$slots.actions" class="item-actions">
@@ -148,7 +148,8 @@ defineEmits(['toggle'])
 }
 
 .summary-shell {
-  background: transparent;
+  padding: 16rpx 20rpx;
+  background: #f8fafc;
 }
 
 .detail-shell {
@@ -173,6 +174,7 @@ defineEmits(['toggle'])
 
 .item-actions {
   display: flex;
+  justify-content: flex-end;
   gap: 16rpx;
   padding: 0 24rpx 24rpx;
 }

@@ -28,11 +28,11 @@
         <view class="menu-item" v-for="item in menuList" :key="item.label" @click="navigateTo(item.url)">
           <view class="menu-left">
             <view class="menu-icon" :style="{ backgroundColor: item.bgColor }">
-              <uni-icons :type="item.icon" size="20" color="#FFFFFF"></uni-icons>
+              <u-icon :name="item.icon" size="20" color="#FFFFFF"></u-icon>
             </view>
             <text class="menu-label">{{ item.label }}</text>
           </view>
-          <uni-icons type="right" size="16" color="#C0C4CC"></uni-icons>
+          <u-icon name="arrow-right" size="16" color="#C0C4CC"></u-icon>
         </view>
       </view>
     </view>
@@ -43,11 +43,11 @@
 <script setup>
 
 const menuList = [
-  { label: '销售订单', icon: 'wallet', bgColor: '#409EFF', url: '/pages/sale/order-list' },
-  { label: '销售发货单', icon: 'paperplane', bgColor: '#409EFF', url: '/pages/sale/delivery-list' },
-  { label: '发货退货单', icon: 'undo', bgColor: '#F56C6C', url: '/pages/sale/return-list' },
-  { label: '销售收款单', icon: 'wallet', bgColor: '#8E44AD', url: '/pages/finance/receipt-list' },
-  { label: '销售发票登记', icon: 'compose', bgColor: '#909399', url: 'todo' }
+  { label: '销售订单', icon: 'rmb-circle', bgColor: '#409EFF', url: '/pages/sale/order-list' },
+  { label: '销售发货单', icon: 'car', bgColor: '#409EFF', url: '/pages/sale/delivery-list' },
+  { label: '发货退货单', icon: 'rewind-left', bgColor: '#F56C6C', url: '/pages/sale/return-list' },
+  { label: '销售收款单', icon: 'rmb-circle', bgColor: '#8E44AD', url: '/pages/finance/receipt-list' },
+  { label: '销售发票登记', icon: 'edit-pen', bgColor: '#909399', url: 'todo' }
 ]
 
 const navigateTo = (url) => {

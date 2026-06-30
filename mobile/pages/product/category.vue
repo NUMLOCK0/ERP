@@ -3,7 +3,7 @@
     <!-- 搜索栏 -->
     <view class="search-bar">
       <view class="search-input-wrap">
-        <uni-icons type="search" size="20" color="#999"></uni-icons>
+        <u-icon name="search" size="20" color="#999"></u-icon>
         <input class="search-input" v-model="keyword" placeholder="搜索分类名称" type="text" @confirm="onSearch" />
       </view>
       <view class="search-btn" @click="onSearch">搜索</view>
@@ -21,8 +21,8 @@
             :class="{ 'child-card': item.depth > 0 }"
           >
             <view class="card-left">
-              <uni-icons v-if="item.depth > 0" type="forward" size="12" color="#C0C4CC" class="depth-arrow"></uni-icons>
-              <uni-icons :type="item.depth > 0 ? 'folder' : 'folder-filled'" size="18" :color="item.depth > 0 ? '#909399' : '#1890FF'"></uni-icons>
+              <u-icon v-if="item.depth > 0" type="forward" size="12" color="#C0C4CC" class="depth-arrow"></u-icon>
+              <u-icon :type="item.depth > 0 ? 'folder' : 'folder-filled'" size="18" :color="item.depth > 0 ? '#909399' : '#1890FF'"></u-icon>
               <view class="name-box">
                 <text class="cat-name" :class="{ 'child-name': item.depth > 0 }">{{ item.name }}</text>
                 <text v-if="keyword.trim() !== '' && item.parent_id" class="parent-tip">
@@ -34,10 +34,10 @@
               <text class="sort-badge">排序: {{ item.sort_order || 0 }}</text>
               <view class="action-icons">
                 <view class="icon-btn edit" @click.stop="handleEdit(item)">
-                  <uni-icons type="compose" size="16" color="#1890FF"></uni-icons>
+                  <u-icon name="edit-pen" size="16" color="#1890FF"></u-icon>
                 </view>
                 <view class="icon-btn delete" @click.stop="handleDelete(item)">
-                  <uni-icons type="trash" size="16" color="#F56C6C"></uni-icons>
+                  <u-icon name="trash" size="16" color="#F56C6C"></u-icon>
                 </view>
               </view>
             </view>
@@ -45,7 +45,7 @@
         </view>
 
         <view v-else-if="!loading" class="empty-state">
-          <uni-icons type="box" size="60" color="#DCDFE6"></uni-icons>
+          <u-icon name="grid" size="60" color="#DCDFE6"></u-icon>
           <text class="empty-text">暂无分类数据</text>
         </view>
 
@@ -58,7 +58,7 @@
     <!-- 底部固定操作栏 -->
     <view class="bottom-bar">
       <view class="add-btn" @click="handleAdd">
-        <uni-icons type="plus-filled" size="24" color="#FFFFFF"></uni-icons>
+        <u-icon name="plus-circle-fill" size="24" color="#FFFFFF"></u-icon>
         <text class="add-text">新增分类</text>
       </view>
     </view>
@@ -83,7 +83,7 @@
                   <text class="picker-value" :class="{ placeholder: parentIndex === -1 }">
                     {{ parentOptions[parentIndex]?.name || '无上级（作为根分类）' }}
                   </text>
-                  <uni-icons type="arrowdown" size="14" color="#909399"></uni-icons>
+                  <u-icon name="arrow-down" size="14" color="#909399"></u-icon>
                 </view>
               </picker>
             </view>

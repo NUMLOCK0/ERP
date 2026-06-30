@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="page-container">
     <template v-if="editorVisible">
       <div class="editor-page">
@@ -600,6 +600,7 @@ async function handleSave() {
   submitting.value = true
   try {
     await createOtherInbound({
+      inbound_no: form.inbound_no,
       supplier_id: form.supplier_id,
       warehouse_id: form.warehouse_id || warehouses.value[0]?.id || 0,
       admin_remark: form.admin_remark,

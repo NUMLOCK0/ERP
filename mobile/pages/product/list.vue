@@ -3,12 +3,12 @@
     <!-- 搜索 & 筛选栏 -->
     <view class="search-bar">
       <view class="search-input-wrap">
-        <uni-icons type="search" size="20" color="#999"></uni-icons>
+        <u-icon name="search" size="20" color="#999"></u-icon>
         <input class="search-input" v-model="keyword" placeholder="请输入" type="text" @confirm="onSearch" />
       </view>
       <view class="category-picker" @click="showCategoryPicker = true">
         <text class="category-text">{{ categoryLabel }}</text>
-        <uni-icons type="arrowdown" size="12" color="#999"></uni-icons>
+        <u-icon name="arrow-down" size="12" color="#999"></u-icon>
       </view>
       <view class="search-btn" @click="onSearch">搜索</view>
     </view>
@@ -68,14 +68,14 @@
               <view class="product-info">
                 <view class="info-id-row">
                   <text class="info-label">ID: {{ item.id }}</text>
-                  <uni-icons type="copy" size="14" color="#409EFF" @click.stop="copyId(item.id)"></uni-icons>
+                  <u-icon name="file-text" size="14" color="#409EFF" @click.stop="copyId(item.id)"></u-icon>
                 </view>
                 <text class="info-name">{{ item.name }}</text>
               </view>
             </view>
             <view class="toggle-btn" @click="toggleCard(item.id)">
               <text class="toggle-text">展开</text>
-              <uni-icons type="arrowdown" size="16" color="#409EFF"></uni-icons>
+              <u-icon name="arrow-down" size="16" color="#409EFF"></u-icon>
             </view>
             <view class="card-actions">
               <view class="action-btn outline" @click="goDetail(item.id)">详情</view>
@@ -96,7 +96,7 @@
                   <text class="info-label">产品ID</text>
                   <view class="id-copy" @click.stop="copyId(item.id)">
                     <text class="info-value">{{ item.id }}</text>
-                    <uni-icons type="copy" size="14" color="#409EFF"></uni-icons>
+                    <u-icon name="file-text" size="14" color="#409EFF"></u-icon>
                   </view>
                 </view>
                 <view class="info-name-row">
@@ -132,7 +132,7 @@
                 <text class="detail-label">编码 (SKU)</text>
                 <view class="detail-right">
                   <text class="detail-value">{{ item.code || '-' }}</text>
-                  <uni-icons v-if="item.code" type="copy" size="14" color="#409EFF" @click.stop="copyCode(item.code)"></uni-icons>
+                  <u-icon v-if="item.code" name="file-text" size="14" color="#409EFF" @click.stop="copyCode(item.code)"></u-icon>
                 </view>
               </view>
               <view class="detail-row">
@@ -149,7 +149,7 @@
 
             <view class="toggle-btn" @click="toggleCard(item.id)">
               <text class="toggle-text">收起</text>
-              <uni-icons type="arrowup" size="16" color="#409EFF"></uni-icons>
+              <u-icon name="arrow-up" size="16" color="#409EFF"></u-icon>
             </view>
 
             <view class="card-actions">
@@ -162,7 +162,7 @@
       </view>
 
       <view v-else-if="!loading" class="empty-state">
-        <uni-icons type="box" size="60" color="#DCDFE6"></uni-icons>
+        <u-icon name="grid" size="60" color="#DCDFE6"></u-icon>
         <text class="empty-text">暂无产品数据</text>
       </view>
 
@@ -178,7 +178,7 @@
     <!-- 底部新增按钮（固定） -->
     <view class="bottom-bar">
       <view class="add-btn" @click="goCreate">
-        <uni-icons type="plus-filled" size="24" color="#FFFFFF"></uni-icons>
+        <u-icon name="plus-circle-fill" size="24" color="#FFFFFF"></u-icon>
         <text class="add-text">新增产品</text>
       </view>
     </view>

@@ -2,7 +2,7 @@
   <view class="transfer-list-page">
     <view class="search-bar">
       <view class="search-input-wrap">
-        <uni-icons type="search" size="20" color="#999" />
+        <u-icon name="search" size="20" color="#999"  />
         <input
           v-model="keyword"
           class="search-input"
@@ -57,7 +57,7 @@
           </view>
         </view>
         <view v-else-if="!loading" class="empty-state">
-          <uni-icons type="redo" size="60" color="#DCDFE6" />
+          <u-icon name="reload" size="60" color="#DCDFE6"  />
           <text class="empty-text">暂无调拨单</text>
         </view>
         <view v-if="loading" class="loading-more">
@@ -70,7 +70,7 @@
     </scroll-view>
 
     <view class="floating-btn" @click="goCreate">
-      <uni-icons type="plus" size="24" color="#FFFFFF" />
+      <u-icon name="plus" size="24" color="#FFFFFF"  />
     </view>
   </view>
 </template>

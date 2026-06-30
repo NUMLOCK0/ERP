@@ -1,88 +1,154 @@
 <template>
   <view class="return-detail">
     <view v-if="ret.id" class="detail-content">
-      <!-- 基本信息 -->
+      <!-- 退货基本信息 -->
       <view class="card">
-        <view class="card-title">退货单信息</view>
+        <view class="card-title">基本信息</view>
         <view class="info-grid">
           <view class="info-item">
-            <text class="info-label">退货单号</text>
-            <text class="info-value">{{ ret.return_no }}</text>
+            <text class="info-label">退货单ID</text>
+            <text class="info-value">{{ ret.id }}</text>
           </view>
+          
+          <view class="info-item order-no-item">
+            <text class="info-label">退货单号</text>
+            <view class="info-value-copy">
+              <text class="info-value">{{ ret.return_no }}</text>
+              <u-icon name="file-text" size="14" color="#1890FF" class="copy-icon" @click="copyReturnNo"  />
+            </view>
+          </view>
+          
+          <view class="info-item order-no-item">
+            <text class="info-label">采购单号</text>
+            <view class="info-value-copy">
+              <text class="info-value">{{ ret.order_no || '-' }}</text>
+              <u-icon v-if="ret.order_no" name="file-text" size="14" color="#1890FF" class="copy-icon" @click="copyOrderNo"  />
+            </view>
+          </view>
+          
           <view class="info-item">
-            <text class="info-label">状态</text>
+            <text class="info-label">退货状态</text>
             <view class="info-value">
               <uni-tag :text="statusMap[ret.status] || '未知'" size="small" :type="getStatusType(ret.status)" />
             </view>
           </view>
-          <view class="info-item">
-            <text class="info-label">关联采购单</text>
-            <text class="info-value">{{ ret.order_no || '-' }}</text>
-          </view>
+          
           <view class="info-item">
             <text class="info-label">供应商</text>
             <text class="info-value">{{ ret.supplier_name || '-' }}</text>
           </view>
+          
           <view class="info-item">
-            <text class="info-label">退货总金额</text>
-            <text class="info-value text-danger font-bold">¥{{ formatPrice(ret.total_amount) }}</text>
+            <text class="info-label">单价</text>
+            <text class="info-value">¥{{ formatPrice(ret.unit_price) }}</text>
           </view>
+          
           <view class="info-item">
-            <text class="info-label">创建时间</text>
-            <text class="info-value date-text">{{ formatDate(ret.created_at || ret.createdAt) }}</text>
+            <text class="info-label">税金</text>
+            <text class="info-value">¥{{ formatPrice(ret.tax_amount) }}</text>
           </view>
-          <view class="info-item" v-if="ret.completed_time">
-            <text class="info-label">退货完成时间</text>
-            <text class="info-value date-text">{{ formatDate(ret.completed_time || ret.completedTime) }}</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- 物流信息 -->
-      <view class="card" v-if="Number(ret.status) === 1">
-        <view class="card-title">物流信息</view>
-        <view class="info-grid">
+          
           <view class="info-item">
-            <text class="info-label">物流公司</text>
+            <text class="info-label">退款总额</text>
+            <text class="info-value text-danger font-bold">¥{{ formatPrice(ret.refund_total_amount || ret.total_amount) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">退货总数量</text>
+            <text class="info-value">{{ ret.refund_total_quantity || ret.total_quantity || 0 }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">联系人</text>
+            <text class="info-value">{{ ret.contact || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">联系电话</text>
+            <text class="info-value">{{ ret.phone || '-' }}</text>
+          </view>
+          
+          <view class="info-item" style="width: 100%;">
+            <text class="info-label">收货地址</text>
+            <text class="info-value">{{ ret.address || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">快递名称</text>
             <text class="info-value">{{ ret.express_name || '-' }}</text>
           </view>
+          
           <view class="info-item">
             <text class="info-label">快递单号</text>
             <text class="info-value">{{ ret.express_no || '-' }}</text>
           </view>
-          <view class="info-item" style="width: 100%;" v-if="ret.reason">
-            <text class="info-label">备注说明</text>
-            <text class="info-value">{{ ret.reason }}</text>
-          </view>
-        </view>
-      </view>
 
-      <!-- 退货原因 (待退货状态显示) -->
-      <view class="card" v-if="Number(ret.status) === 0 && ret.reason">
-        <view class="card-title">退货原因</view>
-        <view class="reason-content">
-          <text>{{ ret.reason }}</text>
+          <view class="info-item">
+            <text class="info-label">制单人</text>
+            <text class="info-value">{{ ret.creator_name || '-' }}</text>
+          </view>
+
+          <view class="info-item" style="width: 100%;">
+            <text class="info-label">备注信息</text>
+            <text class="info-value remarks-value">{{ ret.reason || ret.remark || '-' }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">完成时间</text>
+            <text class="info-value date-text">{{ formatDate(ret.completed_time) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">取消时间</text>
+            <text class="info-value date-text">{{ formatDate(ret.cancel_time) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">创建时间</text>
+            <text class="info-value date-text">{{ formatDate(ret.created_at || ret.createdAt) }}</text>
+          </view>
+          
+          <view class="info-item">
+            <text class="info-label">更新时间</text>
+            <text class="info-value date-text">{{ formatDate(ret.updated_at || ret.updatedAt) }}</text>
+          </view>
         </view>
       </view>
 
       <!-- 退货明细 -->
       <view class="card">
-        <view class="card-title">退货明细</view>
-        <view class="item-list">
-          <view class="item-header">
-            <text class="col-name">商品</text>
-            <text class="col-qty">退货量</text>
-            <text class="col-price">退货价</text>
-            <text class="col-amount">金额</text>
-          </view>
-          <view class="item-row" v-for="(item, index) in ret.items" :key="index">
-            <view class="col-name">
-              <text class="p-name">{{ item.product_name || '-' }}</text>
-              <text class="p-spec" v-if="item.spec || item.unit_name">规格: {{ item.spec || '-' }} ({{ item.unit_name || '-' }})</text>
+        <view class="card-title">退货明细 ({{ ret.items?.length || 0 }} 项)</view>
+        <view class="product-item-list">
+          <view class="product-item-card" v-for="(item, index) in ret.items" :key="index">
+            <!-- 头部：商品名称与规格 -->
+            <view class="prod-header">
+              <text class="prod-title">#{{ index + 1 }} {{ item.product_name || '-' }}</text>
+              <text class="prod-spec" v-if="item.spec">{{ item.spec }}</text>
             </view>
-            <text class="col-qty">{{ item.quantity }}</text>
-            <text class="col-price">¥{{ formatPrice(item.price) }}</text>
-            <text class="col-amount">¥{{ formatPrice(item.amount) }}</text>
+            
+            <!-- 编码 -->
+            <view class="prod-code-row" v-if="item.code">
+              <text class="prod-code-label">编码：</text>
+              <text class="prod-code-val">{{ item.code }}</text>
+            </view>
+            
+            <!-- 紧凑网格详情 -->
+            <view class="prod-details-grid">
+              <!-- 第一行：单位、退货单价 -->
+              <view class="grid-row">
+                <view class="grid-cell"><text class="cell-lbl">单位：</text><text class="cell-val">{{ item.unit_name || '-' }}</text></view>
+                <view class="grid-cell"><text class="cell-lbl">退货单价：</text><text class="cell-val">¥{{ formatPrice(item.price) }}</text></view>
+              </view>
+              <!-- 第二行：退货数量、退款金额 -->
+              <view class="grid-row">
+                <view class="grid-cell"><text class="cell-lbl">退货数量：</text><text class="cell-val danger-text">{{ item.quantity }}</text></view>
+                <view class="grid-cell"><text class="cell-lbl">退款金额：</text><text class="cell-val danger-text">¥{{ formatPrice(item.amount) }}</text></view>
+              </view>
+              <!-- 第三行：备注说明 -->
+              <view class="grid-row" v-if="item.remark">
+                <view class="grid-cell"><text class="cell-lbl">备注：</text><text class="cell-val remark-text">{{ item.remark }}</text></view>
+              </view>
+            </view>
           </view>
         </view>
       </view>
@@ -108,7 +174,7 @@
         <view class="sheet-header">
           <text class="sheet-title">确认退货并填写物流</text>
           <view class="close-btn" @click="closePopup">
-            <uni-icons type="closeempty" size="20" color="#999"></uni-icons>
+            <u-icon name="close" size="20" color="#999"></u-icon>
           </view>
         </view>
 
@@ -170,7 +236,7 @@ const formatPrice = (val) => {
 }
 
 const formatDate = (val) => {
-  if (!val) return ''
+  if (!val) return '-'
   const d = new Date(val)
   if (isNaN(d.getTime())) return val
   const y = d.getFullYear()
@@ -179,6 +245,26 @@ const formatDate = (val) => {
   const h = String(d.getHours()).padStart(2, '0')
   const min = String(d.getMinutes()).padStart(2, '0')
   return `${y}-${m}-${day} ${h}:${min}`
+}
+
+const copyReturnNo = () => {
+  if (!ret.value.return_no) return
+  uni.setClipboardData({
+    data: ret.value.return_no,
+    success: () => {
+      uni.showToast({ title: '复制退货单号成功', icon: 'none' })
+    }
+  })
+}
+
+const copyOrderNo = () => {
+  if (!ret.value.order_no) return
+  uni.setClipboardData({
+    data: ret.value.order_no,
+    success: () => {
+      uni.showToast({ title: '复制采购单号成功', icon: 'none' })
+    }
+  })
 }
 
 const loadDetail = async () => {
@@ -256,8 +342,8 @@ onShow(() => {
   min-height: 100vh;
   background: #F5F7FA;
   box-sizing: border-box;
-  padding-bottom: calc(120rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(140rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
 }
 
 .detail-content {
@@ -286,51 +372,153 @@ onShow(() => {
   flex-wrap: wrap;
   .info-item {
     width: 50%;
-    padding: 10rpx 0;
+    padding: 12rpx 8rpx;
     box-sizing: border-box;
-    .info-label { font-size: 22rpx; color: #909399; display: block; margin-bottom: 4rpx; }
-    .info-value { font-size: 26rpx; color: #303133; display: block; font-weight: 500; word-break: break-all; }
-    .date-text { color: #909399; font-size: 24rpx; }
-    .font-bold { font-weight: 700; }
-  }
-}
-
-.reason-content {
-  background: #F8FAFC;
-  border-radius: 8rpx;
-  padding: 16rpx 20rpx;
-  font-size: 26rpx;
-  color: #606266;
-  line-height: 1.6;
-}
-
-.item-list {
-  .item-header {
-    display: flex;
-    background: #F8FAFC;
-    border-radius: 8rpx;
-    padding: 16rpx 12rpx;
-    margin-bottom: 8rpx;
-  }
-  .item-row {
-    display: flex;
-    align-items: center;
-    padding: 18rpx 12rpx;
-    border-bottom: 1rpx solid #F2F6FC;
-    &:last-child { border-bottom: none; }
-  }
-  .col-name {
-    flex: 2;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-    padding-right: 10rpx;
-    .p-name { font-size: 24rpx; color: #303133; font-weight: 600; }
-    .p-spec { font-size: 20rpx; color: #909399; margin-top: 4rpx; }
+    
+    .info-label { font-size: 22rpx; color: #909399; display: block; margin-bottom: 6rpx; }
+    .info-value { font-size: 26rpx; color: #303133; display: block; font-weight: 600; word-break: break-all; }
+    .date-text { color: #909399; font-size: 24rpx; }
+    
+    &.order-no-item {
+      .info-value-copy {
+        display: flex;
+        align-items: center;
+        gap: 8rpx;
+      }
+      .copy-icon {
+        flex-shrink: 0;
+        cursor: pointer;
+        
+        &:active {
+          opacity: 0.6;
+        }
+      }
+    }
   }
-  .col-qty { flex: 0.8; text-align: center; font-size: 24rpx; color: #606266; font-weight: 600; }
-  .col-price { flex: 1.2; text-align: right; font-size: 24rpx; color: #606266; }
-  .col-amount { flex: 1.5; text-align: right; font-size: 24rpx; color: #F56C6C; font-weight: 600; }
+}
+
+.remarks-value {
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+.product-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.product-item-card {
+  background: #F8FAFC;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  border: 1rpx solid #EEF2F6;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.prod-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  border-bottom: 1rpx solid #EEF2F6;
+  padding-bottom: 8rpx;
+}
+
+.prod-title {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #303133;
+  flex: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.prod-spec {
+  font-size: 20rpx;
+  background: #E8F4FF;
+  color: #1890FF;
+  padding: 2rpx 8rpx;
+  border-radius: 6rpx;
+  max-width: 180rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.prod-code-row {
+  display: flex;
+  align-items: center;
+  font-size: 20rpx;
+  color: #909399;
+}
+
+.prod-code-val {
+  font-family: monospace;
+}
+
+.prod-details-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.grid-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.grid-cell {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-size: 22rpx;
+  color: #606266;
+  min-width: 0;
+}
+
+.cell-lbl {
+  color: #909399;
+  flex-shrink: 0;
+}
+
+.cell-val {
+  font-weight: 600;
+  color: #303133;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  
+  &.primary {
+    color: #1890FF;
+  }
+  
+  &.success {
+    color: #67C23A;
+  }
+  
+  &.warning {
+    color: #E6A23C;
+  }
+  
+  &.danger-text {
+    color: #F56C6C;
+  }
+}
+
+.remark-text {
+  font-size: 20rpx;
+  color: #909399;
+  font-weight: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .bottom-bar {
@@ -443,6 +631,8 @@ onShow(() => {
       padding: 0 24rpx;
       font-size: 28rpx;
       color: #303133;
+      width: 100%;
+      box-sizing: border-box;
     }
     
     .form-textarea {
